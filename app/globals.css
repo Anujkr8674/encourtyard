@@ -26,6 +26,10 @@
     --color-gold:      #C29B38;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--color-cream);
     color: var(--color-charcoal);

@@ -9,6 +9,7 @@ import { CommunityGrowthSection } from '@/components/home/CommunityGrowthSection
 import { TestimonialsSection } from '@/components/home/TestimonialsSection';
 import { FAQAndInsightsSection } from '@/components/home/FAQAndInsightsSection';
 import { FinalCTA } from '@/components/home/FinalCTA';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 export const metadata: Metadata = {
   title: 'EnCourtyard | Handcrafted Workspaces & Botanical Sanctuaries',
@@ -19,15 +20,50 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <div className="flex flex-col">
+      {/* 1. Hero Section - Botanical Sanctuary & Typing Carousel */}
       <Hero />
-      <PresenceCitySection />
-      <WorkspaceCategoriesSection />
-      <WhyEnCourtyard />
-      <AmenitiesSection />
-      <PricingPreview />
-      <CommunityGrowthSection />
-      <TestimonialsSection />
-      <FAQAndInsightsSection />
+
+      {/* 2. City Presence Section - Unique Slide-In from Left with Subtle Angle */}
+      <ScrollReveal animation="slide-left" duration={1200} threshold={0.06}>
+        <PresenceCitySection />
+      </ScrollReveal>
+
+      {/* 3. Workspace Categories Section - Unique 3D Depth Scale-Up */}
+      <ScrollReveal animation="scale-up" duration={1250} threshold={0.06}>
+        <WorkspaceCategoriesSection />
+      </ScrollReveal>
+
+      {/* 4. Why EnCourtyard - Unique Slide-In from Right with Dynamic Tilt */}
+      <ScrollReveal animation="slide-right" duration={1200} threshold={0.06}>
+        <WhyEnCourtyard />
+      </ScrollReveal>
+
+      {/* 5. World-Class Amenities - Unique 3D Perspective Flip/Tilt-Up */}
+      <ScrollReveal animation="flip-up" duration={1300} threshold={0.06}>
+        <AmenitiesSection />
+      </ScrollReveal>
+
+      {/* 6. Pricing & Membership Preview - Unique Soft Zoom-In & Focus */}
+      <ScrollReveal animation="zoom-in" duration={1200} threshold={0.06}>
+        <PricingPreview />
+      </ScrollReveal>
+
+      {/* 7. Community Growth & Strategic Stats - Unique Vertical Expansive Reveal */}
+      <ScrollReveal animation="expand-y" duration={1250} threshold={0.06}>
+        <CommunityGrowthSection />
+      </ScrollReveal>
+
+      {/* 8. Google Reviews & Testimonials Marquee - Atmospheric Luxury Blur-In */}
+      <ScrollReveal animation="blur-in" duration={1350} threshold={0.06}>
+        <TestimonialsSection />
+      </ScrollReveal>
+
+      {/* 9. FAQs & Insights Hub - Elegant Skewed Glide-Up */}
+      <ScrollReveal animation="glide-up" duration={1200} threshold={0.06}>
+        <FAQAndInsightsSection />
+      </ScrollReveal>
+
+      {/* 10. Final Botanical Sanctuary CTA - Pure Fixed Background Parallax Scrolling */}
       <FinalCTA />
     </div>
   );
