@@ -1,0 +1,66 @@
+import { NextResponse } from 'next/server';
+import { prisma, isLiveDbConfigured, localStore, LocalOtp } from '@/lib/prisma';
+import { sendOtpEmail } from '@/lib/email';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { email } = body;
+
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const targetUser = localStore.users?.get(normalizedEmail);
+    const userName = targetUser?.name || 'Valued Member';
+
+    // Generate fresh OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Save in localStore
+    const otpData: LocalOtp = {
+      id: `otp_${Date.now()}`,
+      email: normalizedEmail,
+      otpCode,
+      purpose: 'SIGNUP_VERIFICATION',
+      expiresAt,
+      isUsed: false,
+      createdAt: new Date(),
+    };
+    localStore.otps?.set(normalizedEmail, otpData);
+
+    // Save in Prisma
+    if (isLiveDbConfigured) {
+      try {
+        await prisma.otpVerification.create({
+          data: {
+            email: normalizedEmail,
+            otpCode,
+            purpose: 'SIGNUP_VERIFICATION',
+            expiresAt,
+          },
+        });
+      } catch (err) {
+        console.warn('⚠️ [Prisma DB Warning]:', err);
+      }
+    }
+
+    // Send email
+    await sendOtpEmail({
+      toEmail: normalizedEmail,
+      name: userName,
+      otp: otpCode,
+      purpose: 'Verification Code Resend',
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `A new 6-digit verification code has been dispatched to ${normalizedEmail}`,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to resend OTP';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

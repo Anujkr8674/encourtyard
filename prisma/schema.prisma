@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  MANAGER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+model User {
+  id              String            @id @default(uuid())
+  name            String
+  email           String            @unique
+  phone           String?
+  passwordHash    String
+  company         String?
+  role            Role              @default(USER)
+  isEmailVerified Boolean           @default(false)
+  avatarUrl       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  bookings        Booking[]
+  otpRequests     OtpVerification[]
+
+  @@map("users")
+}
+
+model OtpVerification {
+  id        String   @id @default(uuid())
+  email     String
+  otpCode   String
+  purpose   String   @default("SIGNUP_VERIFICATION") // SIGNUP_VERIFICATION, LOGIN, PASSWORD_RESET
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+
+  @@index([email, otpCode])
+  @@map("otp_verifications")
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId    String
+  locationName  String
+  spaceType     String // 'hot-desk' | 'dedicated-desk' | 'private-cabin' | 'meeting-room'
+  bookingDate   DateTime
+  startTime     String
+  endTime       String
+  guests        Int           @default(1)
+  totalAmount   Float
+  status        BookingStatus @default(CONFIRMED)
+  paymentStatus PaymentStatus @default(PAID)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("bookings")
+}
+
+model AdminAuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  target    String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("admin_audit_logs")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   // Category heading e.g., 'Private Offices'
+  slug        String   @unique
+  description String   // Short description e.g., 'A focused space to do your best work'
+  imageUrl    String   // Public URL from Supabase storage
+  capacity    String?  // Optional seating or team size e.g., '1-50 Seats'
+  badge       String?  // Optional badge e.g., 'Popular', 'Enterprise'
+  features    String   @default("[]") // JSON array of 4 feature highlight strings
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Workspace {
+  id               String   @id @default(uuid())
+  title            String   // Workspace heading/name e.g., 'Single Executive Suite'
+  slug             String   @unique
+  categoryId       String   // Category it belongs to
+  categoryName     String   // Category heading name e.g. 'Test1' or 'Private Offices'
+  shortDescription String   // Short summary
+  longDescription  String?  // Long detailed description
+  specifications   String   @default("[]") // JSON array of { key: string, value: string }
+  mediaUrls        String   @default("[]") // JSON array of { url: string, type: string, name: string }
+  price            String?  // e.g. '₹45,000 / month'
+  capacity         String?  // e.g. '1 - 6 Pax'
+  location         String?  // e.g. 'Kanke Road Sanctuary'
+  badge            String?  // e.g. 'Executive', 'Instant Book'
+  order            Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([categoryId])
+  @@map("workspaces")
+}
+
+

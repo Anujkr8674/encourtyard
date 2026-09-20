@@ -1,0 +1,15 @@
+[
+  {
+    "id": "cat-1789833923725",
+    "name": "Test1",
+    "slug": "test1-3725",
+    "description": "This is Test",
+    "imageUrl": "https://ttnpipktscpmoujueslv.supabase.co/storage/v1/object/public/encourtyard-upload/category/1789833921474-Screenshot__61_.png",
+    "capacity": null,
+    "badge": "[\"This is text\",\"Acoustic soundproofing & ergonomic furniture\",\"Access to botanical lounges & espresso bar\",\"24/7 keyless access & concierge support\"]",
+    "order": 6,
+    "isActive": true,
+    "createdAt": "2026-09-19T16:05:23.725",
+    "updatedAt": "2026-09-20T09:48:16.669"
+  }
+]

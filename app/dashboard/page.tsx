@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Building2, 
   Users, 
@@ -16,39 +17,80 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  Plus
+  Plus,
+  LogOut,
+  Sparkles,
+  UserCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { UserLoginForm } from '@/components/user/UserLoginForm';
 
 export default function UserDashboardPage() {
+  const { user, logout, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'seats' | 'bookings' | 'billing'>('overview');
+
+  // If loading session, show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center text-[#181F18]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#2E7D32] border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-mono tracking-widest uppercase text-[#5C665C]">
+            Loading Member Profile...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // If NOT logged in as User, show User Sign In
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#FAF9F5] flex items-center justify-center relative overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(#263626 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
+        <div className="w-full max-w-md relative z-10">
+          <UserLoginForm />
+        </div>
+      </div>
+    );
+  }
+
+  const userName = user?.name || 'Valued Member';
+  const userCompany = user?.company || 'Innovation Studio';
+  const userEmail = user?.email || 'member@encourtyard.com';
 
   const upcomingBookings = [
     {
       id: 'bk-1',
-      room: 'The Oak Executive Boardroom',
+      room: 'The Oak Executive Boardroom (Bangalore)',
       date: 'Tomorrow, 10:00 AM – 12:00 PM',
-      host: 'Elena Rostova',
+      host: userName,
       attendees: '8 Persons',
       status: 'Confirmed'
     },
     {
       id: 'bk-2',
-      room: 'The Cedar Creative Pod',
+      room: 'The Cedar Creative Pod (Mumbai BKC)',
       date: 'Thursday, 3:00 PM – 4:30 PM',
-      host: 'Elena Rostova',
+      host: userName,
       attendees: '4 Persons',
       status: 'Confirmed'
     }
   ];
 
   const allocatedSeats = [
-    { seatNumber: 'Suite 304 - Desk 01', user: 'Elena Rostova (CEO)', status: 'Active', keycard: 'EC-9481' },
-    { seatNumber: 'Suite 304 - Desk 02', user: 'Alexander Vance (CTO)', status: 'Active', keycard: 'EC-9482' },
+    { seatNumber: 'Suite 304 - Desk 01', user: `${userName} (Lead)`, status: 'Active', keycard: 'EC-9481' },
+    { seatNumber: 'Suite 304 - Desk 02', user: 'Alexander Vance (Tech)', status: 'Active', keycard: 'EC-9482' },
     { seatNumber: 'Suite 304 - Desk 03', user: 'Sarah Jenkins (Design)', status: 'Active', keycard: 'EC-9483' },
-    { seatNumber: 'Suite 304 - Desk 04', user: 'Dmitri Chen (Lead Eng)', status: 'Active', keycard: 'EC-9484' },
-    { seatNumber: 'Suite 304 - Desk 05', user: 'Marcus Wright (Ops)', status: 'Active', keycard: 'EC-9485' },
+    { seatNumber: 'Suite 304 - Desk 04', user: 'Dmitri Chen (Engineering)', status: 'Active', keycard: 'EC-9484' },
+    { seatNumber: 'Suite 304 - Desk 05', user: 'Marcus Wright (Growth)', status: 'Active', keycard: 'EC-9485' },
     { seatNumber: 'Suite 304 - Desk 06', user: 'Unassigned Guest Desk', status: 'Available', keycard: 'EC-9486' }
   ];
 
@@ -61,17 +103,18 @@ export default function UserDashboardPage() {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-[#4ADE80] text-xs font-semibold">
                 <Building2 className="w-3.5 h-3.5" />
-                <span>Member Portal</span>
+                <span>Verified Member Portal</span>
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl font-bold text-white">
-                Vanguard BioTech Workspace
+                {userCompany} Workspace
               </h1>
-              <p className="text-xs sm:text-sm text-[#C5D5C5]">
-                Suite 304 (Courtyard Solarium Wing) · Primary Account: Elena Rostova
+              <p className="text-xs sm:text-sm text-[#C5D5C5] flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-[#4ADE80]" />
+                <span>Primary Account: <strong className="text-white">{userName}</strong> ({userEmail})</span>
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 href="/meeting-rooms"
                 variant="white"
@@ -80,14 +123,13 @@ export default function UserDashboardPage() {
               >
                 Reserve Meeting Room
               </Button>
-              <Button
-                href="/about#visit-form"
-                variant="outline"
-                size="sm"
-                className="border-white text-white hover:bg-white hover:text-[#263626]"
+              <button
+                onClick={() => logout()}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-950/60 hover:bg-red-900 border border-red-500/40 text-red-200 text-xs font-semibold transition-all cursor-pointer shadow-md"
               >
-                Concierge Help
-              </Button>
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
             </div>
           </div>
 

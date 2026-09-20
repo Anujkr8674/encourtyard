@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Mail, MapPin, Phone, Clock, Sparkles } from 'lucide-react';
 
 const LinkedInIcon = () => (
@@ -31,6 +32,13 @@ const YouTubeIcon = () => (
 );
 
 export const Footer: React.FC = () => {
+  const pathname = usePathname();
+
+  // Do not render main website footer on Admin portal pages
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <footer className="relative bg-gradient-to-b from-[#1A2D1F] via-[#132217] to-[#0D1710] text-white overflow-hidden">
       

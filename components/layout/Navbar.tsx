@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -16,9 +16,13 @@ import {
   ShieldCheck,
   UserCheck,
   LayoutDashboard,
-  ChevronRight
+  ChevronRight,
+  User,
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/context/AuthContext';
 
 // Clean SVG Brand Icons for Drawer Social Links
 const LinkedInIcon = () => (
@@ -55,23 +59,48 @@ const YouTubeIcon = () => (
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isHome = pathname === '/';
+  const { user, admin, isAuthenticated, isAdmin, logout } = useAuth();
 
+  // Active display identity
+  const displayName = admin?.name || user?.name || 'Member';
+  const displayEmail = admin?.email || user?.email || '';
+  const displayRole = admin ? 'ADMIN' : (user?.role || 'MEMBER');
+  const avatarSeed = displayEmail || displayName;
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Listen for scroll to toggle background
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 25);
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+
+    window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close mobile drawer on route change
+  // Close drawer on path change
   useEffect(() => {
     setMobileMenuOpen(false);
+    setProfileDropdownOpen(false);
   }, [pathname]);
 
   // Prevent background scrolling when drawer is open
@@ -86,21 +115,27 @@ export const Navbar: React.FC = () => {
     };
   }, [mobileMenuOpen]);
 
+  const isHome = pathname === '/';
+
   const navLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Workspaces', href: '/workspaces' },
-    { name: 'Pricing', href: '/pricing' },
+    { name: 'Locations', href: '/workspaces' },
     { name: 'Meeting Rooms', href: '/meeting-rooms' },
-    { name: 'Book Seats', href: '/book' },
-    { name: 'About & Contact', href: '/about' }
+    { name: 'Pricing & Plans', href: '/pricing' },
+    { name: 'About & Philosophy', href: '/about' },
   ];
 
   const portalLinks = [
-    { name: 'Member Portal', href: '/dashboard', icon: <UserCheck className="w-3.5 h-3.5" /> },
-    { name: 'Admin Insights', href: '/admin', icon: <LayoutDashboard className="w-3.5 h-3.5" /> }
+    { name: 'Member Portal', href: '/dashboard', icon: <UserCheck className="w-3.5 h-3.5 text-[#4ADE80]" /> },
+    { name: 'Admin Insights', href: '/admin', icon: <LayoutDashboard className="w-3.5 h-3.5 text-[#4ADE80]" /> }
   ];
 
   const isTransparent = !scrolled && isHome;
+
+  // Do not render main website Navbar inside Admin portal pages
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <>
@@ -147,8 +182,105 @@ export const Navbar: React.FC = () => {
             })}
           </div>
 
-          {/* Right Action Controls: Schedule a Visit CTA + Mobile Drawer Trigger (Mobile Only) */}
+          {/* Right Action Controls: Dynamic Auth State + Schedule CTA + Drawer Trigger */}
           <div className="flex items-center gap-3">
+            {/* If NOT Authenticated: Show Sign In Button */}
+            {!isAuthenticated ? (
+              <Link
+                href="/login"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold border border-white/25 hover:border-[#4ADE80]/60 backdrop-blur-md transition-all shadow-md hover:scale-105"
+              >
+                <User className="w-3.5 h-3.5 text-[#4ADE80]" />
+                <span>Sign In</span>
+              </Link>
+            ) : (
+              /* If Authenticated: Show User Profile Avatar & Dropdown */
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 border border-white/25 hover:border-[#4ADE80] text-white backdrop-blur-md transition-all cursor-pointer shadow-lg group select-none"
+                  aria-expanded={profileDropdownOpen}
+                >
+                  <div className="relative">
+                    <img
+                      src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(avatarSeed)}`}
+                      alt={displayName}
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#263626] border border-[#4ADE80]/50 object-cover"
+                    />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#4ADE80] ring-2 ring-[#181F18] absolute bottom-0 right-0" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-white max-w-[110px] truncate hidden md:inline-block">
+                    {displayName.split(' ')[0]}
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#A3BFA3] group-hover:text-white transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Profile Floating Dropdown Menu */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-64 rounded-2xl bg-[#141C14]/95 text-white border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl p-2 z-50 animate-fadeIn font-sans">
+                    {/* User Info Header */}
+                    <div className="px-3 py-2.5 border-b border-white/10 mb-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white truncate block">{displayName}</span>
+                        <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full ${admin ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-[#4ADE80]/20 text-[#4ADE80] border border-[#4ADE80]/40'}`}>
+                          {displayRole}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#A3BFA3] truncate block mt-0.5">{displayEmail}</span>
+                    </div>
+
+                    {/* Navigation Items */}
+                    <div className="space-y-0.5 text-xs">
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <UserCheck className="w-4 h-4 text-[#4ADE80]" />
+                        <span>Member Dashboard</span>
+                      </Link>
+
+                      <Link
+                        href="/book"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <Calendar className="w-4 h-4 text-[#4ADE80]" />
+                        <span>Book a Workspace</span>
+                      </Link>
+
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-300 hover:text-white hover:bg-amber-500/20 transition-colors font-semibold"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-amber-400" />
+                          <span>Admin Control Center</span>
+                        </Link>
+                      )}
+                    </div>
+
+                    {/* Logout Button */}
+                    <div className="pt-1 mt-1 border-t border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-red-300 hover:text-red-100 hover:bg-red-950/60 transition-colors text-xs font-semibold cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4 text-red-400" />
+                        <span>Sign Out / Log Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Schedule a Visit CTA Button aligned to the right */}
             <Button
               href="/about#visit-form"
@@ -229,28 +361,89 @@ export const Navbar: React.FC = () => {
               );
             })}
 
-            {/* Portal links in drawer */}
-            <div className="pt-2 border-t border-white/10 mt-2 space-y-1.5">
-              {portalLinks.map((portal) => {
-                const isActive = pathname === portal.href;
-                return (
+            {/* Account & Portal Section in Drawer */}
+            <div className="pt-3 border-t border-white/10 mt-3 space-y-2">
+              {!isAuthenticated ? (
+                <div className="space-y-2">
                   <Link
-                    key={portal.name}
-                    href={portal.href}
+                    href="/login"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${isActive
-                        ? 'bg-[#263626] text-[#4ADE80] border border-[#3A4D3A]'
-                        : 'text-white/70 hover:text-white hover:bg-white/5'
-                      }`}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-between transition-all border border-white/20"
                   >
                     <span className="flex items-center gap-2">
-                      {portal.icon}
-                      {portal.name}
+                      <User className="w-4 h-4 text-[#4ADE80]" />
+                      Member Sign In
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-50" />
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
                   </Link>
-                );
-              })}
+
+                  <Link
+                    href="/signup"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#388E3C] text-white text-xs font-semibold flex items-center justify-between transition-all border border-[#4ADE80]/40 shadow-sm"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-white" />
+                      Create Account
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2 bg-black/30 p-3 rounded-2xl border border-white/15">
+                  <div className="flex items-center gap-3 pb-2 border-b border-white/10">
+                    <img
+                      src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(avatarSeed)}`}
+                      alt={displayName}
+                      className="w-9 h-9 rounded-full bg-[#263626] border border-[#4ADE80]/50 object-cover shrink-0"
+                    />
+                    <div className="truncate">
+                      <span className="text-xs font-bold text-white block truncate">{displayName}</span>
+                      <span className="text-[10px] text-[#A3BFA3] block truncate">{displayEmail}</span>
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-white hover:bg-white/10 transition-all"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-[#4ADE80]" />
+                      My Dashboard
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </Link>
+
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-amber-300 hover:bg-amber-500/20 transition-all"
+                    >
+                      <span className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-amber-400" />
+                        Admin Command Center
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                    </Link>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-red-300 hover:bg-red-950/60 transition-all cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LogOut className="w-4 h-4 text-red-400" />
+                      Sign Out
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
