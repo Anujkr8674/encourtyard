@@ -1,5 +1,44 @@
 [
   {
+    "id": "cat-1789845484260",
+    "name": "Private Office",
+    "slug": "private-office-4260",
+    "description": "A Focus Work Space to do your works",
+    "imageUrl": "https://ttnpipktscpmoujueslv.supabase.co/storage/v1/object/public/encourtyard-upload/category/1789845474884-Screenshot__88_.png",
+    "capacity": null,
+    "badge": "[\"High-speed WiFi 6 & LAN drops\",\"Ergonomic seating & motorized standing desk\",\"Access to common botanical lounges & phone booths\",\"Weekly networking masterclasses & community mixer\"]",
+    "order": 2,
+    "isActive": true,
+    "createdAt": "2026-09-19T19:18:04.26",
+    "updatedAt": "2026-09-20T18:42:43.498"
+  },
+  {
+    "id": "cat-1789845611626",
+    "name": "Hot Desk",
+    "slug": "hot-desk-1626",
+    "description": "Flexiable, Aforadable, On Demand",
+    "imageUrl": "https://ttnpipktscpmoujueslv.supabase.co/storage/v1/object/public/encourtyard-upload/category/1789845608884-Screenshot__70_.png",
+    "capacity": null,
+    "badge": null,
+    "order": 3,
+    "isActive": true,
+    "createdAt": "2026-09-19T19:20:11.626",
+    "updatedAt": "2026-09-20T18:42:10.771"
+  },
+  {
+    "id": "cat-1789845784650",
+    "name": "Meeting Rooms",
+    "slug": "meeting-rooms-4650",
+    "description": "Collabrate with Team",
+    "imageUrl": "https://ttnpipktscpmoujueslv.supabase.co/storage/v1/object/public/encourtyard-upload/category/1789845758868-Screenshot__121_.png",
+    "capacity": null,
+    "badge": "[\"Dual Sony 4K Pro HDR Displays\",\"Neat Bar Pro AI video conferencing auto-tracking\",\"Ceiling-integrated beamforming acoustic mics\",\"Direct butler concierge service for tea & catering\"]",
+    "order": 5,
+    "isActive": true,
+    "createdAt": "2026-09-19T19:23:04.65",
+    "updatedAt": "2026-09-20T16:31:09.642"
+  },
+  {
     "id": "cat-1789833923725",
     "name": "Test1",
     "slug": "test1-3725",

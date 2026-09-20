@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useFeedbackModal } from '@/context/FeedbackModalContext';
 import { 
   User, 
   Mail, 
@@ -24,6 +25,7 @@ import { Button } from '@/components/ui/Button';
 export const UserSignupForm: React.FC = () => {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const { showSuccess, showError } = useFeedbackModal();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -238,13 +240,37 @@ export const UserSignupForm: React.FC = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Failed to finalize account.');
+        const errMsg = data.error || 'Failed to finalize account.';
+        setError(errMsg);
+        showError({
+          variant: 'cta',
+          title: 'Registration Failed',
+          message: errMsg,
+          primaryBtnText: 'Try Again',
+        });
       } else {
+        showSuccess({
+          variant: 'account',
+          title: 'Account Created!',
+          message: 'Welcome to EnCourtyard. Your account has been created successfully. You can now access all features.',
+          primaryBtnText: 'Get Started',
+          onPrimaryClick: () => router.push('/dashboard'),
+          autoCloseMs: 2000,
+        });
         await refreshUser();
-        router.push('/dashboard');
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
       }
     } catch {
-      setError('An error occurred while creating your account.');
+      const exMsg = 'An error occurred while creating your account.';
+      setError(exMsg);
+      showError({
+        variant: 'cta',
+        title: 'Oops!',
+        message: exMsg,
+        primaryBtnText: 'Try Again',
+      });
     } finally {
       setIsLoading(false);
     }

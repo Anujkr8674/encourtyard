@@ -33,9 +33,13 @@ import {
   MoveDown,
   PlusCircle,
   XCircle,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Calendar,
+  Hash,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useFeedbackModal } from '@/context/FeedbackModalContext';
 
 // Rich Curated Feature Badges Grouped by Space Category
 export const PRESET_BADGE_GROUPS = [
@@ -204,6 +208,7 @@ interface Category {
 }
 
 export default function AdminCategoriesPage() {
+  const { showSuccess, showError } = useFeedbackModal();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -212,6 +217,10 @@ export default function AdminCategoriesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  // View Details Modal State
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
 
   // Form State
   const [formName, setFormName] = useState('');
@@ -512,6 +521,13 @@ export default function AdminCategoriesPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to update category');
         setFormSuccess('Category and highlights updated successfully!');
+        showSuccess({
+          variant: 'file',
+          title: 'Category Updated!',
+          message: `Category "${formName.trim()}" and its property highlights have been saved successfully.`,
+          primaryBtnText: 'Done',
+          autoCloseMs: 2500,
+        });
       } else {
         // Create new
         const res = await fetch('/api/categories', {
@@ -522,14 +538,26 @@ export default function AdminCategoriesPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create category');
         setFormSuccess('Category created successfully!');
+        showSuccess({
+          variant: 'minimal',
+          title: 'Category Created!',
+          message: `New workspace category "${formName.trim()}" has been published to live catalogue.`,
+          primaryBtnText: 'Okay',
+          autoCloseMs: 2500,
+        });
       }
 
       await loadCategories();
-      setTimeout(() => {
-        closeModal();
-      }, 600);
+      closeModal();
     } catch (err: any) {
-      setFormError(err.message || 'An error occurred');
+      const msg = err.message || 'An error occurred while saving the category.';
+      setFormError(msg);
+      showError({
+        variant: 'cta',
+        title: 'Failed to Save Category',
+        message: msg,
+        primaryBtnText: 'Try Again',
+      });
     } finally {
       setUploading(false);
     }
@@ -599,19 +627,117 @@ export default function AdminCategoriesPage() {
     setFeatureMessage('');
   };
 
+  const openViewModal = (category: Category) => {
+    setViewingCategory(category);
+    setViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setViewModalOpen(false);
+    setViewingCategory(null);
+  };
+
+  const handleEditFromView = () => {
+    if (viewingCategory) {
+      const catToEdit = viewingCategory;
+      closeViewModal();
+      openEditModal(catToEdit);
+    }
+  };
+
+  const handleMoveCategory = async (cat: Category, direction: 'up' | 'down') => {
+    const sorted = [...categories].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const currentIndex = sorted.findIndex((c) => c.id === cat.id);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    const targetCat = sorted[targetIndex];
+
+    const currentOrder = cat.order ?? (currentIndex + 1);
+    const targetOrder = targetCat.order ?? (targetIndex + 1);
+
+    const newCurrentOrder = targetOrder === currentOrder
+      ? (direction === 'up' ? targetOrder : targetOrder + 1)
+      : targetOrder;
+    const newTargetOrder = currentOrder;
+
+    // Optimistic UI update
+    const updated = categories.map((c) => {
+      if (c.id === cat.id) return { ...c, order: newCurrentOrder };
+      if (c.id === targetCat.id) return { ...c, order: newTargetOrder };
+      return c;
+    });
+    setCategories(updated);
+
+    try {
+      await Promise.all([
+        fetch(`/api/categories/${cat.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newCurrentOrder }),
+        }),
+        fetch(`/api/categories/${targetCat.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newTargetOrder }),
+        }),
+      ]);
+      showSuccess({
+        variant: 'minimal',
+        title: 'Sorting Order Updated',
+        message: `Category "${cat.name}" moved ${direction}. Live position updated.`,
+        primaryBtnText: 'Okay',
+        autoCloseMs: 1800,
+      });
+    } catch (err) {
+      console.error('Failed to swap category order:', err);
+      showError({
+        variant: 'cta',
+        title: 'Order Update Failed',
+        message: 'Could not persist the new category position.',
+        primaryBtnText: 'Try Again',
+      });
+      loadCategories();
+    }
+  };
+
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete the category "${name}"?`)) return;
     try {
       const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setCategories((prev) => prev.filter((c) => c.id !== id));
+        showSuccess({
+          variant: 'minimal',
+          title: 'Category Deleted',
+          message: `The category "${name}" has been permanently removed.`,
+          primaryBtnText: 'Done',
+          autoCloseMs: 2500,
+        });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showError({
+          variant: 'warning',
+          title: 'Delete Failed',
+          message: data.error || `Unable to delete "${name}". It might have associated workspaces.`,
+          primaryBtnText: 'Okay',
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete category:', err);
+      showError({
+        variant: 'cta',
+        title: 'Delete Error',
+        message: err.message || 'An error occurred while deleting the category.',
+        primaryBtnText: 'Try Again',
+      });
     }
   };
 
-  const filteredCategories = categories.filter((c) =>
+  const sortedCategories = [...categories].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  const filteredCategories = sortedCategories.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.description.toLowerCase().includes(search.toLowerCase()) ||
     (c.badge && c.badge.toLowerCase().includes(search.toLowerCase())) ||
@@ -702,12 +828,10 @@ export default function AdminCategoriesPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#FAF9F5] border-b border-[#E0DCD3] text-[#6A806A] font-mono uppercase text-[11px] tracking-wider">
-                <th className="py-4 px-4 w-16 text-center">Order</th>
+                <th className="py-4 px-4 w-20 text-center">Order</th>
                 <th className="py-4 px-4 w-20">Thumbnail</th>
                 <th className="py-4 px-4">Category Heading</th>
                 <th className="py-4 px-4">Slug / Route</th>
-                <th className="py-4 px-4">Included Highlights (Ordered 4 Bullets)</th>
-                <th className="py-4 px-4">Capacity / Badge</th>
                 <th className="py-4 px-4">Storage & Status</th>
                 <th className="py-4 px-4 text-right">Actions</th>
               </tr>
@@ -716,7 +840,7 @@ export default function AdminCategoriesPage() {
             <tbody className="divide-y divide-[#E0DCD3]/70">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#5C665C]">
+                  <td colSpan={6} className="py-12 text-center text-[#5C665C]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="w-6 h-6 text-[#2E7D32] animate-spin" />
                       <span className="text-xs font-mono">Loading categories from database...</span>
@@ -725,7 +849,7 @@ export default function AdminCategoriesPage() {
                 </tr>
               ) : paginatedCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#5C665C]">
+                  <td colSpan={6} className="py-12 text-center text-[#5C665C]">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#2E7D32] flex items-center justify-center mb-1">
                         <Layers className="w-6 h-6" />
@@ -739,27 +863,56 @@ export default function AdminCategoriesPage() {
                 </tr>
               ) : (
                 paginatedCategories.map((category) => {
-                  const featureList = Array.isArray(category.features) && category.features.length > 0
-                    ? category.features
-                    : [
-                        'High-speed WiFi 6 & VLAN connectivity',
-                        'Acoustic soundproofing & ergonomic furniture',
-                        'Access to botanical lounges & espresso bar',
-                        '24/7 keyless access & concierge support'
-                      ];
+                  const globalIdx = sortedCategories.findIndex((c) => c.id === category.id);
+                  const isFirst = globalIdx === 0;
+                  const isLast = globalIdx === sortedCategories.length - 1;
 
                   return (
                     <tr key={category.id} className="hover:bg-[#FAF9F5] transition-colors group">
-                      {/* Sort Order Position */}
+                      {/* Sort Order Position with Up/Down Arrows */}
                       <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#FAF9F5] border border-[#E0DCD3] font-mono font-bold text-xs text-[#181F18]">
-                          {category.order || 1}
-                        </span>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#FAF9F5] border border-[#E0DCD3] font-mono font-bold text-xs text-[#181F18] shadow-2xs">
+                            {category.order || 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveCategory(category, 'up')}
+                              disabled={isFirst}
+                              className={`w-5 h-4 rounded flex items-center justify-center transition-colors ${
+                                isFirst
+                                  ? 'text-gray-300 cursor-not-allowed opacity-30'
+                                  : 'text-[#5C665C] hover:bg-[#2E7D32] hover:text-white cursor-pointer'
+                              }`}
+                              title="Move Category Up"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveCategory(category, 'down')}
+                              disabled={isLast}
+                              className={`w-5 h-4 rounded flex items-center justify-center transition-colors ${
+                                isLast
+                                  ? 'text-gray-300 cursor-not-allowed opacity-30'
+                                  : 'text-[#5C665C] hover:bg-[#2E7D32] hover:text-white cursor-pointer'
+                              }`}
+                              title="Move Category Down"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
                       </td>
 
                       {/* Thumbnail Image */}
                       <td className="py-3.5 px-4">
-                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#EAE5DB] border border-[#E0DCD3] shadow-xs relative shrink-0">
+                        <div
+                          onClick={() => openViewModal(category)}
+                          className="w-14 h-14 rounded-xl overflow-hidden bg-[#EAE5DB] border border-[#E0DCD3] shadow-xs relative shrink-0 cursor-pointer"
+                          title="Click to view details"
+                        >
                           <img
                             src={category.imageUrl}
                             alt={category.name}
@@ -774,10 +927,14 @@ export default function AdminCategoriesPage() {
 
                       {/* Category Heading */}
                       <td className="py-3.5 px-4">
-                        <span className="font-serif text-sm font-bold text-[#181F18] block leading-snug">
+                        <button
+                          type="button"
+                          onClick={() => openViewModal(category)}
+                          className="font-serif text-sm font-bold text-[#181F18] block leading-snug hover:text-[#2E7D32] text-left transition-colors cursor-pointer"
+                        >
                           {category.name}
-                        </span>
-                        <p className="text-[11px] text-[#5C665C] line-clamp-1 max-w-[180px] mt-0.5">
+                        </button>
+                        <p className="text-[11px] text-[#5C665C] line-clamp-1 max-w-[280px] mt-0.5">
                           {category.description}
                         </p>
                       </td>
@@ -787,45 +944,6 @@ export default function AdminCategoriesPage() {
                         <span className="inline-block px-2 py-1 rounded-md bg-[#FAF9F5] border border-[#E0DCD3] font-mono text-[11px] text-[#2E7D32] font-semibold">
                           /{category.slug}
                         </span>
-                      </td>
-
-                      {/* 4 Feature Highlights Preview with numbering */}
-                      <td className="py-3.5 px-4 max-w-sm">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#2E7D32]">
-                            <Sparkles className="w-3 h-3" />
-                            <span>{featureList.length} Highlights Configured</span>
-                          </div>
-                          <ul className="space-y-1">
-                            {featureList.map((feat, i) => (
-                              <li key={i} className="text-[11px] text-[#263626] flex items-center gap-1.5 truncate">
-                                <span className="w-4 h-4 rounded-full bg-emerald-50 text-[#2E7D32] border border-emerald-200 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
-                                  {i + 1}
-                                </span>
-                                <span className="truncate">{feat}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </td>
-
-                      {/* Capacity / Badge */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          {category.badge && (
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-sans font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                              {category.badge}
-                            </span>
-                          )}
-                          {category.capacity && (
-                            <span className="block text-[11px] text-[#5C665C] font-mono">
-                              {category.capacity}
-                            </span>
-                          )}
-                          {!category.badge && !category.capacity && (
-                            <span className="text-[11px] text-[#A3B0A3]">—</span>
-                          )}
-                        </div>
                       </td>
 
                       {/* Storage & Status */}
@@ -854,14 +972,14 @@ export default function AdminCategoriesPage() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
-                          <Link
-                            href="/#categories"
-                            target="_blank"
-                            className="p-2 rounded-xl bg-[#FAF9F5] hover:bg-emerald-50 text-[#181F18] hover:text-[#2E7D32] border border-[#E0DCD3] transition-colors"
-                            title="View on Homepage"
+                          <button
+                            type="button"
+                            onClick={() => openViewModal(category)}
+                            className="p-2 rounded-xl bg-[#FAF9F5] hover:bg-emerald-50 text-[#181F18] hover:text-[#2E7D32] border border-[#E0DCD3] transition-colors cursor-pointer"
+                            title="View Category Details"
                           >
                             <Eye className="w-3.5 h-3.5 text-[#2E7D32]" />
-                          </Link>
+                          </button>
                           <button
                             type="button"
                             onClick={() => openEditModal(category)}
@@ -944,6 +1062,208 @@ export default function AdminCategoriesPage() {
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL: Category Details View Modal (Read-Only Deep Dive)                  */}
+      {/* ========================================================================= */}
+      {viewModalOpen && viewingCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn"
+            onClick={closeViewModal}
+          />
+
+          <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl overflow-hidden animate-scaleUp">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2E7D32] text-[10px] font-mono font-bold uppercase tracking-wider">
+                    CATEGORY DETAILS OVERVIEW
+                  </span>
+                  <span className="text-[11px] text-[#5C665C] font-mono">
+                    Order #{viewingCategory.order || 1}
+                  </span>
+                </div>
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#181F18]">
+                  {viewingCategory.name}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeViewModal}
+                className="p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 max-h-[78vh] overflow-y-auto font-sans">
+              {/* Category Hero Card */}
+              <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl bg-[#FAF9F5] border border-[#E0DCD3]">
+                {/* Image */}
+                <div className="w-full sm:w-44 h-36 rounded-xl overflow-hidden bg-[#EAE5DB] border border-[#E0DCD3] shadow-sm relative shrink-0">
+                  <img
+                    src={viewingCategory.imageUrl}
+                    alt={viewingCategory.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80';
+                    }}
+                  />
+                  {viewingCategory.badge && (
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-amber-500/90 text-white font-bold text-[10px] backdrop-blur-xs shadow-xs">
+                      {viewingCategory.badge}
+                    </div>
+                  )}
+                </div>
+
+                {/* Main Meta Info */}
+                <div className="flex-1 flex flex-col justify-between space-y-2">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="px-2 py-0.5 rounded-md bg-white border border-[#E0DCD3] font-mono text-[11px] text-[#2E7D32] font-semibold">
+                        /{viewingCategory.slug}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          viewingCategory.isActive
+                            ? 'bg-emerald-50 text-[#2E7D32] border border-emerald-200'
+                            : 'bg-red-50 text-red-700 border border-red-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            viewingCategory.isActive ? 'bg-[#2E7D32] animate-pulse' : 'bg-red-500'
+                          }`}
+                        />
+                        {viewingCategory.isActive ? 'Active on Homepage' : 'Hidden'}
+                      </span>
+                    </div>
+
+                    <h3 className="font-serif text-lg font-bold text-[#181F18]">
+                      {viewingCategory.name}
+                    </h3>
+                    <p className="text-xs text-[#5C665C] mt-1 leading-relaxed">
+                      {viewingCategory.description}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-2 border-t border-[#E0DCD3]/60 text-xs">
+                    {viewingCategory.capacity && (
+                      <div>
+                        <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Capacity</span>
+                        <span className="font-semibold text-[#181F18]">{viewingCategory.capacity}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Order Position</span>
+                      <span className="font-semibold text-[#181F18]">Slot #{viewingCategory.order || 1}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Storage</span>
+                      <span className="font-mono text-[11px] text-[#2E7D32]">Supabase S3</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Included Highlights */}
+              <div className="p-5 rounded-2xl bg-white border border-[#E0DCD3] space-y-3">
+                <div className="flex items-center justify-between border-b border-[#E0DCD3] pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#2E7D32]" />
+                    <span className="text-xs font-bold text-[#181F18] uppercase tracking-wider">
+                      Included Highlights ({Array.isArray(viewingCategory.features) ? viewingCategory.features.length : 0} Configured)
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-[#5C665C]">
+                    4-Bullet Card Display
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {(Array.isArray(viewingCategory.features) && viewingCategory.features.length > 0
+                    ? viewingCategory.features
+                    : [
+                        'High-speed WiFi 6 & VLAN connectivity',
+                        'Acoustic soundproofing & ergonomic furniture',
+                        'Access to botanical lounges & espresso bar',
+                        '24/7 keyless access & concierge support'
+                      ]
+                  ).map((feat, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2.5 p-3 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3]"
+                    >
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#2E7D32] text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <span className="text-xs font-medium text-[#181F18] leading-snug">
+                        {feat}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Technical / Metadata Footer Box */}
+              <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3] text-[11px] space-y-1.5 font-mono">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6A806A]">Category ID:</span>
+                  <span className="text-[#181F18] select-all">{viewingCategory.id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6A806A]">Storage Bucket:</span>
+                  <span className="text-[#2E7D32]">encourtyard-upload/category</span>
+                </div>
+                {viewingCategory.createdAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#6A806A]">Created At:</span>
+                    <span className="text-[#181F18]">
+                      {new Date(viewingCategory.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 border-t border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between gap-3">
+              <Link
+                href="/#categories"
+                target="_blank"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-[#EAE5DC] border border-[#E0DCD3] text-[#181F18] text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Eye className="w-3.5 h-3.5 text-[#2E7D32]" />
+                <span>Preview On Website</span>
+                <ArrowUpRight className="w-3 h-3 text-[#5C665C]" />
+              </Link>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeViewModal}
+                  className="rounded-xl text-xs"
+                >
+                  Close
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleEditFromView}
+                  className="px-5 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit This Category</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL: Category Form with Individual Badge Selection, X & Sorting Controls */}

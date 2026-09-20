@@ -44,6 +44,7 @@ export const metadata: Metadata = {
 };
 
 import { AuthProvider } from '@/context/AuthContext';
+import { FeedbackProvider } from '@/context/FeedbackModalContext';
 
 export default function RootLayout({
   children,
@@ -53,13 +54,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${playfair.variable} ${jakarta.variable} h-full antialiased scroll-smooth`}
+      className={`${playfair.variable} ${jakarta.variable} h-full antialiased scroll-smooth overflow-x-hidden`}
     >
-      <body className="min-h-full flex flex-col bg-[#FAF9F5] text-[#181F18] selection:bg-[#263626] selection:text-white">
+      <body className="min-h-full flex flex-col bg-[#FAF9F5] text-[#181F18] selection:bg-[#263626] selection:text-white overflow-x-hidden w-full max-w-full">
         <AuthProvider>
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          <Footer />
+          <FeedbackProvider>
+            <Navbar />
+            <main className="flex-grow w-full max-w-full overflow-x-hidden">{children}</main>
+            <Footer />
+          </FeedbackProvider>
         </AuthProvider>
       </body>
     </html>

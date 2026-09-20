@@ -4,12 +4,14 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useFeedbackModal } from '@/context/FeedbackModalContext';
 import { Mail, Lock, ArrowRight, Shield, AlertCircle, RefreshCw, KeyRound, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export const UserLoginForm: React.FC = () => {
   const router = useRouter();
   const { login, user } = useAuth();
+  const { showSuccess, showError } = useFeedbackModal();
 
   // Redirect if already logged in
   useEffect(() => {
@@ -29,7 +31,14 @@ export const UserLoginForm: React.FC = () => {
     setError(null);
 
     if (!email.trim() || !password) {
-      setError('Please provide both your email and password.');
+      const msg = 'Please provide both your email and password.';
+      setError(msg);
+      showError({
+        variant: 'warning',
+        title: 'Missing Details',
+        message: msg,
+        primaryBtnText: 'Okay',
+      });
       return;
     }
 
@@ -40,15 +49,48 @@ export const UserLoginForm: React.FC = () => {
 
       if (!res.success) {
         if (res.requiresVerification) {
-          setError('Your email is not verified yet. Please sign up or verify using the OTP modal.');
+          const verifyMsg = 'Your email is not verified yet. Please sign up or verify using the OTP modal.';
+          setError(verifyMsg);
+          showError({
+            variant: 'warning',
+            title: 'Verification Needed',
+            message: verifyMsg,
+            primaryBtnText: 'Verify Email',
+            secondaryBtnText: 'Close',
+            onPrimaryClick: () => router.push('/signup'),
+          });
         } else {
-          setError(res.error || 'Failed to sign in. Please verify your credentials.');
+          const failMsg = res.error || 'Failed to sign in. Please verify your email and password.';
+          setError(failMsg);
+          showError({
+            variant: 'session',
+            title: 'Sign In Failed',
+            message: failMsg,
+            primaryBtnText: 'Try Again',
+          });
         }
       } else {
-        router.push('/dashboard');
+        showSuccess({
+          variant: 'account',
+          title: 'Welcome Back!',
+          message: 'You have signed in successfully. Opening your member dashboard...',
+          primaryBtnText: 'Go to Dashboard',
+          onPrimaryClick: () => router.push('/dashboard'),
+          autoCloseMs: 1500,
+        });
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1200);
       }
     } catch {
-      setError('An unexpected error occurred. Please try again.');
+      const exMsg = 'An unexpected error occurred. Please try again.';
+      setError(exMsg);
+      showError({
+        variant: 'cta',
+        title: 'Oops!',
+        message: exMsg,
+        primaryBtnText: 'Try Again',
+      });
     } finally {
       setIsLoading(false);
     }

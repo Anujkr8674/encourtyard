@@ -12,6 +12,8 @@ export type AnimationType =
   | 'blur-in'
   | 'glide-up'
   | 'cinematic-reveal'
+  | 'marquee-curtain'
+  | 'botanical-bloom'
   | 'fade-up'
   | 'fade-down'
   | 'fade-left'
@@ -75,73 +77,87 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
       case 'slide-left':
         return {
           opacity: 0,
-          transform: 'translateX(-70px) rotate(-1.5deg)',
+          transform: 'translate3d(-35px, 0, 0) rotate(-1deg)',
         };
       case 'slide-right':
         return {
           opacity: 0,
-          transform: 'translateX(70px) rotate(1.5deg)',
+          transform: 'translate3d(35px, 0, 0) rotate(1deg)',
         };
       case 'scale-up':
         return {
           opacity: 0,
-          transform: 'scale(0.88) translateY(45px)',
+          transform: 'scale(0.92) translate3d(0, 35px, 0)',
         };
       case 'flip-up':
         return {
           opacity: 0,
-          transform: 'perspective(1200px) rotateX(18deg) translateY(55px)',
+          transform: 'perspective(1200px) rotateX(12deg) translate3d(0, 40px, 0)',
           transformOrigin: 'bottom center',
         };
       case 'zoom-in':
         return {
           opacity: 0,
           filter: 'blur(6px)',
-          transform: 'scale(0.85) translateY(25px)',
+          transform: 'scale(0.90) translate3d(0, 20px, 0)',
         };
       case 'expand-y':
         return {
           opacity: 0,
-          transform: 'scaleY(0.88) translateY(50px)',
+          transform: 'scaleY(0.92) translate3d(0, 35px, 0)',
           transformOrigin: 'top center',
         };
       case 'blur-in':
         return {
           opacity: 0,
-          filter: 'blur(16px)',
-          transform: 'scale(0.94) translateY(35px)',
+          filter: 'blur(12px)',
+          transform: 'scale(0.95) translate3d(0, 25px, 0)',
         };
       case 'glide-up':
         return {
           opacity: 0,
-          transform: 'translateY(60px) skewY(1.5deg)',
+          transform: 'translate3d(0, 45px, 0) skewY(1deg)',
         };
       case 'cinematic-reveal':
         return {
           opacity: 0,
-          filter: 'brightness(0.65) blur(6px)',
-          transform: 'scale(0.90) translateY(50px)',
+          filter: 'brightness(0.7) blur(6px)',
+          transform: 'scale(0.92) translate3d(0, 35px, 0)',
+        };
+      case 'marquee-curtain':
+        return {
+          opacity: 0,
+          transform: 'scaleY(0.7) translate3d(0, -25px, 0)',
+          filter: 'blur(6px)',
+          transformOrigin: 'center top',
+        };
+      case 'botanical-bloom':
+        return {
+          opacity: 0,
+          filter: 'blur(12px) saturate(70%)',
+          transform: 'perspective(1400px) rotateX(10deg) rotateY(-3deg) scale(0.92) translate3d(0, 50px, 0)',
+          transformOrigin: 'center top',
         };
       case 'fade-down':
         return {
           opacity: 0,
-          transform: 'translateY(-50px)',
+          transform: 'translate3d(0, -35px, 0)',
         };
       case 'fade-left':
         return {
           opacity: 0,
-          transform: 'translateX(50px)',
+          transform: 'translate3d(35px, 0, 0)',
         };
       case 'fade-right':
         return {
           opacity: 0,
-          transform: 'translateX(-50px)',
+          transform: 'translate3d(-35px, 0, 0)',
         };
       case 'fade-up':
       default:
         return {
           opacity: 0,
-          transform: 'translateY(55px)',
+          transform: 'translate3d(0, 40px, 0)',
         };
     }
   };
@@ -151,13 +167,13 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
       case 'flip-up':
         return {
           opacity: 1,
-          transform: 'perspective(1200px) rotateX(0deg) translateY(0px)',
+          transform: 'perspective(1200px) rotateX(0deg) translate3d(0, 0, 0)',
           transformOrigin: 'bottom center',
         };
       case 'expand-y':
         return {
           opacity: 1,
-          transform: 'scaleY(1) translateY(0px)',
+          transform: 'scaleY(1) translate3d(0, 0, 0)',
           transformOrigin: 'top center',
         };
       case 'zoom-in':
@@ -165,35 +181,55 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
         return {
           opacity: 1,
           filter: 'blur(0px)',
-          transform: 'scale(1) translateY(0px)',
+          transform: 'scale(1) translate3d(0, 0, 0)',
         };
       case 'cinematic-reveal':
         return {
           opacity: 1,
           filter: 'brightness(1) blur(0px)',
-          transform: 'scale(1) translateY(0px)',
+          transform: 'scale(1) translate3d(0, 0, 0)',
+        };
+      case 'marquee-curtain':
+        return {
+          opacity: 1,
+          transform: 'scaleY(1) translate3d(0, 0, 0)',
+          filter: 'blur(0px)',
+          transformOrigin: 'center top',
+        };
+      case 'botanical-bloom':
+        return {
+          opacity: 1,
+          filter: 'blur(0px) saturate(100%)',
+          transform: 'perspective(1400px) rotateX(0deg) rotateY(0deg) scale(1) translate3d(0, 0, 0)',
+          transformOrigin: 'center top',
         };
       default:
         return {
           opacity: 1,
-          transform: 'translateX(0px) translateY(0px) rotate(0deg) skewY(0deg) scale(1)',
+          transform: 'translate3d(0, 0, 0) rotate(0deg) skewY(0deg) scale(1)',
         };
     }
   };
 
+  const combinedClassName = className && className.trim()
+    ? `transition-all w-full max-w-full ${className.trim()}`
+    : 'transition-all w-full max-w-full';
+
   return (
-    <div
-      ref={elementRef}
-      style={{
-        transitionDuration: `${duration}ms`,
-        transitionDelay: `${delay}ms`,
-        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        willChange: 'transform, opacity, filter',
-        ...(isVisible ? getVisibleStyle() : getInitialStyle()),
-      }}
-      className={`transition-all ${className}`}
-    >
-      {children}
+    <div className="w-full max-w-full overflow-x-clip">
+      <div
+        ref={elementRef}
+        style={{
+          transitionDuration: `${duration}ms`,
+          transitionDelay: `${delay}ms`,
+          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform, opacity, filter',
+          ...(isVisible ? getVisibleStyle() : getInitialStyle()),
+        }}
+        className={combinedClassName}
+      >
+        {children}
+      </div>
     </div>
   );
 };

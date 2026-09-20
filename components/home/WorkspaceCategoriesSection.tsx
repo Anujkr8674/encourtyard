@@ -111,8 +111,9 @@ export const WorkspaceCategoriesSection: React.FC = () => {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Selected Category State
+  // Selected Category State (Click/Tap ONLY - NO hover category change)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [featuredIndex, setFeaturedIndex] = useState<number>(3); // 4th card position background tracker
 
   // Navigation Button State for Top Carousel
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -188,11 +189,11 @@ export const WorkspaceCategoriesSection: React.FC = () => {
           const catFeatures = (Array.isArray(dbCat.features) && dbCat.features.length > 0)
             ? dbCat.features
             : [
-                'High-speed WiFi 6 & VLAN connectivity',
-                'Acoustic soundproofing & ergonomic furniture',
-                'Access to botanical lounges & espresso bar',
-                '24/7 keyless access & concierge support',
-              ];
+              'High-speed WiFi 6 & VLAN connectivity',
+              'Acoustic soundproofing & ergonomic furniture',
+              'Access to botanical lounges & espresso bar',
+              '24/7 keyless access & concierge support',
+            ];
 
           return {
             id: dbCat.id,
@@ -200,7 +201,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
             slug: dbCat.slug,
             description: dbCat.description || 'A focused space to do your best work',
             imageUrl: dbCat.imageUrl || '',
-            bgFeatureImage: dbCat.imageUrl || '/images/hero1.png',
+            bgFeatureImage: dbCat.imageUrl || '',
             icon: catIcon,
             link: `/workspaces?category=${dbCat.slug || dbCat.id}`,
             detailTitle: dbCat.name,
@@ -230,12 +231,21 @@ export const WorkspaceCategoriesSection: React.FC = () => {
     fetchDbData();
   }, []);
 
-  // Scroll check for top carousel
+  // Scroll check for top carousel & dynamic 4th visible card calculation
   const checkScroll = useCallback(() => {
     if (scrollRef.current && categories.length > 0) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       setCanScrollLeft(scrollLeft > 10);
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+
+      // Determine 4th card visible in viewport for backdrop image
+      const cardWidth = 245;
+      const currentFirstIndex = Math.round(scrollLeft / cardWidth);
+      const target4thIndex = Math.min(
+        categories.length - 1,
+        Math.max(0, currentFirstIndex + 3)
+      );
+      setFeaturedIndex(target4thIndex);
     }
   }, [categories.length]);
 
@@ -271,7 +281,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
     }
   }, [selectedCategoryId]);
 
-  // Autoplay through categories
+  // Autoplay through categories (pauses on user hover / drag)
   useEffect(() => {
     if (isPaused || categories.length <= 1) return;
 
@@ -281,6 +291,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
         const nextIndex = (currentIndex + 1) % categories.length;
         const nextCategory = categories[nextIndex];
 
+        // Smoothly scroll the top carousel to keep current card in comfortable view
         if (scrollRef.current) {
           const cardWidth = 245;
           scrollRef.current.scrollTo({
@@ -390,6 +401,9 @@ export const WorkspaceCategoriesSection: React.FC = () => {
     setSelectedCategoryId(categoryId);
   };
 
+  const currentFeaturedCard = categories[featuredIndex] || categories[3] || categories[0];
+  const bgImageToShow = currentFeaturedCard?.imageUrl || '';
+
   const currentActiveCategory =
     categories.find((c) => c.id === selectedCategoryId) || categories[0];
   const ActiveIcon = currentActiveCategory?.icon || Building2;
@@ -437,11 +451,10 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                 type="button"
                 onClick={slideLeft}
                 disabled={!canScrollLeft || loading}
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D5CEC2] flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                  canScrollLeft && !loading
-                    ? 'bg-white text-[#181F18] hover:bg-[#263626] hover:text-white hover:border-[#263626]'
-                    : 'bg-[#EAE5DC] text-[#A3B0A3] opacity-40 cursor-not-allowed'
-                }`}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D5CEC2] flex items-center justify-center transition-all cursor-pointer shadow-xs ${canScrollLeft && !loading
+                  ? 'bg-white text-[#181F18] hover:bg-[#263626] hover:text-white hover:border-[#263626]'
+                  : 'bg-[#EAE5DC] text-[#A3B0A3] opacity-40 cursor-not-allowed'
+                  }`}
                 aria-label="Previous categories"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -451,11 +464,10 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                 type="button"
                 onClick={slideRight}
                 disabled={!canScrollRight || loading}
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D5CEC2] flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                  canScrollRight && !loading
-                    ? 'bg-white text-[#181F18] hover:bg-[#263626] hover:text-white hover:border-[#263626]'
-                    : 'bg-[#EAE5DC] text-[#A3B0A3] opacity-40 cursor-not-allowed'
-                }`}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-[#D5CEC2] flex items-center justify-center transition-all cursor-pointer shadow-xs ${canScrollRight && !loading
+                  ? 'bg-white text-[#181F18] hover:bg-[#263626] hover:text-white hover:border-[#263626]'
+                  : 'bg-[#EAE5DC] text-[#A3B0A3] opacity-40 cursor-not-allowed'
+                  }`}
                 aria-label="Next categories"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -463,6 +475,19 @@ export const WorkspaceCategoriesSection: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Feature Background Image (Only on desktop and only after database categories are loaded) */}
+        {!loading && categories.length > 0 && bgImageToShow && (
+          <div className="hidden lg:block absolute top-12 bottom-3 left-[48%] right-[20.5%] rounded-t-[36px] rounded-b-2xl overflow-hidden shadow-2xl border border-[#D5CEC2] z-0 pointer-events-none transition-all duration-500">
+            <img
+              key={bgImageToShow}
+              src={bgImageToShow}
+              alt={currentFeaturedCard?.name || 'Workspace Category'}
+              className="w-full h-full object-cover object-top transition-opacity duration-700 ease-in-out"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+          </div>
+        )}
 
         {/* Dynamic Content: Loading State Skeleton / DB Categories */}
         {loading ? (
@@ -547,47 +572,113 @@ export const WorkspaceCategoriesSection: React.FC = () => {
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
-              className={`flex gap-3.5 sm:gap-4 lg:gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pt-8 pb-0 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 relative z-10 items-end ${
-                isMouseDown ? 'cursor-grabbing' : 'cursor-grab'
-              }`}
+              className={`flex gap-3.5 sm:gap-4 lg:gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory py-2 sm:py-3 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 relative z-10 items-end mb-6 sm:mb-8 ${isMouseDown ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {categories.map((category) => {
+              {categories.map((category, index) => {
+                const isFeatured = index === featuredIndex;
                 const isActive = category.id === selectedCategoryId;
                 const IconComp = category.icon;
 
+                // =====================================================================
+                // 4TH / FEATURED CARD (Matches OldWorkSpaceCategory)
+                // =====================================================================
+                if (isFeatured) {
+                  return (
+                    <div
+                      key={category.id}
+                      onClick={(e) => handleCardClick(e, category.id)}
+                      className={`group border transition-all duration-300 transform flex flex-col justify-end w-[200px] sm:w-[230px] lg:w-[230px] shrink-0 snap-start cursor-pointer select-none relative ${isActive
+                        ? 'bg-[#263626] text-white border-t-2 border-x-2 border-b-0 border-[#4E6B4E] rounded-t-2xl rounded-b-none shadow-2xl z-20 pb-4 sm:pb-5 mb-0'
+                        : 'bg-white text-[#181F18] border-[#E5E1D8] rounded-2xl mb-4 sm:mb-5 shadow-warm hover:shadow-2xl hover:border-[#263626] hover:-translate-y-1.5'
+                        }`}
+                    >
+                      {/* Floating Active Category Badge on Top */}
+                      {isActive && (
+                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center">
+                          {/* <span className="bg-[#1E2D1E] text-white border border-[#3A4D3A] text-[10px] font-sans font-bold px-3 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                            Active Category
+                          </span> */}
+                          {/* <div className="w-2 h-1 bg-[#1E2D1E] [clip-path:polygon(50%_100%,0_0,100%_0)]" /> */}
+                        </div>
+                      )}
+
+                      {/* Mobile/Tablet Fallback Image if below lg */}
+                      {category.imageUrl && (
+                        <div className="lg:hidden aspect-[4/3] w-full overflow-hidden bg-[#EAE5DB] relative rounded-t-2xl">
+                          <img
+                            src={category.imageUrl}
+                            alt={category.name}
+                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out pointer-events-none"
+                            loading="lazy"
+                          />
+                          {isActive && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#263626]/80 via-transparent to-transparent" />
+                          )}
+                        </div>
+                      )}
+
+                      <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <IconComp className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-[#263626]'}`} />
+                            <h3 className={`font-serif text-xs sm:text-base font-bold leading-tight ${isActive ? 'text-white' : 'text-[#181F18]'}`}>
+                              {category.name}
+                            </h3>
+                          </div>
+                          <p className={`text-[11px] sm:text-xs leading-snug line-clamp-2 ${isActive ? 'text-[#D5E2D5]' : 'text-[#5C665C]'}`}>
+                            {category.description}
+                          </p>
+                        </div>
+
+                        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ${isActive
+                          ? 'bg-white text-[#263626] shadow-sm'
+                          : 'bg-[#FAF9F5] border border-[#E5E1D8] group-hover:bg-[#263626] group-hover:text-white'
+                          }`}>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // =====================================================================
+                // STANDARD CARDS (1st, 2nd, 3rd, 5th, etc.)
+                // =====================================================================
                 return (
                   <div
                     key={category.id}
                     onClick={(e) => handleCardClick(e, category.id)}
-                    className={`group border transition-all duration-300 transform flex flex-col justify-between w-[205px] sm:w-[240px] lg:w-[240px] shrink-0 snap-start cursor-pointer select-none relative ${
-                      isActive
-                        ? 'bg-[#263626] text-white border-t-2 border-x-2 border-b-0 border-[#4E6B4E] rounded-t-2xl rounded-b-none shadow-2xl z-20 pb-4 sm:pb-5 mb-0'
-                        : 'bg-white text-[#181F18] border-[#E5E1D8] rounded-2xl mb-4 sm:mb-5 shadow-warm hover:shadow-2xl hover:border-[#263626] hover:-translate-y-1'
-                    }`}
+                    className={`group border transition-all duration-300 transform flex flex-col justify-between w-[205px] sm:w-[240px] lg:w-[240px] shrink-0 snap-start cursor-pointer select-none relative ${isActive
+                      ? 'bg-[#263626] text-white border-t-2 border-x-2 border-b-0 border-[#4E6B4E] rounded-t-2xl rounded-b-none shadow-2xl z-20 pb-4 sm:pb-5 mb-0'
+                      : 'bg-white text-[#181F18] border-[#E5E1D8] rounded-2xl mb-4 sm:mb-5 shadow-warm hover:shadow-2xl hover:border-[#263626] hover:-translate-y-1.5'
+                      }`}
                   >
                     {/* Floating Active Category Badge on Top */}
                     {isActive && (
                       <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center">
-                        <span className="bg-[#1E2D1E] text-white border border-[#3A4D3A] text-[10px] font-sans font-bold px-3 py-0.5 rounded-full shadow-md whitespace-nowrap">
+                        {/* <span className="bg-[#1E2D1E] text-white border border-[#3A4D3A] text-[10px] font-sans font-bold px-3 py-0.5 rounded-full shadow-md whitespace-nowrap">
                           Active Category
-                        </span>
-                        <div className="w-2 h-1 bg-[#1E2D1E] [clip-path:polygon(50%_100%,0_0,100%_0)]" />
+                        </span> */}
+                        {/* <div className="w-2 h-1 bg-[#1E2D1E] [clip-path:polygon(50%_100%,0_0,100%_0)]" /> */}
                       </div>
                     )}
 
                     {/* Thumbnail Image */}
                     <div className="aspect-[4/3] w-full overflow-hidden bg-[#EAE5DB] relative rounded-t-2xl">
-                      <img
-                        src={category.imageUrl}
-                        alt={category.name}
-                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out pointer-events-none"
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80';
-                        }}
-                      />
+                      {category.imageUrl ? (
+                        <img
+                          src={category.imageUrl}
+                          alt={category.name}
+                          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out pointer-events-none"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#738273]">
+                          <IconComp className="w-8 h-8 opacity-40" />
+                        </div>
+                      )}
                       {isActive && (
                         <div className="absolute inset-0 bg-gradient-to-t from-[#263626]/80 via-transparent to-transparent" />
                       )}
@@ -597,7 +688,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                     <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3 flex-grow">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <IconComp className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-[#263626]'}`} />
+                          <IconComp className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-[#263626]'}`} />
                           <h3 className={`font-serif text-xs sm:text-base font-bold leading-tight ${isActive ? 'text-white' : 'text-[#181F18]'}`}>
                             {category.name}
                           </h3>
@@ -607,11 +698,10 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                         </p>
                       </div>
 
-                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ${
-                        isActive
-                          ? 'bg-white text-[#263626] shadow-sm'
-                          : 'bg-[#FAF9F5] border border-[#E5E1D8] group-hover:bg-[#263626] group-hover:text-white'
-                      }`}>
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ${isActive
+                        ? 'bg-white text-[#263626] shadow-sm'
+                        : 'bg-[#FAF9F5] border border-[#E5E1D8] group-hover:bg-[#263626] group-hover:text-white'
+                        }`}>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                     </div>
@@ -693,11 +783,10 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                           type="button"
                           onClick={slideSubLeft}
                           disabled={!canSubScrollLeft}
-                          className={`w-8 h-8 rounded-full border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            canSubScrollLeft
-                              ? 'bg-white/15 text-white hover:bg-white/25 hover:border-white/40'
-                              : 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
-                          }`}
+                          className={`w-8 h-8 rounded-full border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-xs ${canSubScrollLeft
+                            ? 'bg-white/15 text-white hover:bg-white/25 hover:border-white/40'
+                            : 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
+                            }`}
                           aria-label="Previous workspaces"
                         >
                           <ChevronLeft className="w-3.5 h-3.5" />
@@ -707,11 +796,10 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                           type="button"
                           onClick={slideSubRight}
                           disabled={!canSubScrollRight}
-                          className={`w-8 h-8 rounded-full border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            canSubScrollRight
-                              ? 'bg-white/15 text-white hover:bg-white/25 hover:border-white/40'
-                              : 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
-                          }`}
+                          className={`w-8 h-8 rounded-full border border-white/20 flex items-center justify-center transition-all cursor-pointer shadow-xs ${canSubScrollRight
+                            ? 'bg-white/15 text-white hover:bg-white/25 hover:border-white/40'
+                            : 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
+                            }`}
                           aria-label="Next workspaces"
                         >
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -835,9 +923,8 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                       onMouseMove={handleSubMouseMove}
                       onMouseUp={handleSubMouseUp}
                       onMouseLeave={handleSubMouseLeave}
-                      className={`flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1 no-scrollbar items-stretch ${
-                        isSubMouseDown ? 'cursor-grabbing' : 'cursor-grab'
-                      }`}
+                      className={`flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory py-1 no-scrollbar items-stretch ${isSubMouseDown ? 'cursor-grabbing' : 'cursor-grab'
+                        }`}
                       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
                       {currentActiveCategory.subItems.length > 0 ? (

@@ -17,6 +17,8 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Layers,
   Video,
   Image as ImageIcon,
@@ -26,9 +28,13 @@ import {
   Users,
   MapPin,
   ExternalLink,
-  Maximize2
+  Maximize2,
+  Sparkles,
+  Calendar,
+  Hash
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useFeedbackModal } from '@/context/FeedbackModalContext';
 
 interface CategoryOption {
   id: string;
@@ -68,6 +74,7 @@ interface Workspace {
 }
 
 export default function AdminWorkspacesPage() {
+  const { showSuccess, showError } = useFeedbackModal();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +85,10 @@ export default function AdminWorkspacesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+
+  // View Details Modal State
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingWorkspace, setViewingWorkspace] = useState<Workspace | null>(null);
 
   // Full-Size Media Lightbox Modal State
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -357,6 +368,13 @@ export default function AdminWorkspacesPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to update workspace');
         setFormSuccess('Workspace office updated successfully!');
+        showSuccess({
+          variant: 'file',
+          title: 'Workspace Updated!',
+          message: `Workspace "${formTitle.trim()}" specifications and media have been updated.`,
+          primaryBtnText: 'Done',
+          autoCloseMs: 2500,
+        });
       } else {
         // Create
         const res = await fetch('/api/workspaces', {
@@ -367,14 +385,26 @@ export default function AdminWorkspacesPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create workspace');
         setFormSuccess('Workspace office created successfully!');
+        showSuccess({
+          variant: 'minimal',
+          title: 'Workspace Created!',
+          message: `Workspace office "${formTitle.trim()}" is now published and active.`,
+          primaryBtnText: 'Okay',
+          autoCloseMs: 2500,
+        });
       }
 
       await loadData();
-      setTimeout(() => {
-        closeModal();
-      }, 600);
+      closeModal();
     } catch (err: any) {
-      setFormError(err.message || 'An error occurred');
+      const msg = err.message || 'An error occurred while saving the workspace office.';
+      setFormError(msg);
+      showError({
+        variant: 'cta',
+        title: 'Failed to Save Workspace',
+        message: msg,
+        primaryBtnText: 'Try Again',
+      });
     } finally {
       setUploading(false);
     }
@@ -436,20 +466,118 @@ export default function AdminWorkspacesPage() {
     setUploading(false);
   };
 
+  const openViewModal = (ws: Workspace) => {
+    setViewingWorkspace(ws);
+    setViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setViewModalOpen(false);
+    setViewingWorkspace(null);
+  };
+
+  const handleEditFromView = () => {
+    if (viewingWorkspace) {
+      const wsToEdit = viewingWorkspace;
+      closeViewModal();
+      openEditModal(wsToEdit);
+    }
+  };
+
+  const handleMoveWorkspace = async (ws: Workspace, direction: 'up' | 'down') => {
+    const sorted = [...workspaces].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const currentIndex = sorted.findIndex((w) => w.id === ws.id);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    const targetWs = sorted[targetIndex];
+
+    const currentOrder = ws.order ?? (currentIndex + 1);
+    const targetOrder = targetWs.order ?? (targetIndex + 1);
+
+    const newCurrentOrder = targetOrder === currentOrder
+      ? (direction === 'up' ? targetOrder : targetOrder + 1)
+      : targetOrder;
+    const newTargetOrder = currentOrder;
+
+    // Optimistic UI update
+    const updated = workspaces.map((w) => {
+      if (w.id === ws.id) return { ...w, order: newCurrentOrder };
+      if (w.id === targetWs.id) return { ...w, order: newTargetOrder };
+      return w;
+    });
+    setWorkspaces(updated);
+
+    try {
+      await Promise.all([
+        fetch(`/api/workspaces/${ws.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newCurrentOrder }),
+        }),
+        fetch(`/api/workspaces/${targetWs.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newTargetOrder }),
+        }),
+      ]);
+      showSuccess({
+        variant: 'minimal',
+        title: 'Sorting Order Updated',
+        message: `Workspace "${ws.title}" moved ${direction}. Live position updated.`,
+        primaryBtnText: 'Okay',
+        autoCloseMs: 1800,
+      });
+    } catch (err) {
+      console.error('Failed to swap workspace order:', err);
+      showError({
+        variant: 'cta',
+        title: 'Order Update Failed',
+        message: 'Could not persist the new workspace display order.',
+        primaryBtnText: 'Try Again',
+      });
+      loadData();
+    }
+  };
+
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Are you sure you want to delete the workspace office "${title}"?`)) return;
     try {
       const res = await fetch(`/api/workspaces/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setWorkspaces((prev) => prev.filter((w) => w.id !== id));
+        showSuccess({
+          variant: 'minimal',
+          title: 'Workspace Deleted',
+          message: `Workspace office "${title}" has been permanently removed.`,
+          primaryBtnText: 'Done',
+          autoCloseMs: 2500,
+        });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        showError({
+          variant: 'warning',
+          title: 'Delete Failed',
+          message: data.error || `Unable to delete workspace "${title}".`,
+          primaryBtnText: 'Okay',
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete workspace:', err);
+      showError({
+        variant: 'cta',
+        title: 'Delete Error',
+        message: err.message || 'An error occurred while deleting the workspace.',
+        primaryBtnText: 'Try Again',
+      });
     }
   };
 
   // Filter & Pagination Calculations
-  const filteredWorkspaces = workspaces.filter((w) => {
+  const sortedWorkspaces = [...workspaces].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  const filteredWorkspaces = sortedWorkspaces.filter((w) => {
     const matchCat = filterCategory === 'ALL' || w.categoryId === filterCategory;
     const matchSearch =
       w.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -559,12 +687,11 @@ export default function AdminWorkspacesPage() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#FAF9F5] border-b border-[#E0DCD3] text-[#6A806A] font-mono uppercase text-[11px] tracking-wider">
+                <th className="py-4 px-4 w-20 text-center">Order</th>
                 <th className="py-4 px-4 w-24">Media</th>
                 <th className="py-4 px-4">Workspace Heading</th>
                 <th className="py-4 px-4">Category</th>
                 <th className="py-4 px-4">Short Description</th>
-                <th className="py-4 px-4">Specifications</th>
-                <th className="py-4 px-4">Pricing & Capacity</th>
                 <th className="py-4 px-4">Storage & Status</th>
                 <th className="py-4 px-4 text-right">Actions</th>
               </tr>
@@ -573,7 +700,7 @@ export default function AdminWorkspacesPage() {
             <tbody className="divide-y divide-[#E0DCD3]/70">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#5C665C]">
+                  <td colSpan={7} className="py-12 text-center text-[#5C665C]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="w-6 h-6 text-[#2E7D32] animate-spin" />
                       <span className="text-xs font-mono">Loading workspaces from database...</span>
@@ -582,7 +709,7 @@ export default function AdminWorkspacesPage() {
                 </tr>
               ) : paginatedWorkspaces.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#5C665C]">
+                  <td colSpan={7} className="py-12 text-center text-[#5C665C]">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#2E7D32] flex items-center justify-center mb-1">
                         <Building2 className="w-6 h-6" />
@@ -600,21 +727,61 @@ export default function AdminWorkspacesPage() {
                 paginatedWorkspaces.map((ws) => {
                   const firstMedia = ws.mediaUrls?.[0];
                   const mediaCount = ws.mediaUrls?.length || 0;
+                  const globalIdx = sortedWorkspaces.findIndex((w) => w.id === ws.id);
+                  const isFirst = globalIdx === 0;
+                  const isLast = globalIdx === sortedWorkspaces.length - 1;
 
                   return (
                     <tr key={ws.id} className="hover:bg-[#FAF9F5] transition-colors group">
+                      {/* Sort Order Position with Up/Down Arrows */}
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#FAF9F5] border border-[#E0DCD3] font-mono font-bold text-xs text-[#181F18] shadow-2xs">
+                            {ws.order || 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveWorkspace(ws, 'up')}
+                              disabled={isFirst}
+                              className={`w-5 h-4 rounded flex items-center justify-center transition-colors ${
+                                isFirst
+                                  ? 'text-gray-300 cursor-not-allowed opacity-30'
+                                  : 'text-[#5C665C] hover:bg-[#2E7D32] hover:text-white cursor-pointer'
+                              }`}
+                              title="Move Workspace Up"
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveWorkspace(ws, 'down')}
+                              disabled={isLast}
+                              className={`w-5 h-4 rounded flex items-center justify-center transition-colors ${
+                                isLast
+                                  ? 'text-gray-300 cursor-not-allowed opacity-30'
+                                  : 'text-[#5C665C] hover:bg-[#2E7D32] hover:text-white cursor-pointer'
+                              }`}
+                              title="Move Workspace Down"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+
                       {/* Media Thumbnail with Gallery Counter & Fullscreen Click */}
                       <td className="py-3.5 px-4">
                         <div
                           onClick={() => {
                             if (ws.mediaUrls && ws.mediaUrls.length > 0) {
                               openLightbox(ws.mediaUrls, 0, ws.title);
+                            } else {
+                              openViewModal(ws);
                             }
                           }}
-                          className={`w-16 h-14 rounded-xl overflow-hidden bg-[#EAE5DB] border border-[#E0DCD3] shadow-xs relative shrink-0 ${
-                            ws.mediaUrls && ws.mediaUrls.length > 0 ? 'cursor-pointer hover:border-[#2E7D32] hover:shadow-md' : ''
-                          }`}
-                          title={ws.mediaUrls && ws.mediaUrls.length > 0 ? 'Click to preview media full size' : ''}
+                          className={`w-16 h-14 rounded-xl overflow-hidden bg-[#EAE5DB] border border-[#E0DCD3] shadow-xs relative shrink-0 cursor-pointer hover:border-[#2E7D32] hover:shadow-md`}
+                          title={ws.mediaUrls && ws.mediaUrls.length > 0 ? 'Click to preview media full size' : 'Click to view details'}
                         >
                           {firstMedia?.type === 'video' ? (
                             <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
@@ -637,9 +804,13 @@ export default function AdminWorkspacesPage() {
 
                       {/* Title & Route */}
                       <td className="py-3.5 px-4">
-                        <span className="font-serif text-sm font-bold text-[#181F18] block leading-snug">
+                        <button
+                          type="button"
+                          onClick={() => openViewModal(ws)}
+                          className="font-serif text-sm font-bold text-[#181F18] block leading-snug hover:text-[#2E7D32] text-left transition-colors cursor-pointer"
+                        >
                           {ws.title}
-                        </span>
+                        </button>
                         <span className="text-[10px] text-[#6A806A] font-mono block mt-0.5">
                           /{ws.slug}
                         </span>
@@ -658,37 +829,6 @@ export default function AdminWorkspacesPage() {
                         <p className="text-xs text-[#5C665C] leading-relaxed line-clamp-2">
                           {ws.shortDescription}
                         </p>
-                      </td>
-
-                      {/* Key-Value Specifications */}
-                      <td className="py-3.5 px-4 max-w-[200px]">
-                        <div className="space-y-1">
-                          {Array.isArray(ws.specifications) && ws.specifications.slice(0, 2).map((s, idx) => (
-                            <div key={idx} className="text-[11px] text-[#181F18] truncate">
-                              <span className="text-[#6A806A] font-mono">{s.key}:</span>{' '}
-                              <span className="font-semibold">{s.value}</span>
-                            </div>
-                          ))}
-                          {ws.specifications?.length > 2 && (
-                            <span className="text-[10px] text-[#2E7D32] font-mono block">
-                              +{ws.specifications.length - 2} more specs
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Pricing & Capacity */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-[#181F18] text-xs block">
-                            {ws.price || 'Contact for Quote'}
-                          </span>
-                          {ws.capacity && (
-                            <span className="text-[11px] text-[#5C665C] font-mono block">
-                              {ws.capacity}
-                            </span>
-                          )}
-                        </div>
                       </td>
 
                       {/* Status */}
@@ -717,14 +857,14 @@ export default function AdminWorkspacesPage() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5 justify-end">
-                          <Link
-                            href={`/workspaces`}
-                            target="_blank"
-                            className="p-2 rounded-xl bg-[#FAF9F5] hover:bg-emerald-50 text-[#181F18] hover:text-[#2E7D32] border border-[#E0DCD3] transition-colors"
-                            title="Preview Public Page"
+                          <button
+                            type="button"
+                            onClick={() => openViewModal(ws)}
+                            className="p-2 rounded-xl bg-[#FAF9F5] hover:bg-emerald-50 text-[#181F18] hover:text-[#2E7D32] border border-[#E0DCD3] transition-colors cursor-pointer"
+                            title="View Workspace Details"
                           >
                             <Eye className="w-3.5 h-3.5 text-[#2E7D32]" />
-                          </Link>
+                          </button>
                           <button
                             type="button"
                             onClick={() => openEditModal(ws)}
@@ -808,6 +948,269 @@ export default function AdminWorkspacesPage() {
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL: Workspace Details View Modal (Deep Dive)                          */}
+      {/* ========================================================================= */}
+      {viewModalOpen && viewingWorkspace && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fadeIn"
+            onClick={closeViewModal}
+          />
+
+          <div className="relative z-10 w-full max-w-3xl bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl overflow-hidden animate-scaleUp">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2E7D32] text-[10px] font-mono font-bold uppercase tracking-wider">
+                    WORKSPACE DETAILS OVERVIEW
+                  </span>
+                  <span className="text-[11px] text-[#5C665C] font-mono">
+                    Order #{viewingWorkspace.order || 1}
+                  </span>
+                </div>
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#181F18]">
+                  {viewingWorkspace.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeViewModal}
+                className="p-2 rounded-full hover:bg-gray-200 text-gray-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5 max-h-[78vh] overflow-y-auto font-sans">
+              {/* Media Gallery Showcase Strip */}
+              {viewingWorkspace.mediaUrls && viewingWorkspace.mediaUrls.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#181F18] uppercase tracking-wider flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-[#2E7D32]" />
+                      <span>Media Gallery ({viewingWorkspace.mediaUrls.length} items)</span>
+                    </span>
+                    <span className="text-[11px] text-[#5C665C] font-mono">
+                      Click any item to view full size
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    {viewingWorkspace.mediaUrls.map((media, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => openLightbox(viewingWorkspace.mediaUrls, idx, viewingWorkspace.title)}
+                        className="relative h-28 rounded-xl overflow-hidden bg-[#EAE5DB] border border-[#E0DCD3] shadow-xs cursor-pointer group hover:border-[#2E7D32] hover:shadow-md transition-all"
+                      >
+                        {media.type === 'video' ? (
+                          <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
+                            <Video className="w-6 h-6 text-[#4ADE80] group-hover:scale-110 transition-transform" />
+                          </div>
+                        ) : (
+                          <img
+                            src={media.url}
+                            alt={media.name || `Media ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                          <Maximize2 className="w-5 h-5 drop-shadow-md" />
+                        </div>
+                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-mono">
+                          #{idx + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Essential Details Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-[#FAF9F5] border border-[#E0DCD3]">
+                <div>
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Category</span>
+                  <span className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#1B5E20] border border-emerald-200 font-bold text-xs">
+                    <Layers className="w-3 h-3 text-[#2E7D32]" />
+                    <span>{viewingWorkspace.categoryName}</span>
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Slug / Public Route</span>
+                  <span className="font-mono text-xs font-semibold text-[#2E7D32] block mt-0.5">
+                    /{viewingWorkspace.slug}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Pricing & Rate</span>
+                  <span className="text-xs font-bold text-[#181F18] block mt-0.5">
+                    {viewingWorkspace.price || 'Contact for Quote'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Capacity / Team Size</span>
+                  <span className="text-xs font-semibold text-[#181F18] block mt-0.5">
+                    {viewingWorkspace.capacity || 'Flexible Seating'}
+                  </span>
+                </div>
+
+                {viewingWorkspace.location && (
+                  <div>
+                    <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Location / Floor</span>
+                    <span className="text-xs font-semibold text-[#181F18] block mt-0.5">
+                      {viewingWorkspace.location}
+                    </span>
+                  </div>
+                )}
+
+                {viewingWorkspace.badge && (
+                  <div>
+                    <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Badge / Highlight</span>
+                    <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold">
+                      {viewingWorkspace.badge}
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Visibility Status</span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      viewingWorkspace.isActive
+                        ? 'bg-emerald-50 text-[#2E7D32] border border-emerald-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        viewingWorkspace.isActive ? 'bg-[#2E7D32] animate-pulse' : 'bg-red-500'
+                      }`}
+                    />
+                    {viewingWorkspace.isActive ? 'Active on Public Site' : 'Hidden'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono block">Sort Order</span>
+                  <span className="text-xs font-bold font-mono text-[#181F18] block mt-0.5">
+                    Position #{viewingWorkspace.order || 1}
+                  </span>
+                </div>
+              </div>
+
+              {/* Descriptions */}
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-white border border-[#E0DCD3]">
+                  <span className="text-[10px] text-[#6A806A] uppercase font-mono font-bold block mb-1">
+                    Short Description
+                  </span>
+                  <p className="text-xs text-[#181F18] leading-relaxed">
+                    {viewingWorkspace.shortDescription}
+                  </p>
+                </div>
+
+                {viewingWorkspace.longDescription && (
+                  <div className="p-4 rounded-2xl bg-white border border-[#E0DCD3]">
+                    <span className="text-[10px] text-[#6A806A] uppercase font-mono font-bold block mb-1">
+                      Detailed Overview
+                    </span>
+                    <p className="text-xs text-[#5C665C] leading-relaxed whitespace-pre-line">
+                      {viewingWorkspace.longDescription}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Key-Value Specifications Grid */}
+              {Array.isArray(viewingWorkspace.specifications) && viewingWorkspace.specifications.length > 0 && (
+                <div className="p-5 rounded-2xl bg-white border border-[#E0DCD3] space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#E0DCD3] pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#2E7D32]" />
+                      <span className="text-xs font-bold text-[#181F18] uppercase tracking-wider">
+                        Property Specifications ({viewingWorkspace.specifications.length} items)
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-[#5C665C]">
+                      Custom Property Specs
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {viewingWorkspace.specifications.map((spec, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3]"
+                      >
+                        <span className="text-xs font-mono text-[#6A806A]">{spec.key}:</span>
+                        <span className="text-xs font-semibold text-[#181F18]">{spec.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Technical / Database Metadata Box */}
+              <div className="p-3.5 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3] text-[11px] space-y-1.5 font-mono">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6A806A]">Workspace ID:</span>
+                  <span className="text-[#181F18] select-all">{viewingWorkspace.id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6A806A]">Storage Bucket:</span>
+                  <span className="text-[#2E7D32]">encourtyard-upload/work-space</span>
+                </div>
+                {viewingWorkspace.createdAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#6A806A]">Created At:</span>
+                    <span className="text-[#181F18]">
+                      {new Date(viewingWorkspace.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 border-t border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between gap-3">
+              <Link
+                href="/workspaces"
+                target="_blank"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-[#EAE5DC] border border-[#E0DCD3] text-[#181F18] text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Eye className="w-3.5 h-3.5 text-[#2E7D32]" />
+                <span>Preview Public Page</span>
+                <ArrowUpRight className="w-3 h-3 text-[#5C665C]" />
+              </Link>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeViewModal}
+                  className="rounded-xl text-xs"
+                >
+                  Close
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleEditFromView}
+                  className="px-5 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit This Workspace</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL: Create / Edit Workspace with Multi-Media & Key-Value Properties   */}

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
+import { useFeedbackModal } from '@/context/FeedbackModalContext';
 
 // Clean SVG Brand Icons for Drawer Social Links
 const LinkedInIcon = () => (
@@ -65,6 +66,20 @@ export const Navbar: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { user, admin, isAuthenticated, isAdmin, logout } = useAuth();
+  const { showSuccess } = useFeedbackModal();
+
+  const handleSignOut = () => {
+    setProfileDropdownOpen(false);
+    setMobileMenuOpen(false);
+    logout();
+    showSuccess({
+      variant: 'minimal',
+      title: 'Signed Out',
+      message: 'You have been successfully signed out from your account session.',
+      primaryBtnText: 'Okay',
+      autoCloseMs: 2000,
+    });
+  };
 
   // Active display identity
   const displayName = admin?.name || user?.name || 'Member';
@@ -266,10 +281,7 @@ export const Navbar: React.FC = () => {
                     <div className="pt-1 mt-1 border-t border-white/10">
                       <button
                         type="button"
-                        onClick={() => {
-                          setProfileDropdownOpen(false);
-                          logout();
-                        }}
+                        onClick={handleSignOut}
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-red-300 hover:text-red-100 hover:bg-red-950/60 transition-colors text-xs font-semibold cursor-pointer"
                       >
                         <LogOut className="w-4 h-4 text-red-400" />
@@ -314,7 +326,7 @@ export const Navbar: React.FC = () => {
 
       {/* RIGHT SIDE APP DRAWER (Matching User Reference Image Design) */}
       <aside
-        className={`fixed top-0 right-0 bottom-0 z-50 w-[320px] sm:w-[380px] bg-[#141C14] text-white shadow-2xl border-l border-white/10 flex flex-col justify-between p-6 sm:p-8 overflow-y-auto transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed top-0 right-0 bottom-0 z-50 w-[320px] sm:w-[380px] bg-[#141C14] text-white shadow-2xl border-l border-white/10 flex flex-col justify-between p-6 sm:p-8 overflow-y-auto transform transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0 opacity-100 pointer-events-auto visible' : 'translate-x-full opacity-0 pointer-events-none invisible'
           }`}
       >
         {/* Drawer Header with Logo and Close X Button */}
@@ -431,10 +443,7 @@ export const Navbar: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      logout();
-                    }}
+                    onClick={handleSignOut}
                     className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-red-300 hover:bg-red-950/60 transition-all cursor-pointer"
                   >
                     <span className="flex items-center gap-2">

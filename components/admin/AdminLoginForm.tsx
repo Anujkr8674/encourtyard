@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { useFeedbackModal } from '@/context/FeedbackModalContext';
 import { Shield, Lock, User, ArrowRight, AlertCircle, RefreshCw, KeyRound, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -18,6 +19,7 @@ export const AdminLoginForm: React.FC = () => {
     }
   }, [admin, router]);
 
+  const { showSuccess, showError } = useFeedbackModal();
   const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +30,14 @@ export const AdminLoginForm: React.FC = () => {
     setError(null);
 
     if (!adminId.trim() || !password) {
-      setError('Please provide both your Admin ID and Password.');
+      const msg = 'Please provide both your Admin ID and Password.';
+      setError(msg);
+      showError({
+        variant: 'warning',
+        title: 'Credentials Required',
+        message: msg,
+        primaryBtnText: 'Okay',
+      });
       return;
     }
 
@@ -38,12 +47,36 @@ export const AdminLoginForm: React.FC = () => {
       const res = await adminLogin(adminId.trim(), password);
 
       if (!res.success) {
-        setError(res.error || 'Invalid administrator credentials.');
+        const errorMsg = res.error || 'Invalid administrator credentials.';
+        setError(errorMsg);
+        showError({
+          variant: 'session',
+          title: 'Authentication Failed',
+          message: errorMsg,
+          primaryBtnText: 'Try Again',
+        });
       } else {
-        router.push('/admin');
+        showSuccess({
+          variant: 'account',
+          title: 'Welcome Back, Admin!',
+          message: 'Admin authorization key verified. Access granted to EnCourtyard command center.',
+          primaryBtnText: 'Enter Dashboard',
+          onPrimaryClick: () => router.push('/admin'),
+          autoCloseMs: 1600,
+        });
+        setTimeout(() => {
+          router.push('/admin');
+        }, 1200);
       }
     } catch {
-      setError('An error occurred during admin authentication.');
+      const fatalMsg = 'An error occurred during admin authentication.';
+      setError(fatalMsg);
+      showError({
+        variant: 'cta',
+        title: 'Oops!',
+        message: fatalMsg,
+        primaryBtnText: 'Try Again',
+      });
     } finally {
       setIsLoading(false);
     }

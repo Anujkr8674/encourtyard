@@ -88,11 +88,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] flex">
-      {/* Desktop Persistent Sidebar */}
-      <div className="hidden lg:block h-screen sticky top-0 shrink-0 z-30">
+    <div className="min-h-screen bg-[#FAF9F5] flex flex-col lg:flex-row">
+      {/* Desktop Persistent Fixed Sidebar */}
+      <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-64 sm:w-72 h-screen z-30">
         <AdminSidebar />
-      </div>
+      </aside>
 
       {/* Mobile Sidebar Overlay Drawer */}
       {mobileSidebarOpen && (
@@ -101,14 +101,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <div className="relative z-10 h-full">
+          <div className="relative z-10 h-full w-64 sm:w-72">
             <AdminSidebar onCloseMobile={() => setMobileSidebarOpen(false)} />
           </div>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content Area with offset for fixed sidebar */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-64 sm:lg:ml-72 min-h-screen">
         {/* Top Header Bar - Clean Light High-Visibility Aesthetic */}
         <header className="h-20 bg-white text-[#181F18] border-b border-[#E5E1D8] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm">
           {/* Left Side: Welcome Admin Message */}
@@ -167,15 +167,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     >
                       <Settings className="w-4 h-4 text-[#2E7D32]" />
                       <span>System Settings</span>
-                    </Link>
-
-                    <Link
-                      href="/admin/logs"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[#263626] hover:bg-[#FAF9F5] transition-colors font-medium"
-                    >
-                      <Shield className="w-4 h-4 text-[#2E7D32]" />
-                      <span>Security Audit Logs</span>
                     </Link>
 
                     <Link

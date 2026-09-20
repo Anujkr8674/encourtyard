@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { Hero } from '@/components/home/Hero';
+import { FeaturesTickerMarquee } from '@/components/home/FeaturesTickerMarquee';
+import { PopularPicksSection } from '@/components/home/PopularPicksSection';
 import { PresenceCitySection } from '@/components/home/PresenceCitySection';
 import { WorkspaceCategoriesSection } from '@/components/home/WorkspaceCategoriesSection';
+
 import { WhyEnCourtyard } from '@/components/home/WhyEnCourtyard';
 import { AmenitiesSection } from '@/components/home/AmenitiesSection';
 import { PricingPreview } from '@/components/home/PricingPreview';
@@ -19,19 +22,31 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col w-full max-w-full overflow-x-hidden">
       {/* 1. Hero Section - Botanical Sanctuary & Typing Carousel */}
       <Hero />
 
-      {/* 2. City Presence Section - Unique Slide-In from Left with Subtle Angle */}
+      {/* 2. Features & Keywords Moving Marquee Ticker - Unique Marquee Curtain Reveal */}
+      <ScrollReveal animation="marquee-curtain" duration={1100} threshold={0.04}>
+        <FeaturesTickerMarquee />
+      </ScrollReveal>
+
+      {/* 3. Popular Picks Workspaces Slider Section - Unique Botanical Bloom 3D Depth Transition */}
+      <ScrollReveal animation="botanical-bloom" duration={1300} threshold={0.05}>
+        <PopularPicksSection />
+      </ScrollReveal>
+
+      {/* 4. City Presence Section - Unique Slide-In from Left with Subtle Angle */}
       <ScrollReveal animation="slide-left" duration={1200} threshold={0.06}>
         <PresenceCitySection />
       </ScrollReveal>
 
-      {/* 3. Workspace Categories Section - Unique 3D Depth Scale-Up */}
+      {/* 5. Workspace Categories Section - Unique 3D Depth Scale-Up */}
       <ScrollReveal animation="scale-up" duration={1250} threshold={0.06}>
         <WorkspaceCategoriesSection />
       </ScrollReveal>
+
+
 
       {/* 4. Why EnCourtyard - Unique Slide-In from Right with Dynamic Tilt */}
       <ScrollReveal animation="slide-right" duration={1200} threshold={0.06}>
