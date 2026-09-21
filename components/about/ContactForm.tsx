@@ -50,8 +50,8 @@ export const ContactForm: React.FC = () => {
                 <span className="text-xs text-[#A3BFA3] uppercase tracking-wider block font-semibold">
                   Physical Address
                 </span>
-                <span className="font-medium">450 Botanical Way, Suite 100</span>
-                <div className="text-xs text-[#A3B0A3]">Innovation District, Central Campus</div>
+                <span className="font-medium">H.No. 6-2-981, Flat No. 101, Maruthi Plaza</span>
+                <div className="text-xs text-[#A3B0A3]">Shadan College Road, Above Axis Bank, Khairtabad, Hyderabad - 500004, Telangana</div>
               </div>
             </div>
 
@@ -63,10 +63,10 @@ export const ContactForm: React.FC = () => {
                 <span className="text-xs text-[#A3BFA3] uppercase tracking-wider block font-semibold">
                   Direct Telephone
                 </span>
-                <a href="tel:5552348900" className="font-medium hover:underline text-white">
-                  +1 (555) 234-8900
+                <a href="tel:+919908209993" className="font-medium hover:underline text-white">
+                  +91 99082 09993
                 </a>
-                <div className="text-xs text-[#A3B0A3]">Mon–Fri from 8:00 AM to 6:00 PM</div>
+                <div className="text-xs text-[#A3B0A3]">Mon–Sat from 9:00 AM to 7:00 PM</div>
               </div>
             </div>
 
@@ -78,8 +78,8 @@ export const ContactForm: React.FC = () => {
                 <span className="text-xs text-[#A3BFA3] uppercase tracking-wider block font-semibold">
                   Email Concierge
                 </span>
-                <a href="mailto:concierge@encourtyard.com" className="font-medium hover:underline text-white">
-                  concierge@encourtyard.com
+                <a href="mailto:info@encourtyard.com" className="font-medium hover:underline text-white">
+                  info@encourtyard.com
                 </a>
                 <div className="text-xs text-[#A3B0A3]">Inquiries answered within 2 hours</div>
               </div>

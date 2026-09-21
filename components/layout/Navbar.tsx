@@ -470,8 +470,8 @@ export const Navbar: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-[#E11D48]/20 text-[#FB7185] flex items-center justify-center shrink-0 border border-[#FB7185]/30">
                 <Phone className="w-3.5 h-3.5" />
               </div>
-              <a href="tel:5552348900" className="hover:text-[#4ADE80] font-medium transition-colors">
-                +1 (555) 234-8900
+              <a href="tel:+919908209993" className="hover:text-[#4ADE80] font-medium transition-colors">
+                +91 99082 09993
               </a>
             </div>
 
@@ -479,8 +479,8 @@ export const Navbar: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-[#8B5CF6]/20 text-[#A78BFA] flex items-center justify-center shrink-0 border border-[#A78BFA]/30">
                 <Mail className="w-3.5 h-3.5" />
               </div>
-              <a href="mailto:concierge@encourtyard.com" className="hover:text-[#4ADE80] font-medium transition-colors truncate">
-                concierge@encourtyard.com
+              <a href="mailto:info@encourtyard.com" className="hover:text-[#4ADE80] font-medium transition-colors truncate">
+                info@encourtyard.com
               </a>
             </div>
 
@@ -489,7 +489,7 @@ export const Navbar: React.FC = () => {
                 <MapPin className="w-3.5 h-3.5" />
               </div>
               <span className="text-white/80 leading-snug">
-                450 Botanical Way, Suite 100, Innovation District
+                H.No. 6-2-981, Flat No. 101, Maruthi Plaza, Shadan College Road, Above Axis Bank, Khairtabad, Hyderabad - 500004, Telangana
               </span>
             </div>
           </div>

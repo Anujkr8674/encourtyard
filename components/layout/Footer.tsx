@@ -78,34 +78,32 @@ export const Footer: React.FC = () => {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20 z-10">
         
-        {/* 4-Column Balanced Grid with Frosted Glass Containers */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+        {/* 4-Column Clean Open Grid (No Card Enclosures) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
           
           {/* Col 1: Brand Logo & Mission (4 cols on lg) */}
-          <div className="lg:col-span-4 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-2xl border border-white/15 hover:border-[#4ADE80]/40 p-6 sm:p-7 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_16px_50px_rgba(74,222,128,0.15)] transition-all duration-300 space-y-5 flex flex-col justify-between">
-            <div className="space-y-4">
-              <Link
-                href="/"
-                className="group inline-flex items-center transition-all duration-300 transform hover:scale-108 hover:-translate-y-1"
-                aria-label="EnCourtyard Home"
-              >
-                <div className="bg-black/40 hover:bg-black/60 backdrop-blur-md p-3 rounded-2xl border border-white/20 hover:border-[#4ADE80]/70 shadow-[0_6px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_35px_rgba(74,222,128,0.4)] transition-all duration-300">
-                  <img
-                    src="/images/logo.png"
-                    alt="EnCourtyard"
-                    className="h-14 sm:h-16 w-auto object-contain filter brightness-110 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]"
-                  />
-                </div>
-              </Link>
+          <div className="lg:col-span-4 space-y-5">
+            <Link
+              href="/"
+              className="inline-flex items-center transition-all duration-300 transform hover:scale-105"
+              aria-label="EnCourtyard Home"
+            >
+              <div className="bg-black/40 hover:bg-black/60 backdrop-blur-md p-3 rounded-2xl border border-white/20 hover:border-[#4ADE80]/70 shadow-[0_6px_25px_rgba(0,0,0,0.4)] hover:shadow-[0_10px_35px_rgba(74,222,128,0.4)] transition-all duration-300">
+                <img
+                  src="/images/logo.png"
+                  alt="EnCourtyard"
+                  className="h-14 sm:h-16 w-auto object-contain filter brightness-110 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]"
+                />
+              </div>
+            </Link>
 
-              <p className="text-xs sm:text-[13px] text-[#DCE6DC] font-sans leading-relaxed">
-                Handcrafted coworking sanctuaries and executive workspaces designed to foster deep focus, organic networking, and scalable business momentum.
-              </p>
-            </div>
+            <p className="text-xs sm:text-[13px] text-[#DCE6DC] font-sans leading-relaxed max-w-sm">
+              Handcrafted coworking sanctuaries and executive workspaces designed to foster deep focus, organic networking, and scalable business momentum.
+            </p>
 
-            {/* Social Links with Luminous Glass Glow */}
-            <div className="pt-2 border-t border-white/10">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-[#A3B8A3] block mb-3">
+            {/* Social Links */}
+            <div className="pt-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[#A3B8A3] block mb-3 font-semibold">
                 Connect With Us
               </span>
               <div className="flex items-center gap-3">
@@ -134,138 +132,140 @@ export const Footer: React.FC = () => {
           </div>
 
           {/* Col 2: Quick Links (2.5 cols on lg) */}
-          <div className="lg:col-span-2 sm:col-span-1 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-2xl border border-white/15 hover:border-[#4ADE80]/40 p-6 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_16px_50px_rgba(74,222,128,0.15)] transition-all duration-300 flex flex-col justify-between">
+          <div className="lg:col-span-2 sm:col-span-1 space-y-4">
             <div>
-              <h4 className="font-serif text-base font-bold text-white tracking-wide">
+              <h4 className="font-serif text-lg font-bold text-white tracking-wide">
                 Quick Links
               </h4>
-              <div className="w-10 h-[2.5px] bg-gradient-to-r from-[#FBF5B7] via-[#DAA520] to-transparent mt-2 mb-4 rounded-full" />
-              
-              <ul className="space-y-2.5 text-xs sm:text-[13px]">
-                {[
-                  { label: 'Home', href: '/' },
-                  { label: 'Workspaces', href: '/workspaces' },
-                  { label: 'Pricing Plans', href: '/pricing' },
-                  { label: 'Meeting Rooms', href: '/meeting-rooms' },
-                  { label: 'About Us', href: '/about' },
-                  { label: 'Schedule Visit', href: '/about#visit-form' },
-                ].map((link, idx) => (
-                  <li key={idx}>
-                    <Link
-                      href={link.href}
-                      className="group flex items-center gap-2 text-[#D2E0D2] hover:text-white transition-all duration-200"
-                    >
-                      <span className="text-[#DAA520] font-mono text-sm font-bold group-hover:translate-x-1 transition-transform duration-200">
-                        ›
-                      </span>
-                      <span className="group-hover:translate-x-1 group-hover:text-[#4ADE80] transition-all duration-200">
-                        {link.label}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <div className="w-8 h-[2.5px] bg-gradient-to-r from-[#FBF5B7] via-[#DAA520] to-transparent mt-2 mb-4 rounded-full" />
             </div>
-
-            <div className="pt-3 border-t border-white/10 mt-4">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3B8A3] block">
-                Instant Access
-              </span>
-            </div>
+            
+            <ul className="space-y-2.5 text-xs sm:text-[13px]">
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Workspaces', href: '/workspaces' },
+                { label: 'Pricing Plans', href: '/pricing' },
+                { label: 'Meeting Rooms', href: '/meeting-rooms' },
+                { label: 'About Us', href: '/about' },
+                { label: 'Schedule Visit', href: '/about#visit-form' },
+              ].map((link, idx) => (
+                <li key={idx}>
+                  <Link
+                    href={link.href}
+                    className="group flex items-center gap-2 text-[#D2E0D2] hover:text-white transition-all duration-200"
+                  >
+                    <span className="text-[#DAA520] font-mono text-sm font-bold group-hover:translate-x-1 transition-transform duration-200">
+                      ›
+                    </span>
+                    <span className="group-hover:translate-x-1 group-hover:text-[#4ADE80] transition-all duration-200">
+                      {link.label}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Col 3: Explore / Resources (2.5 cols on lg) */}
-          <div className="lg:col-span-3 sm:col-span-1 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-2xl border border-white/15 hover:border-[#4ADE80]/40 p-6 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_16px_50px_rgba(74,222,128,0.15)] transition-all duration-300 flex flex-col justify-between">
+          <div className="lg:col-span-3 sm:col-span-1 space-y-4">
             <div>
-              <h4 className="font-serif text-base font-bold text-white tracking-wide">
+              <h4 className="font-serif text-lg font-bold text-white tracking-wide">
                 Explore & Support
               </h4>
-              <div className="w-10 h-[2.5px] bg-gradient-to-r from-[#FBF5B7] via-[#DAA520] to-transparent mt-2 mb-4 rounded-full" />
-              
-              <ul className="space-y-2.5 text-xs sm:text-[13px]">
-                {[
-                  { label: 'Community Events', href: '/about' },
-                  { label: 'Member FAQs', href: '/about#faq' },
-                  { label: 'Virtual Tours', href: '/workspaces' },
-                  { label: 'Enterprise Solutions', href: '/workspaces' },
-                  { label: 'Privacy Policy', href: '/about' },
-                  { label: 'Terms & Conditions', href: '/about' },
-                ].map((link, idx) => (
-                  <li key={idx}>
-                    <Link
-                      href={link.href}
-                      className="group flex items-center gap-2 text-[#D2E0D2] hover:text-white transition-all duration-200"
-                    >
-                      <span className="text-[#DAA520] font-mono text-sm font-bold group-hover:translate-x-1 transition-transform duration-200">
-                        ›
-                      </span>
-                      <span className="group-hover:translate-x-1 group-hover:text-[#4ADE80] transition-all duration-200">
-                        {link.label}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <div className="w-8 h-[2.5px] bg-gradient-to-r from-[#FBF5B7] via-[#DAA520] to-transparent mt-2 mb-4 rounded-full" />
             </div>
-
-            <div className="pt-3 border-t border-white/10 mt-4">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3B8A3] block">
-                24/7 Operations
-              </span>
-            </div>
+            
+            <ul className="space-y-2.5 text-xs sm:text-[13px]">
+              {[
+                { label: 'Community Events', href: '/about' },
+                { label: 'Member FAQs', href: '/about#faq' },
+                { label: 'Virtual Tours', href: '/workspaces' },
+                { label: 'Enterprise Solutions', href: '/workspaces' },
+                { label: 'Privacy Policy', href: '/about' },
+                { label: 'Terms & Conditions', href: '/about' },
+              ].map((link, idx) => (
+                <li key={idx}>
+                  <Link
+                    href={link.href}
+                    className="group flex items-center gap-2 text-[#D2E0D2] hover:text-white transition-all duration-200"
+                  >
+                    <span className="text-[#DAA520] font-mono text-sm font-bold group-hover:translate-x-1 transition-transform duration-200">
+                      ›
+                    </span>
+                    <span className="group-hover:translate-x-1 group-hover:text-[#4ADE80] transition-all duration-200">
+                      {link.label}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
           {/* Col 4: Get in Touch / Contact (3 cols on lg) */}
-          <div className="lg:col-span-3 bg-gradient-to-b from-white/[0.08] to-white/[0.03] backdrop-blur-2xl border border-white/15 hover:border-[#4ADE80]/40 p-6 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.35)] hover:shadow-[0_16px_50px_rgba(74,222,128,0.15)] transition-all duration-300 space-y-4">
+          <div className="lg:col-span-3 space-y-4">
             <div>
-              <h4 className="font-serif text-base font-bold text-white tracking-wide">
+              <h4 className="font-serif text-lg font-bold text-white tracking-wide">
                 Get in Touch
               </h4>
-              <div className="w-10 h-[2.5px] bg-gradient-to-r from-[#FBF5B7] via-[#DAA520] to-transparent mt-2 mb-4 rounded-full" />
+              <div className="w-8 h-[2.5px] bg-gradient-to-r from-[#FBF5B7] via-[#DAA520] to-transparent mt-2 mb-4 rounded-full" />
             </div>
 
-            <div className="space-y-3 text-xs sm:text-[13px] text-[#D2E0D2]">
+            <div className="space-y-3.5 text-xs sm:text-[13px] text-[#D2E0D2]">
               {/* Phone */}
               <a
-                href="tel:+919825540210"
-                className="group flex items-center gap-3 p-2 -mx-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/15 transition-all duration-200"
+                href="tel:+919908209993"
+                className="group flex items-start gap-3 transition-colors duration-200"
               >
-                <div className="w-8 h-8 rounded-xl bg-[#4ADE80]/15 border border-[#4ADE80]/30 flex items-center justify-center text-[#4ADE80] group-hover:bg-[#4ADE80] group-hover:text-[#0C1A0E] transition-colors shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#4ADE80]/15 border border-[#4ADE80]/30 flex items-center justify-center text-[#4ADE80] group-hover:bg-[#4ADE80] group-hover:text-[#0C1A0E] transition-colors shrink-0 shadow-xs mt-0.5">
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-[#A3B8A3] block font-mono">Direct Phone</span>
-                  <span className="text-white font-semibold group-hover:text-[#4ADE80] transition-colors">+91 98255 40210</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[#A3B8A3] block font-mono">Direct Phone / WhatsApp</span>
+                  <span className="text-white font-semibold group-hover:text-[#4ADE80] transition-colors">+91 99082 09993</span>
                 </div>
               </a>
 
               {/* Email */}
               <a
-                href="mailto:hello@encourtyard.com"
-                className="group flex items-center gap-3 p-2 -mx-2 rounded-2xl hover:bg-white/10 border border-transparent hover:border-white/15 transition-all duration-200"
+                href="mailto:info@encourtyard.com"
+                className="group flex items-start gap-3 transition-colors duration-200"
               >
-                <div className="w-8 h-8 rounded-xl bg-[#4ADE80]/15 border border-[#4ADE80]/30 flex items-center justify-center text-[#4ADE80] group-hover:bg-[#4ADE80] group-hover:text-[#0C1A0E] transition-colors shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#4ADE80]/15 border border-[#4ADE80]/30 flex items-center justify-center text-[#4ADE80] group-hover:bg-[#4ADE80] group-hover:text-[#0C1A0E] transition-colors shrink-0 shadow-xs mt-0.5">
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-wider text-[#A3B8A3] block font-mono">Email Concierge</span>
-                  <span className="text-white font-medium group-hover:text-[#4ADE80] transition-colors">hello@encourtyard.com</span>
+                  <span className="text-white font-medium group-hover:text-[#4ADE80] transition-colors">info@encourtyard.com</span>
                 </div>
               </a>
 
               {/* Address */}
-              <div className="flex items-start gap-3 p-2 -mx-2">
+              <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-xl bg-[#4ADE80]/15 border border-[#4ADE80]/30 flex items-center justify-center text-[#4ADE80] shrink-0 mt-0.5 shadow-xs">
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-[#A3B8A3] block font-mono">Main Location</span>
-                  <span className="text-[#E0EBE0] leading-snug">Sector 62, Noida, Uttar Pradesh 201309</span>
+                  <span className="text-[10px] uppercase tracking-wider text-[#A3B8A3] block font-mono">Registered Office</span>
+                  <span className="text-[#E0EBE0] leading-snug">
+                    H.No. 6-2-981, Flat No. 101, Maruthi Plaza, Shadan College Road, Above Axis Bank, Khairtabad, Hyderabad - 500004, Telangana
+                  </span>
+                </div>
+              </div>
+
+              {/* GSTIN & Website */}
+              <div className="pt-2 border-t border-white/10 space-y-1 font-mono text-[11px] text-[#A3B8A3]">
+                <div className="flex items-center justify-between gap-2">
+                  <span>GSTIN:</span>
+                  <span className="font-bold text-white tracking-wider">36AANFE3308E1Z</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span>Official Website:</span>
+                  <span className="text-[#4ADE80]">www.encourtyard.com</span>
                 </div>
               </div>
 
               {/* Hours */}
-              <div className="flex items-center gap-3 p-2 -mx-2">
+              <div className="flex items-center gap-3 pt-1">
                 <div className="w-8 h-8 rounded-xl bg-[#4ADE80]/15 border border-[#4ADE80]/30 flex items-center justify-center text-[#4ADE80] shrink-0 shadow-xs">
                   <Clock className="w-4 h-4" />
                 </div>
@@ -281,8 +281,9 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Copyright & Status Bar */}
         <div className="mt-14 pt-8 border-t border-white/15 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#A3B8A3]">
-          <div className="flex items-center gap-2">
-            <span>© {new Date().getFullYear()} EnCourtyard Workspaces. All rights reserved.</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <span>© {new Date().getFullYear()} EnCourtyard Workspaces (www.encourtyard.com). All rights reserved.</span>
+            <span className="text-[11px] font-mono text-[#A3B8A3]/80">GSTIN: 36AANFE3308E1Z</span>
           </div>
 
           <div className="flex items-center gap-6">

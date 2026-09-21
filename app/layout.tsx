@@ -45,6 +45,7 @@ export const metadata: Metadata = {
 
 import { AuthProvider } from '@/context/AuthContext';
 import { FeedbackProvider } from '@/context/FeedbackModalContext';
+import { WhatsAppButton } from '@/components/ui/WhatsAppButton';
 
 export default function RootLayout({
   children,
@@ -62,6 +63,7 @@ export default function RootLayout({
             <Navbar />
             <main className="flex-grow w-full max-w-full overflow-x-hidden">{children}</main>
             <Footer />
+            <WhatsAppButton />
           </FeedbackProvider>
         </AuthProvider>
       </body>

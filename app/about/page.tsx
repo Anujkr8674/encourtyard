@@ -14,7 +14,9 @@ import {
   ArrowRight,
   Sun,
   VolumeX,
-  Compass
+  Compass,
+  ExternalLink,
+  Navigation
 } from 'lucide-react';
 import { ContactForm } from '@/components/about/ContactForm';
 import { Button } from '@/components/ui/Button';
@@ -161,10 +163,10 @@ export default function AboutPage() {
                   Campus Location & Accessibility
                 </span>
                 <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] mt-2">
-                  Situated in the heart of Innovation District
+                  Situated in Khairtabad, Hyderabad
                 </h3>
                 <p className="text-sm text-[#5C665C] mt-2 leading-relaxed">
-                  Located directly opposite the Botanical Arboretum with dedicated underground parking, secure indoor bike valet, and subway access 2 blocks away.
+                  Located at Maruthi Plaza, Shadan College Road, Above Axis Bank, Khairtabad. Conveniently situated with direct city connectivity, nearby Metro station, and dedicated visitor parking.
                 </p>
               </div>
 
@@ -175,41 +177,61 @@ export default function AboutPage() {
                 </div>
                 <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D8]">
                   <span className="font-medium text-[#181F18]">Concierge & Tour Hours</span>
-                  <span className="font-mono text-[#5C665C]">Mon–Fri: 8:00 AM – 6:00 PM</span>
+                  <span className="font-mono text-[#5C665C]">Mon–Sat: 9:00 AM – 7:00 PM</span>
                 </div>
                 <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D8]">
                   <span className="font-medium text-[#181F18]">Botanical Café & Barista</span>
-                  <span className="font-mono text-[#5C665C]">Mon–Fri: 8:00 AM – 4:30 PM</span>
+                  <span className="font-mono text-[#5C665C]">Mon–Sat: 8:30 AM – 6:30 PM</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-[#181F18]">Weekend Member Support</span>
-                  <span className="font-mono text-[#5C665C]">On-Call Resident Manager</span>
+                  <span className="font-medium text-[#181F18]">Support & Concierge</span>
+                  <span className="font-mono text-[#2E7D32] font-bold">+91 99082 09993</span>
                 </div>
               </div>
             </div>
 
-            {/* Architectural Campus Map Card */}
-            <div className="lg:col-span-6 bg-white p-7 rounded-3xl border border-[#E5E1D8] shadow-warm text-center space-y-4">
-              <div className="h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-[#181F18] relative flex items-center justify-center text-white">
-                {/* Visual Map Representation */}
-                <div className="absolute inset-0 bg-[radial-gradient(#3A4D3A_1px,transparent_1px)] [background-size:20px_20px] opacity-45" />
-                <div className="relative z-10 p-6 text-center space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-[#4ADE80] text-[#181F18] flex items-center justify-center mx-auto shadow-xl animate-bounce">
-                    <MapPin className="w-7 h-7" />
-                  </div>
-                  <div className="font-serif text-2xl font-bold text-white">EnCourtyard Campus</div>
-                  <div className="text-xs text-[#C5D5C5] font-mono">
-                    450 Botanical Way, Suite 100
-                  </div>
-                  <div className="inline-block px-4 py-1.5 bg-white/15 backdrop-blur-md rounded-full text-xs text-[#E3EBE3] border border-white/20">
-                    Visitor Parking Entry via Gate 2
-                  </div>
-                </div>
+            {/* Architectural Campus Map Card with Embedded Google Maps */}
+            <div className="lg:col-span-6 bg-white p-5 sm:p-7 rounded-3xl border border-[#E5E1D8] shadow-warm space-y-4">
+              <div className="h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-[#181F18] relative shadow-inner border border-[#E5E1D8] group">
+                <iframe
+                  src="https://maps.google.com/maps?q=Maruthi+Plaza,+Taj+Enclave,+Khairtabad,+Hyderabad,+Telangana+500004&t=&z=17&ie=UTF8&iwloc=&output=embed"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="EnCourtyard Location - Maruthi Plaza, Khairtabad, Hyderabad"
+                  className="w-full h-full rounded-2xl filter contrast-[1.02]"
+                />
+
+                {/* Direct Google Maps Direction Floating Badge */}
+                <a
+                  href="https://www.google.com/maps/place/Maruthi+Plaza,+Taj+Enclave,+Khairtabad,+Hyderabad,+Telangana+500004/@17.4098351,78.4586992,17z/data=!3m1!4b1!4m6!3m5!1s0x3bcb974488a4e72f:0x5e7bbe93e8d4635a!8m2!3d17.40983!4d78.4612741!16s%2Fg%2F11vcmzws2x?authuser=0&entry=ttu&g_ep=EgoyMDI2MDkxNi4wIKXMDSoASAFQAw%3D%3D"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#181F18]/90 hover:bg-[#263626] text-white text-xs font-semibold backdrop-blur-md border border-white/20 shadow-lg transition-all hover:scale-105 group-hover:border-[#4ADE80]"
+                >
+                  <Navigation className="w-3.5 h-3.5 text-[#4ADE80]" />
+                  <span>Get Directions</span>
+                  <ExternalLink className="w-3 h-3 opacity-70" />
+                </a>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-[#5C665C] pt-2">
-                <span>Direct Transit: Metro Line A (Botanical Station)</span>
-                <span className="font-semibold text-[#263626]">EV Fast Chargers On-Site</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-[#5C665C] pt-1 gap-2">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
+                  <span className="font-medium text-[#181F18]">Maruthi Plaza, Above Axis Bank, Khairtabad</span>
+                </div>
+                <a
+                  href="https://www.google.com/maps/place/Maruthi+Plaza,+Taj+Enclave,+Khairtabad,+Hyderabad,+Telangana+500004/@17.4098351,78.4586992,17z/data=!3m1!4b1!4m6!3m5!1s0x3bcb974488a4e72f:0x5e7bbe93e8d4635a!8m2!3d17.40983!4d78.4612741!16s%2Fg%2F11vcmzws2x?authuser=0&entry=ttu&g_ep=EgoyMDI2MDkxNi4wIKXMDSoASAFQAw%3D%3D"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#2E7D32] hover:text-[#181F18] font-semibold inline-flex items-center gap-1 hover:underline shrink-0"
+                >
+                  <span>Open in Google Maps</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
             </div>
 

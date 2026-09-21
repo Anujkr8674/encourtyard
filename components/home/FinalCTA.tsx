@@ -114,7 +114,7 @@ export const FinalCTA: React.FC = () => {
               {/* Row 2: WhatsApp & Call Quick Connect */}
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <a
-                  href="https://wa.me/919825540210?text=Hi%20EnCourtyard%20Team%2C%20I%20would%20like%20to%20inquire%20about%20workspace%20availability."
+                  href="https://wa.me/919908209993?text=Hi%20EnCourtyard%20Team%2C%20I%20would%20like%20to%20inquire%20about%20workspace%20availability%20and%20plans."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D4A24]/90 hover:bg-[#25D366] text-white border border-[#2E7D32] hover:border-[#25D366] backdrop-blur-md font-sans text-xs sm:text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-[0_4px_16px_rgba(37,211,102,0.35)] group"
@@ -126,11 +126,11 @@ export const FinalCTA: React.FC = () => {
                 </a>
 
                 <a
-                  href="tel:+919825540210"
+                  href="tel:+919908209993"
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#263026]/90 hover:bg-[#344034] text-white border border-white/20 hover:border-white/40 backdrop-blur-md font-sans text-xs sm:text-sm font-semibold transition-all duration-300 shadow-md group"
                 >
                   <Phone className="w-4 h-4 text-[#4ADE80] group-hover:scale-110 transition-transform shrink-0" />
-                  <span>Call +91 98255 40210</span>
+                  <span>Call +91 99082 09993</span>
                 </a>
               </div>
             </div>
