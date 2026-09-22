@@ -143,6 +143,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-xs sm:text-[13px]">
               {[
                 { label: 'Home', href: '/' },
+                { label: 'Book Space', href: '/book-space' },
                 { label: 'Workspaces', href: '/workspaces' },
                 { label: 'Pricing Plans', href: '/pricing' },
                 { label: 'Meeting Rooms', href: '/meeting-rooms' },

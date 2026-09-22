@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { prisma, localStore, syncCategoriesToDisk } from '@/lib/prisma';
+import fs from 'fs';
+import path from 'path';
+
+export const dynamic = 'force-dynamic';
+
+function getLocalCategoriesFallback(): any[] {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'local_categories.json');
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read local_categories.json:', err);
+  }
+  return [];
+}
 
 // Helper to parse features from badge column or features field
 export function parseCategoryFeatures(cat: any): string[] {
@@ -108,7 +127,7 @@ export async function GET() {
   try {
     let categories: any[] = [];
 
-    // Query Supabase directly
+    // 1. Query Supabase directly
     try {
       const { data, error } = await supabaseAdmin
         .from('categories')
@@ -119,27 +138,13 @@ export async function GET() {
         categories = data;
       }
     } catch (sbErr) {
-      console.warn('Supabase categories fetch fallback:', sbErr);
+      console.warn('Supabase categories fetch warning:', sbErr);
     }
 
-    // Fallback to Prisma if Supabase query returned no items
+    // 2. Fallback to local JSON file
     if (categories.length === 0) {
-      try {
-        categories = await (prisma as any).category.findMany({
-          orderBy: { order: 'asc' },
-        });
-      } catch (dbError) {
-        console.warn('Prisma category fetch fallback:', dbError);
-      }
-    }
-
-    // Fallback to localStore
-    if (categories.length === 0) {
-      const uniqueMap = new Map<string, any>();
-      Array.from(localStore.categories?.values() || []).forEach((c) => uniqueMap.set(c.id, c));
-      categories = Array.from(uniqueMap.values()).sort(
-        (a, b) => (a.order || 0) - (b.order || 0)
-      );
+      const localList = getLocalCategoriesFallback();
+      categories = localList.sort((a, b) => (a.order || 0) - (b.order || 0));
     }
 
     // Format categories with parsed features array
@@ -158,11 +163,13 @@ export async function GET() {
       count: formatted.length,
     });
   } catch (error: any) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch categories' },
-      { status: 500 }
-    );
+    console.error('Error in GET /api/categories:', error);
+    const fallbackList = getLocalCategoriesFallback();
+    return NextResponse.json({
+      success: true,
+      categories: fallbackList,
+      count: fallbackList.length,
+    });
   }
 }
 
@@ -240,9 +247,15 @@ export async function POST(req: NextRequest) {
       console.warn('Supabase category create fallback:', sbErr);
     }
 
-    // Also sync to Prisma / localStore
-    localStore.categories?.set(createdCategory.id, createdCategory as any);
-    syncCategoriesToDisk();
+    // Also persist to local JSON
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'local_categories.json');
+      const currentList = getLocalCategoriesFallback();
+      const updatedList = [createdCategory, ...currentList.filter(c => c.id !== createdCategory.id)];
+      fs.writeFileSync(filePath, JSON.stringify(updatedList, null, 2), 'utf-8');
+    } catch (fsErr) {
+      console.warn('Could not write category to local_categories.json:', fsErr);
+    }
 
     return NextResponse.json({
       success: true,
@@ -260,4 +273,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

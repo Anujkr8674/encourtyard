@@ -131,9 +131,11 @@ export const Navbar: React.FC = () => {
   }, [mobileMenuOpen]);
 
   const isHome = pathname === '/';
+  const hasHeroCover = pathname === '/' || pathname === '/book-space' || pathname.startsWith('/book-space');
 
   const navLinks = [
     { name: 'Home', href: '/' },
+    { name: 'Book Space', href: '/book-space' },
     { name: 'Locations', href: '/workspaces' },
     { name: 'Meeting Rooms', href: '/meeting-rooms' },
     { name: 'Pricing & Plans', href: '/pricing' },
@@ -145,8 +147,6 @@ export const Navbar: React.FC = () => {
     { name: 'Admin Insights', href: '/admin', icon: <LayoutDashboard className="w-3.5 h-3.5 text-[#4ADE80]" /> }
   ];
 
-  const isTransparent = !scrolled && isHome;
-
   // Do not render main website Navbar inside Admin portal pages
   if (pathname.startsWith('/admin')) {
     return null;
@@ -155,10 +155,11 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled || !isHome
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
+          scrolled || !hasHeroCover
             ? 'bg-[#0E170E]/95 backdrop-blur-2xl border-b border-white/15 shadow-[0_16px_48px_rgba(0,0,0,0.45)]'
             : 'bg-transparent border-b border-transparent shadow-none'
-          }`}
+        }`}
       >
         {/* Main Navigation Bar */}
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 sm:h-28 lg:h-28 flex items-center justify-between">

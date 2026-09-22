@@ -28,7 +28,7 @@
 
   html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100%;
     width: 100%;
   }
@@ -39,7 +39,7 @@
     font-family: var(--font-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100%;
     width: 100%;
   }
@@ -237,3 +237,22 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #B3AAA0;
 }
+
+.custom-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #D5CEC2 transparent;
+}
+.custom-sidebar-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #D5CEC2;
+  border-radius: 9999px;
+}
+.custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #A89F93;
+}
+

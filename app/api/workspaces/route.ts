@@ -1,15 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { prisma, localStore } from '@/lib/prisma';
+import fs from 'fs';
+import path from 'path';
+
+export const dynamic = 'force-dynamic';
+
+function getLocalWorkspacesFallback(): any[] {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Could not read local_workspaces.json:', err);
+  }
+  return [];
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const categoryId = searchParams.get('categoryId');
+    const categoryId = req.nextUrl?.searchParams?.get('categoryId');
 
     let workspaces: any[] = [];
 
-    // Query Supabase directly
+    // 1. Try Supabase
     try {
       let query = supabaseAdmin
         .from('workspaces')
@@ -21,36 +39,23 @@ export async function GET(req: NextRequest) {
       }
 
       const { data, error } = await query;
-      if (!error && Array.isArray(data)) {
+      if (!error && Array.isArray(data) && data.length > 0) {
         workspaces = data;
       }
     } catch (sbErr) {
-      console.warn('Supabase workspaces fetch fallback:', sbErr);
+      console.warn('Supabase fetch error for workspaces:', sbErr);
     }
 
-    // Fallback to Prisma
+    // 2. Fallback to local JSON file
     if (workspaces.length === 0) {
-      try {
-        const whereClause = categoryId ? { categoryId } : {};
-        workspaces = await (prisma as any).workspace.findMany({
-          where: whereClause,
-          orderBy: { order: 'asc' },
-        });
-      } catch (dbError) {
-        console.warn('Prisma workspace fetch fallback:', dbError);
-      }
-    }
-
-    // Fallback to localStore
-    if (workspaces.length === 0) {
-      let localList = Array.from(localStore.workspaces?.values() || []);
+      let localList = getLocalWorkspacesFallback();
       if (categoryId) {
         localList = localList.filter((w) => w.categoryId === categoryId);
       }
-      workspaces = localList.sort((a, b) => a.order - b.order);
+      workspaces = localList.sort((a, b) => (a.order || 0) - (b.order || 0));
     }
 
-    // Parse JSON fields safely if stringified
+    // Parse JSON fields safely if stringified and ensure fallback data
     const formatted = workspaces.map((w: any) => {
       let specs = [];
       let media = [];
@@ -78,11 +83,13 @@ export async function GET(req: NextRequest) {
       count: formatted.length,
     });
   } catch (error: any) {
-    console.error('Error fetching workspaces:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch workspaces' },
-      { status: 500 }
-    );
+    console.error('Error in GET /api/workspaces:', error);
+    const fallbackList = getLocalWorkspacesFallback();
+    return NextResponse.json({
+      success: true,
+      workspaces: fallbackList,
+      count: fallbackList.length,
+    });
   }
 }
 
@@ -156,7 +163,15 @@ export async function POST(req: NextRequest) {
       console.warn('Supabase workspace create fallback:', sbErr);
     }
 
-    localStore.workspaces?.set(createdWorkspace.id, createdWorkspace as any);
+    // Also persist to local JSON file
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
+      const currentList = getLocalWorkspacesFallback();
+      const updatedList = [createdWorkspace, ...currentList.filter(w => w.id !== createdWorkspace.id)];
+      fs.writeFileSync(filePath, JSON.stringify(updatedList, null, 2), 'utf-8');
+    } catch (fsErr) {
+      console.warn('Could not write workspace to local_workspaces.json:', fsErr);
+    }
 
     return NextResponse.json({
       success: true,
@@ -175,4 +190,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

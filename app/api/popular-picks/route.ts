@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { prisma, localStore } from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
+
+export const dynamic = 'force-dynamic';
 
 const POPULAR_PICKS_FILE = path.join(process.cwd(), 'data', 'local_popular_picks.json');
 
@@ -34,6 +35,20 @@ function saveStoredFeaturedIds(ids: string[]): boolean {
   }
 }
 
+function getLocalWorkspacesFallback(): any[] {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn('Could not read local_workspaces.json:', err);
+  }
+  return [];
+}
+
 export async function GET(req: NextRequest) {
   try {
     let allWorkspaces: any[] = [];
@@ -53,24 +68,12 @@ export async function GET(req: NextRequest) {
       console.warn('Supabase fetch fallback for popular-picks:', sbErr);
     }
 
-    // 2. Fallback to Prisma
+    // 2. Fallback to local JSON file
     if (allWorkspaces.length === 0) {
-      try {
-        allWorkspaces = await (prisma as any).workspace.findMany({
-          where: { isActive: true },
-          orderBy: { order: 'asc' },
-        });
-      } catch (dbErr) {
-        console.warn('Prisma fetch fallback for popular-picks:', dbErr);
-      }
-    }
-
-    // 3. Fallback to localStore
-    if (allWorkspaces.length === 0) {
-      const localList = Array.from(localStore.workspaces?.values() || []);
+      const localList = getLocalWorkspacesFallback();
       allWorkspaces = localList
-        .filter((w) => w.isActive !== false)
-        .sort((a, b) => (a.order || 1) - (b.order || 1));
+        .filter((w: any) => w.isActive !== false)
+        .sort((a: any, b: any) => (a.order || 1) - (b.order || 1));
     }
 
     // Parse specs and media
@@ -99,7 +102,6 @@ export async function GET(req: NextRequest) {
     let popularPicks: any[] = [];
 
     if (featuredIds.length > 0) {
-      // Map existing workspaces according to featuredIds order
       const workspaceMap = new Map(formatted.map((w) => [w.id, w]));
       for (const id of featuredIds) {
         const item = workspaceMap.get(id);
@@ -108,7 +110,6 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // If fewer than 10, fill up to 10 with other available workspaces
       if (popularPicks.length < 10) {
         const chosenIdSet = new Set(popularPicks.map((p) => p.id));
         for (const item of formatted) {
@@ -119,7 +120,6 @@ export async function GET(req: NextRequest) {
         }
       }
     } else {
-      // Default: top 10 items
       popularPicks = formatted.slice(0, 10);
     }
 

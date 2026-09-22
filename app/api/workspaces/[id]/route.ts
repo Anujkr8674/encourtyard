@@ -1,6 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { prisma, localStore } from '@/lib/prisma';
+import fs from 'fs';
+import path from 'path';
+
+export const dynamic = 'force-dynamic';
+
+function getLocalWorkspacesFallback(): any[] {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn('Could not read local_workspaces.json:', err);
+  }
+  return [];
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    let workspace: any = null;
+
+    // 1. Direct Supabase query
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('workspaces')
+        .select('*')
+        .or(`id.eq.${id},slug.eq.${id}`)
+        .single();
+
+      if (!error && data) {
+        workspace = data;
+      }
+    } catch (sbErr) {
+      console.warn('Supabase get workspace error:', sbErr);
+    }
+
+    // 2. local JSON fallback
+    if (!workspace) {
+      const all = getLocalWorkspacesFallback();
+      workspace = all.find((w: any) => w.id === id || w.slug === id);
+    }
+
+    if (!workspace) {
+      return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+    }
+
+    let specs = [];
+    let media = [];
+    try {
+      specs = typeof workspace.specifications === 'string' ? JSON.parse(workspace.specifications || '[]') : workspace.specifications || [];
+    } catch {
+      specs = [];
+    }
+    try {
+      media = typeof workspace.mediaUrls === 'string' ? JSON.parse(workspace.mediaUrls || '[]') : workspace.mediaUrls || [];
+    } catch {
+      media = [];
+    }
+
+    return NextResponse.json({
+      success: true,
+      workspace: {
+        ...workspace,
+        specifications: specs,
+        mediaUrls: media,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching workspace:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch workspace' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function PUT(
   req: NextRequest,
@@ -63,23 +144,18 @@ export async function PUT(
       console.warn('Supabase workspace update error:', sbErr);
     }
 
-    // 2. Prisma fallback
-    if (!updatedWorkspace) {
-      try {
-        updatedWorkspace = await (prisma as any).workspace.update({
-          where: { id },
-          data: updatePayload,
-        });
-      } catch (dbErr) {
-        console.warn('Prisma workspace update fallback:', dbErr);
+    // 2. local JSON file fallback
+    try {
+      const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
+      const all = getLocalWorkspacesFallback();
+      const idx = all.findIndex((w: any) => w.id === id || w.slug === id);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], ...updatePayload };
+        if (!updatedWorkspace) updatedWorkspace = all[idx];
+        fs.writeFileSync(filePath, JSON.stringify(all, null, 2), 'utf-8');
       }
-    }
-
-    // 3. localStore fallback
-    if (!updatedWorkspace && localStore.workspaces?.has(id)) {
-      const existing = localStore.workspaces.get(id)!;
-      updatedWorkspace = { ...existing, ...updatePayload };
-      localStore.workspaces.set(id, updatedWorkspace);
+    } catch (fsErr) {
+      console.warn('Could not update local_workspaces.json:', fsErr);
     }
 
     if (!updatedWorkspace) {
@@ -135,14 +211,13 @@ export async function DELETE(
     }
 
     try {
-      await (prisma as any).workspace.delete({
-        where: { id },
-      });
-    } catch (dbErr) {
-      console.warn('Prisma workspace delete fallback:', dbErr);
+      const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
+      const all = getLocalWorkspacesFallback();
+      const filtered = all.filter((w: any) => w.id !== id && w.slug !== id);
+      fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf-8');
+    } catch (fsErr) {
+      console.warn('Could not delete from local_workspaces.json:', fsErr);
     }
-
-    localStore.workspaces?.delete(id);
 
     return NextResponse.json({
       success: true,
@@ -156,4 +231,3 @@ export async function DELETE(
     );
   }
 }
-
