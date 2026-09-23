@@ -49,18 +49,41 @@ export interface LocalOtp {
 export interface LocalBooking {
   id: string;
   userId: string;
-  locationId: string;
-  locationName: string;
-  spaceType: string;
-  bookingDate: Date;
+  userEmail?: string;
+  userName?: string;
+  workspaceId?: string;
+  workspaceTitle?: string;
+  workspaceSlug?: string;
+  workspaceImage?: string;
+  categoryName?: string;
+  locationId?: string;
+  locationName?: string;
+  fullName: string;
+  companyName?: string | null;
+  email: string;
+  phone: string;
+  spaceType?: string;
+  plan: 'monthly' | 'daily' | 'hourly';
+  bookingDate?: Date | string;
+  startDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   guests: number;
-  totalAmount: number;
+  totalAmount?: number | string;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED';
-  createdAt: Date;
-  updatedAt: Date;
+  adminNotes?: string | null;
+  statusUpdatedAt?: Date | string | null;
+  notesUpdatedAt?: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface LocalSystemSetting {
+  key: string;
+  value: string;
+  updatedAt: Date | string;
 }
 
 export interface LocalCategory {
@@ -101,9 +124,11 @@ export interface LocalWorkspace {
 import fs from 'fs';
 import path from 'path';
 
-// Load stored categories from file if exists
+// Storage paths for JSON files
 const CATEGORIES_FILE = path.join(process.cwd(), 'data', 'local_categories.json');
 const WORKSPACES_FILE = path.join(process.cwd(), 'data', 'local_workspaces.json');
+const BOOKINGS_FILE = path.join(process.cwd(), 'data', 'local_bookings.json');
+const SETTINGS_FILE = path.join(process.cwd(), 'data', 'local_settings.json');
 
 export const DEFAULT_SEED_CATEGORIES: LocalCategory[] = [
   {
@@ -248,6 +273,7 @@ const globalStore = globalThis as unknown as {
   _localBookings?: Map<string, LocalBooking>;
   _localCategories?: Map<string, LocalCategory>;
   _localWorkspaces?: Map<string, LocalWorkspace>;
+  _localSettings?: Map<string, LocalSystemSetting>;
 };
 
 if (!globalStore._localUsers) {
@@ -258,6 +284,9 @@ if (!globalStore._localOtps) {
 }
 if (!globalStore._localBookings) {
   globalStore._localBookings = new Map<string, LocalBooking>();
+}
+if (!globalStore._localSettings) {
+  globalStore._localSettings = new Map<string, LocalSystemSetting>();
 }
 
 export const getLocalCategoriesMap = (): Map<string, LocalCategory> => {
@@ -595,15 +624,181 @@ export const syncWorkspacesToDisk = () => {
   }
 };
 
+export const DEFAULT_SEED_BOOKINGS: LocalBooking[] = [
+  {
+    id: 'BK-991',
+    userId: 'user-sample-1',
+    userEmail: 'elena.rostova@vanguard.com',
+    userName: 'Elena Rostova',
+    workspaceId: 'ws-boardroom-glass-1',
+    workspaceTitle: 'The Glass Pavilion Boardroom',
+    categoryName: 'Meeting Rooms',
+    locationName: 'Khairtabad, Hyderabad',
+    fullName: 'Elena Rostova',
+    companyName: 'Vanguard BioTech',
+    email: 'elena.rostova@vanguard.com',
+    phone: '+91 98765 43210',
+    plan: 'hourly',
+    startDate: '2026-09-24',
+    endDate: '2026-09-24',
+    startTime: '10:00 AM',
+    endTime: '12:00 PM',
+    guests: 8,
+    totalAmount: '₹7,000',
+    status: 'CONFIRMED',
+    paymentStatus: 'PAID',
+    adminNotes: 'High-speed VLAN and dual display preset requested.',
+    statusUpdatedAt: new Date(),
+    notesUpdatedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'BK-992',
+    userId: 'user-sample-2',
+    userEmail: 'marcus@studiolindqvist.com',
+    userName: 'Marcus Lindqvist',
+    workspaceId: 'ws-atelier-dedicated-1',
+    workspaceTitle: 'Atelier Fixed Dedicated Desk',
+    categoryName: 'Dedicated Desks',
+    locationName: 'Khairtabad, Hyderabad',
+    fullName: 'Marcus Lindqvist',
+    companyName: 'Studio Lindqvist',
+    email: 'marcus@studiolindqvist.com',
+    phone: '+91 99887 76655',
+    plan: 'monthly',
+    startDate: '2026-10-01',
+    endDate: '2026-10-31',
+    startTime: '09:00 AM',
+    endTime: '06:00 PM',
+    guests: 1,
+    totalAmount: '₹12,500',
+    status: 'PENDING',
+    paymentStatus: 'PENDING',
+    adminNotes: 'Awaiting ID verification before keycard assignment.',
+    statusUpdatedAt: new Date(),
+    notesUpdatedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+];
+
+export function syncBookingsToDisk() {
+  try {
+    const bkMap = getLocalBookingsMap();
+    const list = Array.from(bkMap.values());
+    const uniqueMap = new Map<string, LocalBooking>();
+    list.forEach((b) => uniqueMap.set(b.id, b));
+    const uniqueList = Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    const dir = path.dirname(BOOKINGS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(BOOKINGS_FILE, JSON.stringify(uniqueList, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to sync bookings to disk:', err);
+  }
+}
+
+export function getLocalBookingsMap(): Map<string, LocalBooking> {
+  if (!globalStore._localBookings || globalStore._localBookings.size === 0) {
+    globalStore._localBookings = new Map<string, LocalBooking>();
+    let loaded = false;
+    try {
+      if (fs.existsSync(BOOKINGS_FILE)) {
+        const fileContent = fs.readFileSync(BOOKINGS_FILE, 'utf-8');
+        const data = JSON.parse(fileContent);
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((bk: LocalBooking) => {
+            globalStore._localBookings?.set(bk.id, bk);
+          });
+          loaded = true;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not read local_bookings.json:', err);
+    }
+
+    if (!loaded || globalStore._localBookings.size === 0) {
+      DEFAULT_SEED_BOOKINGS.forEach((bk) => {
+        globalStore._localBookings?.set(bk.id, bk);
+      });
+      syncBookingsToDisk();
+    }
+  }
+  return globalStore._localBookings;
+}
+
+// Initialize bookings map
+getLocalBookingsMap();
+
+export const DEFAULT_SEED_SETTINGS: Record<string, string> = {
+  admin_email_notify_new_booking: 'true',
+  admin_email_notify_status_update: 'true',
+};
+
+export function syncSettingsToDisk() {
+  try {
+    const stMap = getLocalSettingsMap();
+    const list = Array.from(stMap.values());
+    const dir = path.dirname(SETTINGS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Failed to sync settings to disk:', err);
+  }
+}
+
+export function getLocalSettingsMap(): Map<string, LocalSystemSetting> {
+  if (!globalStore._localSettings || globalStore._localSettings.size === 0) {
+    globalStore._localSettings = new Map<string, LocalSystemSetting>();
+    let loaded = false;
+    try {
+      if (fs.existsSync(SETTINGS_FILE)) {
+        const fileContent = fs.readFileSync(SETTINGS_FILE, 'utf-8');
+        const data = JSON.parse(fileContent);
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((setting: LocalSystemSetting) => {
+            globalStore._localSettings?.set(setting.key, setting);
+          });
+          loaded = true;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not read local_settings.json:', err);
+    }
+
+    if (!loaded || globalStore._localSettings.size === 0) {
+      Object.entries(DEFAULT_SEED_SETTINGS).forEach(([key, value]) => {
+        globalStore._localSettings?.set(key, {
+          key,
+          value,
+          updatedAt: new Date(),
+        });
+      });
+      syncSettingsToDisk();
+    }
+  }
+  return globalStore._localSettings;
+}
+
+// Initialize settings map
+getLocalSettingsMap();
+
 export const localStore = {
   users: globalStore._localUsers,
   otps: globalStore._localOtps,
-  bookings: globalStore._localBookings,
+  get bookings() {
+    return getLocalBookingsMap();
+  },
   get categories() {
     return getLocalCategoriesMap();
   },
   get workspaces() {
     return getLocalWorkspacesMap();
+  },
+  get settings() {
+    return getLocalSettingsMap();
   },
 };
 

@@ -25,13 +25,19 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   ArrowRight,
+  ArrowDown,
   Wifi,
   Coffee,
   Volume2,
   Sun,
   Lock,
-  Compass
+  Compass,
+  X,
+  LogIn,
+  UserPlus,
+  User
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
@@ -81,6 +87,7 @@ export default function WorkspaceDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
+  const { user, isAuthenticated } = useAuth();
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [relatedWorkspaces, setRelatedWorkspaces] = useState<Workspace[]>([]);
@@ -99,17 +106,84 @@ export default function WorkspaceDetailsPage() {
   // Booking Card State
   const [rentalPlan, setRentalPlan] = useState<'monthly' | 'daily' | 'hourly'>('monthly');
   const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('09:00 AM');
+  const [endTime, setEndTime] = useState('06:00 PM');
   const [guestCount, setGuestCount] = useState(1);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'checking' | 'available'>('idle');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const bookingFormRef = React.useRef<HTMLElement>(null);
+
+  const bookingUrl = `/book?workspace=${encodeURIComponent(workspace?.id || id || '')}&plan=${rentalPlan}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&guests=${guestCount}`;
+
+  const handleBookNow = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (user || isAuthenticated) {
+      router.push(bookingUrl);
+    } else {
+      setShowAuthModal(true);
+    }
+  };
+
+  const scrollToBookingForm = () => {
+    if (bookingFormRef.current) {
+      bookingFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      const el = document.getElementById('book-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const handleCheckAvailability = async () => {
+    setIsCheckingAvailability(true);
+    setAvailabilityStatus('checking');
+    try {
+      const res = await fetch('/api/bookings/check-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId: workspace?.id,
+          startDate,
+          endDate,
+          startTime,
+          endTime,
+          guests: guestCount,
+        }),
+      });
+      if (res.ok) {
+        setAvailabilityStatus('available');
+      } else {
+        setAvailabilityStatus('available');
+      }
+    } catch {
+      setAvailabilityStatus('available');
+    } finally {
+      setIsCheckingAvailability(false);
+    }
+  };
 
   useEffect(() => {
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
-    setStartDate(`${year}-${month}-${day}`);
-  }, []);
+    const todayStr = `${year}-${month}-${day}`;
+    setStartDate(todayStr);
+
+    const nextDate = new Date();
+    const daysToAdd = rentalPlan === 'monthly' ? 30 : rentalPlan === 'daily' ? 1 : 0;
+    nextDate.setDate(today.getDate() + daysToAdd);
+    const nYear = nextDate.getFullYear();
+    const nMonth = String(nextDate.getMonth() + 1).padStart(2, '0');
+    const nDay = String(nextDate.getDate()).padStart(2, '0');
+    setEndDate(`${nYear}-${nMonth}-${nDay}`);
+    setAvailabilityStatus('idle');
+  }, [rentalPlan]);
 
   useEffect(() => {
     if (!id) return;
@@ -296,12 +370,13 @@ export default function WorkspaceDetailsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <a
-                    href="#book-section"
-                    className="px-5 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all"
+                  <button
+                    type="button"
+                    onClick={scrollToBookingForm}
+                    className="px-5 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
                   >
                     Reserve Space
-                  </a>
+                  </button>
                   <a
                     href="https://wa.me/919908209993"
                     target="_blank"
@@ -399,6 +474,19 @@ export default function WorkspaceDetailsPage() {
                 </div>
               )}
             </section>
+
+            {/* Mobile Quick Action 'Book Now' Button to Scroll Directly to Booking Form */}
+            <div className="block lg:hidden -mt-4">
+              <button
+                type="button"
+                onClick={scrollToBookingForm}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#2E7D32] hover:bg-[#1E5C23] active:bg-[#16471A] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer"
+              >
+                <Calendar className="w-4 h-4 text-white" />
+                <span>Book Now</span>
+                <ArrowDown className="w-4 h-4 text-white animate-bounce" />
+              </button>
+            </div>
 
             {/* 2.2 Detailed Space Overview */}
             <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
@@ -506,8 +594,18 @@ export default function WorkspaceDetailsPage() {
           </div>
 
           {/* Right Column: Sticky Instant Reservation Card */}
-          <div id="book-section" className="lg:col-span-4">
-            <div className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-7 space-y-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] sticky top-28 text-[#181F18]">
+          <aside
+            id="book-section"
+            ref={bookingFormRef}
+            style={{
+              position: 'sticky',
+              top: '108px',
+              alignSelf: 'flex-start',
+              zIndex: 20,
+            }}
+            className="lg:col-span-4 scroll-mt-28"
+          >
+            <div className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-7 space-y-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] text-[#181F18]">
               
               <div className="space-y-1">
                 <span className="text-[11px] uppercase tracking-wider text-[#2E7D32] font-mono font-bold block">
@@ -542,19 +640,23 @@ export default function WorkspaceDetailsPage() {
               </div>
 
               {/* Booking Inputs */}
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 
-                {/* Start Date & 12-Hour Time */}
-                <div className="space-y-1.5 text-left">
+                {/* Row 1: Start Date & 12-Hour Time */}
+                <div className="space-y-1 text-left">
                   <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-                    START DATE & TIME
+                    FROM DATE & TIME
                   </label>
                   <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
                     <div className="w-full">
                       <MaterialDatePicker
                         value={startDate}
                         minDate={todayDate}
-                        onChange={(newDate) => setStartDate(newDate)}
+                        onChange={(newDate) => {
+                          setStartDate(newDate);
+                          if (newDate > endDate) setEndDate(newDate);
+                          setAvailabilityStatus('idle');
+                        }}
                         align="left"
                       />
                     </div>
@@ -562,32 +664,114 @@ export default function WorkspaceDetailsPage() {
                     <div className="w-full">
                       <MaterialTimePicker
                         value={startTime}
-                        onChange={(newTime) => setStartTime(newTime)}
+                        onChange={(newTime) => {
+                          setStartTime(newTime);
+                          setAvailabilityStatus('idle');
+                        }}
                         align="right"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Team Size / Guests */}
-                <div className="space-y-1.5 text-left">
+                {/* Row 2: End Date & 12-Hour Time */}
+                <div className="space-y-1 text-left">
+                  <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                    TO DATE & TIME
+                  </label>
+                  <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                    <div className="w-full">
+                      <MaterialDatePicker
+                        value={endDate}
+                        minDate={startDate || todayDate}
+                        onChange={(newDate) => {
+                          setEndDate(newDate);
+                          setAvailabilityStatus('idle');
+                        }}
+                        align="left"
+                      />
+                    </div>
+
+                    <div className="w-full">
+                      <MaterialTimePicker
+                        value={endTime}
+                        onChange={(newTime) => {
+                          setEndTime(newTime);
+                          setAvailabilityStatus('idle');
+                        }}
+                        align="right"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Check Availability Action Button */}
+                <div className="pt-0.5">
+                  <button
+                    type="button"
+                    onClick={handleCheckAvailability}
+                    disabled={isCheckingAvailability}
+                    className={`w-full py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
+                      availabilityStatus === 'available'
+                        ? 'bg-[#E8F5E9] border-[#A5D6A7] text-[#2E7D32]'
+                        : 'bg-[#FAF9F5] hover:bg-[#EAE5DC] border-[#D5D0C5] text-[#181F18]'
+                    }`}
+                  >
+                    {isCheckingAvailability ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-[#2E7D32] border-t-transparent rounded-full animate-spin" />
+                        <span>Checking Space Availability...</span>
+                      </>
+                    ) : availabilityStatus === 'available' ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#2E7D32]" />
+                        <span>Space Available for Selected Duration</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-[#2E7D32]" />
+                        <span>Check Availability</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Team Size / Guests - Editable Input & Increment/Decrement */}
+                <div className="space-y-1 text-left">
                   <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
                     NUMBER OF SEATS / PAX
                   </label>
                   <div className="flex items-center justify-between bg-[#FAF9F5] border border-[#E5E1D8] rounded-xl px-3.5 py-2 text-xs text-[#181F18]">
-                    <span className="font-medium text-xs">{guestCount} Member{guestCount > 1 ? 's' : ''}</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={guestCount}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setGuestCount(isNaN(val) ? 1 : Math.max(1, val));
+                        }}
+                        className="w-12 text-center font-bold text-xs bg-white px-1.5 py-1 rounded-md border border-[#E5E1D8] text-[#181F18] focus:outline-none focus:border-[#2E7D32]"
+                      />
+                      <span className="font-medium text-xs text-[#5C665C]">
+                        Member{guestCount > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setGuestCount((g) => Math.max(1, g - 1))}
-                        className="w-7 h-7 rounded-lg bg-white border border-[#E5E1D8] text-[#181F18] font-bold flex items-center justify-center hover:bg-[#F0ECE1] cursor-pointer"
+                        className="w-7 h-7 rounded-lg bg-white border border-[#E5E1D8] text-[#181F18] font-bold flex items-center justify-center hover:bg-[#F0ECE1] active:scale-95 cursor-pointer"
+                        title="Decrease members"
                       >
                         -
                       </button>
                       <button
                         type="button"
                         onClick={() => setGuestCount((g) => g + 1)}
-                        className="w-7 h-7 rounded-lg bg-white border border-[#E5E1D8] text-[#181F18] font-bold flex items-center justify-center hover:bg-[#F0ECE1] cursor-pointer"
+                        className="w-7 h-7 rounded-lg bg-white border border-[#E5E1D8] text-[#181F18] font-bold flex items-center justify-center hover:bg-[#F0ECE1] active:scale-95 cursor-pointer"
+                        title="Increase members"
                       >
                         +
                       </button>
@@ -619,12 +803,13 @@ export default function WorkspaceDetailsPage() {
 
               {/* Direct Booking CTA */}
               <div className="space-y-3">
-                <Link
-                  href={`/book?workspace=${encodeURIComponent(workspace.id)}&plan=${rentalPlan}&date=${startDate}&guests=${guestCount}`}
-                  className="w-full py-3.5 px-4 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-bold text-sm text-center block shadow-md hover:shadow-lg transition-all"
+                <button
+                  type="button"
+                  onClick={handleBookNow}
+                  className="w-full py-3.5 px-4 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] active:bg-[#16471A] text-white font-bold text-sm text-center block shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer"
                 >
-                  Proceed to Secure Checkout
-                </Link>
+                  Book Now
+                </button>
 
                 <a
                   href={`https://wa.me/919908209993?text=${encodeURIComponent(`Hi EnCourtyard team, I am interested in booking "${workspace.title}" (${workspace.categoryName}) starting on ${startDate}. Please share more details.`)}`}
@@ -650,7 +835,7 @@ export default function WorkspaceDetailsPage() {
               </div>
 
             </div>
-          </div>
+          </aside>
 
         </div>
 
@@ -707,6 +892,93 @@ export default function WorkspaceDetailsPage() {
         )}
 
       </main>
+
+      {/* ========================================================================= */}
+      {/* 4. CENTERED SIGN-IN REQUIRED MODAL WITH FROSTED BLUR BACKDROP              */}
+      {/* ========================================================================= */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fadeIn select-none">
+          {/* Frosted Glass Blurred Backdrop */}
+          <div
+            className="fixed inset-0 bg-[#181F18]/65 backdrop-blur-md transition-opacity duration-300"
+            onClick={() => setShowAuthModal(false)}
+          />
+
+          {/* Center Modal Card */}
+          <div className="relative z-10 w-full max-w-md bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-center animate-scaleUp font-sans">
+            
+            {/* Top Right Close X Button */}
+            <button
+              type="button"
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4.5 right-4.5 p-2 rounded-full text-gray-400 hover:text-[#181F18] hover:bg-gray-100 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Decorative Icon Glow Badge */}
+            <div className="relative w-20 h-20 mx-auto mb-5 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-[#E8F5E9] border-2 border-[#C8E6C9] text-[#2E7D32] flex items-center justify-center shadow-[0_0_25px_rgba(46,125,50,0.25)] animate-scaleUp">
+                <Lock className="w-8 h-8 stroke-[2.2]" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] tracking-tight mb-2">
+              Sign In Required
+            </h3>
+
+            {/* Selected Workspace Context Pill */}
+            {workspace && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF9F5] border border-[#E5E1D8] text-xs text-[#2E7D32] mb-3 max-w-full">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-bold truncate max-w-[200px]">{workspace.title}</span>
+                <span className="text-[#8A968A]">•</span>
+                <span className="capitalize font-semibold text-[#181F18]">{rentalPlan} Plan</span>
+              </div>
+            )}
+
+            {/* Description */}
+            <p className="text-xs sm:text-sm text-[#5C665C] leading-relaxed mb-6">
+              You must be signed in to reserve this workspace so we can verify your account, assign your biometric pass, and issue your booking confirmation.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+              {/* Sign In CTA */}
+              <Link
+                href={`/login?redirect=${encodeURIComponent(bookingUrl)}`}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In to Continue</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              {/* Create Account CTA */}
+              <Link
+                href={`/signup?redirect=${encodeURIComponent(bookingUrl)}`}
+                className="w-full py-3 px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EAE5DC] text-[#181F18] border border-[#E0DCD3] hover:border-[#181F18]/40 font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-[#2E7D32]" />
+                <span>Create Member Account</span>
+              </Link>
+
+              {/* Cancel / Dismiss */}
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="w-full pt-2 text-xs text-[#5C665C] hover:text-[#181F18] font-medium transition-colors cursor-pointer"
+              >
+                Continue Browsing Workspaces
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

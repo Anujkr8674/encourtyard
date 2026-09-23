@@ -1,3 +1,4 @@
+import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { UserSignupForm } from '@/components/user/UserSignupForm';
 
@@ -18,7 +19,9 @@ export default function SignupPage() {
         }}
       />
       <div className="w-full max-w-xl relative z-10">
-        <UserSignupForm />
+        <Suspense fallback={<div className="text-center py-10 text-sm text-[#5C665C]">Loading Registration...</div>}>
+          <UserSignupForm />
+        </Suspense>
       </div>
     </div>
   );

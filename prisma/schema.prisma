@@ -65,24 +65,46 @@ model OtpVerification {
 }
 
 model Booking {
-  id            String        @id @default(uuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  locationId    String
-  locationName  String
-  spaceType     String // 'hot-desk' | 'dedicated-desk' | 'private-cabin' | 'meeting-room'
-  bookingDate   DateTime
-  startTime     String
-  endTime       String
-  guests        Int           @default(1)
-  totalAmount   Float
-  status        BookingStatus @default(CONFIRMED)
-  paymentStatus PaymentStatus @default(PAID)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId     String?
+  workspaceTitle  String?
+  categoryName    String?
+  locationId      String?
+  locationName    String?
+  fullName        String?
+  companyName     String?
+  email           String?
+  phone           String?
+  spaceType       String?       // 'hot-desk' | 'dedicated-desk' | 'private-cabin' | 'meeting-room'
+  plan            String?       // 'monthly' | 'daily' | 'hourly'
+  bookingDate     DateTime?
+  startDate       String?
+  endDate         String?
+  startTime       String?
+  endTime         String?
+  guests          Int           @default(1)
+  totalAmount     Float?
+  status          BookingStatus @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  adminNotes      String?
+  statusUpdatedAt DateTime?
+  notesUpdatedAt  DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([userId])
   @@map("bookings")
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
 }
 
 model AdminAuditLog {

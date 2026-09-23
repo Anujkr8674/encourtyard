@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFeedbackModal } from '@/context/FeedbackModalContext';
 import { Mail, Lock, ArrowRight, Shield, AlertCircle, RefreshCw, KeyRound, Sparkles } from 'lucide-react';
@@ -10,15 +10,17 @@ import { Button } from '@/components/ui/Button';
 
 export const UserLoginForm: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || searchParams.get('callbackUrl') || '/dashboard';
   const { login, user } = useAuth();
   const { showSuccess, showError } = useFeedbackModal();
 
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(redirectUrl);
     }
-  }, [user, router]);
+  }, [user, router, redirectUrl]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,13 +75,15 @@ export const UserLoginForm: React.FC = () => {
         showSuccess({
           variant: 'account',
           title: 'Welcome Back!',
-          message: 'You have signed in successfully. Opening your member dashboard...',
-          primaryBtnText: 'Go to Dashboard',
-          onPrimaryClick: () => router.push('/dashboard'),
+          message: redirectUrl.startsWith('/book')
+            ? 'Signed in successfully. Proceeding to your workspace booking...'
+            : 'You have signed in successfully. Opening your member dashboard...',
+          primaryBtnText: redirectUrl.startsWith('/book') ? 'Continue Booking' : 'Go to Dashboard',
+          onPrimaryClick: () => router.push(redirectUrl),
           autoCloseMs: 1500,
         });
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(redirectUrl);
         }, 1200);
       }
     } catch {
@@ -210,7 +214,7 @@ export const UserLoginForm: React.FC = () => {
           <div className="text-[#5C665C]">
             <span>Don't have an account yet? </span>
             <Link
-              href="/signup"
+              href={`/signup${redirectUrl !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
               className="font-bold text-[#263626] hover:text-[#2E7D32] underline underline-offset-4 transition-colors"
             >
               Create Account

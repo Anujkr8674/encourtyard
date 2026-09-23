@@ -1,0 +1,12 @@
+[
+  {
+    "key": "admin_email_notify_new_booking",
+    "value": "true",
+    "updatedAt": "2026-09-23T17:32:46.567Z"
+  },
+  {
+    "key": "admin_email_notify_status_update",
+    "value": "true",
+    "updatedAt": "2026-09-23T17:32:46.567Z"
+  }
+]

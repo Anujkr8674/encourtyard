@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -28,8 +28,14 @@ import {
   Coffee,
   Wifi,
   Volume2,
-  X
+  X,
+  Lock,
+  LogIn,
+  UserPlus,
+  User
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
@@ -124,9 +130,13 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 export default function BookSpacePage() {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedWorkspaceForAuth, setSelectedWorkspaceForAuth] = useState<Workspace | null>(null);
 
   // Today's Date String for disabling past dates (YYYY-MM-DD)
   const todayDate = useMemo(() => {
@@ -297,6 +307,20 @@ export default function BookSpacePage() {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredWorkspaces.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredWorkspaces, currentPage]);
+
+  const workspacesSectionRef = useRef<HTMLElement>(null);
+
+  // Handle page change and smoothly scroll to the top of the workspaces section just below hero
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    if (workspacesSectionRef.current) {
+      const element = workspacesSectionRef.current;
+      const yOffset = -80; // Clearance for fixed header
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }
+  };
 
   // Reset all filters
   const handleResetFilters = () => {
@@ -622,20 +646,26 @@ export default function BookSpacePage() {
             </span>
           </div>
 
-          {/* Animated Main Hero Headline in Frosted Glass Card */}
-          <div className="flex justify-center mb-4">
-            <div className="inline-block px-5 sm:px-10 py-3.5 sm:py-5 rounded-3xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
-              <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-[#141F14] leading-[1.15] text-center">
-                <span>{typedLines[0]}</span>
-                <br />
-                <span className="text-[#1B3B22] italic font-normal">{typedLines[1]}</span>
-                <br />
-                <span className="text-[#141F14]">{typedLines[2]}</span>
-                {isTyping && (
-                  <span className="inline-block w-1 sm:w-1.5 h-6 sm:h-9 bg-[#2E7D32] ml-1 animate-pulse align-middle" />
-                )}
-              </h1>
-            </div>
+          {/* Animated Main Hero Headline with Each Line in Its Own Frosted Glass Blur Pill */}
+          <div className="relative mb-4 flex flex-col items-center justify-center">
+            <h1 className="flex flex-col items-center justify-center gap-2.5 min-h-[135px] sm:min-h-[165px]">
+              {typedLines.map((line, idx) => {
+                if (!line && idx > currentLineIndex) return null;
+                return (
+                  <div
+                    key={idx}
+                    className="inline-flex items-center justify-center px-5 sm:px-8 py-1.5 sm:py-2 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-[#141F14] font-serif text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-bold tracking-tight shadow-[0_8px_30px_rgba(0,0,0,0.12)] transition-all leading-tight text-center"
+                  >
+                    <span className={idx === 1 ? 'text-[#1B3B22] italic font-normal' : ''}>
+                      {line || '\u00A0'}
+                    </span>
+                    {isTyping && idx === currentLineIndex && (
+                      <span className="inline-block w-[3px] h-[0.75em] bg-[#2E7D32] ml-1.5 animate-pulse align-middle" />
+                    )}
+                  </div>
+                );
+              })}
+            </h1>
           </div>
 
           {/* Subheading in Pill: Work • Connect • Grow ↳ */}
@@ -670,7 +700,11 @@ export default function BookSpacePage() {
       {/* ========================================================================= */}
       {/* 2. MAIN CONTENT LAYOUT: Sidebar Filter (Left) + Workspaces Grid (Right)    */}
       {/* ========================================================================= */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
+      <main
+        id="workspaces-section"
+        ref={workspacesSectionRef}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 scroll-mt-24"
+      >
 
         {/* Mobile Slide-Over Right Sidebar Drawer */}
         <div
@@ -1021,13 +1055,23 @@ export default function BookSpacePage() {
                           Details
                         </Link>
 
-                        {/* 2. Book Now Button -> navigates to /book */}
-                        <Link
-                          href={`/book?workspace=${encodeURIComponent(ws.id)}`}
-                          className="flex-1 py-2.5 px-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] text-xs font-bold text-center shadow-xs hover:shadow-md transition-all duration-200 active:scale-95 flex items-center justify-center gap-1"
+                        {/* 2. Book Now Button -> triggers auth check modal if guest, else navigates to /book */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`;
+                            if (user || isAuthenticated) {
+                              router.push(targetUrl);
+                            } else {
+                              setSelectedWorkspaceForAuth(ws);
+                              setShowAuthModal(true);
+                            }
+                          }}
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] text-xs font-bold text-center shadow-xs hover:shadow-md transition-all duration-200 active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <span>Book Now</span>
-                        </Link>
+                        </button>
                       </div>
 
                     </div>
@@ -1043,7 +1087,7 @@ export default function BookSpacePage() {
                 <button
                   type="button"
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  onClick={() => handlePageChange(currentPage - 1)}
                   className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E1D8] text-xs text-[#181F18] disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#2E7D32] transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -1058,7 +1102,7 @@ export default function BookSpacePage() {
                     <button
                       key={pageNumber}
                       type="button"
-                      onClick={() => setCurrentPage(pageNumber)}
+                      onClick={() => handlePageChange(pageNumber)}
                       className={`w-9 h-9 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${isActive
                           ? 'bg-[#263626] text-white shadow-sm'
                           : 'bg-white text-[#181F18] border border-[#E5E1D8] hover:bg-[#FAF9F5]'
@@ -1073,7 +1117,7 @@ export default function BookSpacePage() {
                 <button
                   type="button"
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => handlePageChange(currentPage + 1)}
                   className="px-3.5 py-2 rounded-xl bg-white border border-[#E5E1D8] text-xs text-[#181F18] disabled:opacity-30 disabled:cursor-not-allowed hover:border-[#2E7D32] transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
                 >
                   <span>Next</span>
@@ -1087,6 +1131,100 @@ export default function BookSpacePage() {
         </div>
 
       </main>
+
+      {/* ========================================================================= */}
+      {/* 4. CENTERED SIGN-IN REQUIRED MODAL WITH FROSTED BLUR BACKDROP              */}
+      {/* ========================================================================= */}
+      {showAuthModal && selectedWorkspaceForAuth && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fadeIn select-none">
+          {/* Frosted Glass Blurred Backdrop */}
+          <div
+            className="fixed inset-0 bg-[#181F18]/65 backdrop-blur-md transition-opacity duration-300"
+            onClick={() => {
+              setShowAuthModal(false);
+              setSelectedWorkspaceForAuth(null);
+            }}
+          />
+
+          {/* Center Modal Card */}
+          <div className="relative z-10 w-full max-w-md bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-center animate-scaleUp font-sans">
+            
+            {/* Top Right Close X Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowAuthModal(false);
+                setSelectedWorkspaceForAuth(null);
+              }}
+              className="absolute top-4.5 right-4.5 p-2 rounded-full text-gray-400 hover:text-[#181F18] hover:bg-gray-100 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Decorative Icon Glow Badge */}
+            <div className="relative w-20 h-20 mx-auto mb-5 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-[#E8F5E9] border-2 border-[#C8E6C9] text-[#2E7D32] flex items-center justify-center shadow-[0_0_25px_rgba(46,125,50,0.25)] animate-scaleUp">
+                <Lock className="w-8 h-8 stroke-[2.2]" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] tracking-tight mb-2">
+              Sign In Required
+            </h3>
+
+            {/* Selected Workspace Context Pill */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF9F5] border border-[#E5E1D8] text-xs text-[#2E7D32] mb-3 max-w-full">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="font-bold truncate max-w-[200px]">{selectedWorkspaceForAuth.title}</span>
+              <span className="text-[#8A968A]">•</span>
+              <span className="capitalize font-semibold text-[#181F18]">{selectedWorkspaceForAuth.categoryName}</span>
+            </div>
+
+            {/* Description */}
+            <p className="text-xs sm:text-sm text-[#5C665C] leading-relaxed mb-6">
+              You must be signed in to reserve this workspace so we can verify your account, assign your biometric pass, and issue your booking confirmation.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+              {/* Sign In CTA */}
+              <Link
+                href={`/login?redirect=${encodeURIComponent(`/book?workspace=${encodeURIComponent(selectedWorkspaceForAuth.id)}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`)}`}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In to Continue</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              {/* Create Account CTA */}
+              <Link
+                href={`/signup?redirect=${encodeURIComponent(`/book?workspace=${encodeURIComponent(selectedWorkspaceForAuth.id)}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`)}`}
+                className="w-full py-3 px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EAE5DC] text-[#181F18] border border-[#E0DCD3] hover:border-[#181F18]/40 font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-[#2E7D32]" />
+                <span>Create Member Account</span>
+              </Link>
+
+              {/* Cancel / Dismiss */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setSelectedWorkspaceForAuth(null);
+                }}
+                className="w-full pt-2 text-xs text-[#5C665C] hover:text-[#181F18] font-medium transition-colors cursor-pointer"
+              >
+                Continue Browsing Workspaces
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useFeedbackModal } from '@/context/FeedbackModalContext';
 import { 
@@ -24,15 +24,17 @@ import { Button } from '@/components/ui/Button';
 
 export const UserSignupForm: React.FC = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || searchParams.get('callbackUrl') || '/dashboard';
   const { user, refreshUser } = useAuth();
   const { showSuccess, showError } = useFeedbackModal();
 
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(redirectUrl);
     }
-  }, [user, router]);
+  }, [user, router, redirectUrl]);
 
   // Step Wizard State (1: Info -> 2: OTP -> 3: Password)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -252,14 +254,16 @@ export const UserSignupForm: React.FC = () => {
         showSuccess({
           variant: 'account',
           title: 'Account Created!',
-          message: 'Welcome to EnCourtyard. Your account has been created successfully. You can now access all features.',
-          primaryBtnText: 'Get Started',
-          onPrimaryClick: () => router.push('/dashboard'),
+          message: redirectUrl.startsWith('/book')
+            ? 'Your account has been created successfully. Proceeding to your workspace booking...'
+            : 'Welcome to EnCourtyard. Your account has been created successfully. You can now access all features.',
+          primaryBtnText: redirectUrl.startsWith('/book') ? 'Continue Booking' : 'Get Started',
+          onPrimaryClick: () => router.push(redirectUrl),
           autoCloseMs: 2000,
         });
         await refreshUser();
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(redirectUrl);
         }, 1500);
       }
     } catch {
@@ -620,7 +624,7 @@ export const UserSignupForm: React.FC = () => {
         <div className="mt-8 pt-6 border-t border-[#E5E1D8] text-center text-sm text-[#5C665C] font-sans">
           <span>Already have an EnCourtyard account? </span>
           <Link
-            href="/login"
+            href={`/login${redirectUrl !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
             className="font-bold text-[#263626] hover:text-[#2E7D32] underline underline-offset-4 transition-colors"
           >
             Sign In Here
