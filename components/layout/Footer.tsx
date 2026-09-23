@@ -182,8 +182,8 @@ export const Footer: React.FC = () => {
                 { label: 'Member FAQs', href: '/about#faq' },
                 { label: 'Virtual Tours', href: '/workspaces' },
                 { label: 'Enterprise Solutions', href: '/workspaces' },
-                { label: 'Privacy Policy', href: '/about' },
-                { label: 'Terms & Conditions', href: '/about' },
+                { label: 'Privacy Policy', href: '/privacy' },
+                { label: 'Terms & Conditions', href: '/terms' },
               ].map((link, idx) => (
                 <li key={idx}>
                   <Link

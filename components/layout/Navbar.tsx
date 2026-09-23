@@ -131,15 +131,16 @@ export const Navbar: React.FC = () => {
   }, [mobileMenuOpen]);
 
   const isHome = pathname === '/';
-  const hasHeroCover = pathname === '/' || pathname === '/book-space' || pathname.startsWith('/book-space');
+  const hasHeroCover = pathname === '/' || pathname === '/book-space' || pathname.startsWith('/book-space') || pathname === '/hyderabad' || pathname === '/about' || pathname === '/contact';
 
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Book Space', href: '/book-space' },
-    { name: 'Locations', href: '/workspaces' },
+    { name: 'Hyderabad', href: '/hyderabad' },
     { name: 'Meeting Rooms', href: '/meeting-rooms' },
-    { name: 'Pricing & Plans', href: '/pricing' },
-    { name: 'About & Philosophy', href: '/about' },
+    // { name: 'Pricing & Plans', href: '/pricing' },
+    { name: 'About ', href: '/about' },
+    { name: 'Contact', href: '/contact' },
   ];
 
   const portalLinks = [
@@ -155,15 +156,14 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          scrolled || !hasHeroCover
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled || !hasHeroCover
             ? 'bg-[#0E170E]/95 backdrop-blur-2xl border-b border-white/15 shadow-[0_16px_48px_rgba(0,0,0,0.45)]'
             : 'bg-transparent border-b border-transparent shadow-none'
-        }`}
+          }`}
       >
         {/* Main Navigation Bar */}
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 sm:h-28 lg:h-28 flex items-center justify-between">
-          
+
           {/* Brand Logo with Premium Frosted Capsule & Pop-up Hover Effect */}
           <Link
             href="/"
@@ -188,8 +188,8 @@ export const Navbar: React.FC = () => {
                   key={link.name}
                   href={link.href}
                   className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 relative flex items-center ${isActive
-                      ? 'bg-[#2E7D32] text-white shadow-md font-bold border border-[#4ADE80]/40'
-                      : 'text-white/90 hover:text-white hover:bg-white/10 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]'
+                    ? 'bg-[#2E7D32] text-white shadow-md font-bold border border-[#4ADE80]/40'
+                    : 'text-white/90 hover:text-white hover:bg-white/10 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]'
                     }`}
                 >
                   <span>{link.name}</span>
@@ -362,8 +362,8 @@ export const Navbar: React.FC = () => {
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all group ${isActive
-                      ? 'bg-[#263626] text-[#4ADE80] border border-[#3A4D3A] shadow-sm'
-                      : 'text-white/80 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#263626] text-[#4ADE80] border border-[#3A4D3A] shadow-sm'
+                    : 'text-white/80 hover:text-white hover:bg-white/5'
                     }`}
                 >
                   <span className="group-hover:translate-x-1 transition-transform duration-200">

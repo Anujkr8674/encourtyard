@@ -37,9 +37,9 @@ export default function HomePage() {
       </ScrollReveal>
 
       {/* 4. City Presence Section - Unique Slide-In from Left with Subtle Angle */}
-      <ScrollReveal animation="slide-left" duration={1200} threshold={0.06}>
+      {/* <ScrollReveal animation="slide-left" duration={1200} threshold={0.06}>
         <PresenceCitySection />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 5. Workspace Categories Section - Unique 3D Depth Scale-Up */}
       <ScrollReveal animation="scale-up" duration={1250} threshold={0.06}>
