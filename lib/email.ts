@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { localStore } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 interface SmtpConfig {
   host: string;
@@ -578,8 +578,10 @@ export async function dispatchBookingCreatedEmails(
 
   // Check Admin Notification Toggle from settings
   try {
-    const adminToggle = localStore.settings.get('admin_email_notify_new_booking')?.value;
-    const shouldNotifyAdmin = adminToggle !== 'false';
+    const adminToggle = await prisma.systemSetting.findUnique({
+      where: { key: 'admin_email_notify_new_booking' }
+    });
+    const shouldNotifyAdmin = adminToggle?.value !== 'false';
     if (shouldNotifyAdmin) {
       await sendAdminNewBookingNotification(booking);
     }
@@ -616,8 +618,10 @@ export async function dispatchStatusUpdatedEmails(
 
   // Check Admin Status Update Toggle from settings
   try {
-    const adminToggle = localStore.settings.get('admin_email_notify_status_update')?.value;
-    const shouldNotifyAdmin = adminToggle !== 'false';
+    const adminToggle = await prisma.systemSetting.findUnique({
+      where: { key: 'admin_email_notify_status_update' }
+    });
+    const shouldNotifyAdmin = adminToggle?.value !== 'false';
     if (shouldNotifyAdmin) {
       await sendAdminStatusUpdateNotification(booking);
     }

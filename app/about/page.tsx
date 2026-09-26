@@ -83,6 +83,11 @@ export default function AboutPage() {
     }
   ];
 
+  const [isLoaded, setIsLoaded] = useState(false);
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
   const typewriterLines = useMemo(
     () => ['Crafted as an architectural', 'sanctuary for', 'deep work.'],
     []
@@ -95,11 +100,11 @@ export default function AboutPage() {
       <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
         {/* Background Image / Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10 " />
           <img 
             src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=2000&q=80" 
             alt="About EnCourtyard" 
-            className="w-full h-full object-cover object-center filter brightness-100 contrast-105"
+            className={`w-full h-full object-cover object-center filter brightness-100 contrast-105 transition-transform duration-[7000ms] ease-out ${isLoaded ? 'scale-105' : 'scale-100'}`}
           />
         </div>
 

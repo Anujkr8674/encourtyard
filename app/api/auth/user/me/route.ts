@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma, isLiveDbConfigured, localStore } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
@@ -9,46 +9,38 @@ export async function GET() {
       return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
     }
 
-    let fullUser = localStore.users?.get(session.email);
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        company: true,
+        role: true,
+        avatarUrl: true,
+        isEmailVerified: true,
+        createdAt: true,
+      },
+    });
 
-    if (isLiveDbConfigured) {
-      try {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: session.id },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            company: true,
-            role: true,
-            avatarUrl: true,
-            isEmailVerified: true,
-            createdAt: true,
-          },
-        });
-
-        if (dbUser) {
-          return NextResponse.json({
-            authenticated: true,
-            user: dbUser,
-          });
-        }
-      } catch (err) {
-        console.warn('⚠️ [Prisma DB Warning]:', err);
-      }
+    if (dbUser) {
+      return NextResponse.json({
+        authenticated: true,
+        user: dbUser,
+      });
     }
 
     return NextResponse.json({
       authenticated: true,
       user: {
         id: session.id,
-        name: fullUser?.name || session.name,
+        name: session.name,
         email: session.email,
-        phone: fullUser?.phone || null,
-        company: fullUser?.company || session.company || null,
+        phone: null,
+        company: session.company || null,
         role: session.role,
-        avatarUrl: fullUser?.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(session.email)}`,
+        avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(session.email)}`,
         isEmailVerified: session.isEmailVerified,
       },
     });

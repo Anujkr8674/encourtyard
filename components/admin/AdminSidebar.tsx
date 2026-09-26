@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -39,7 +39,7 @@ export const ADMIN_NAV_ITEMS: SidebarItem[] = [
   { name: 'Popular Picks', href: '/admin/popular-picks', icon: Sparkles, badge: 'Top 10', badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300' },
   // { name: 'Client Companies', href: '/admin/companies', icon: Building2, badge: '28' },
   { name: 'Member Directory', href: '/admin/members', icon: Users, badge: '342' },
-  { name: 'Bookings & Passes', href: '/admin/bookings', icon: Calendar, badge: '12 New', badgeColor: 'bg-[#2E7D32] text-white' },
+  { name: 'Bookings & Passes', href: '/admin/bookings', icon: Calendar, badge: '0 New', badgeColor: 'bg-[#2E7D32] text-white' },
   // { name: 'Centres & Cities', href: '/admin/locations', icon: MapPin, badge: '79' },
   // { name: 'Meeting Rooms', href: '/admin/meeting-rooms', icon: Monitor },
   // { name: 'Revenue & Invoices', href: '/admin/revenue', icon: DollarSign, badge: '+14%', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
@@ -50,9 +50,44 @@ export const ADMIN_NAV_ITEMS: SidebarItem[] = [
 export const AdminSidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobile }) => {
   const pathname = usePathname();
   const { admin, logout } = useAuth();
+  const [totalCount, setTotalCount] = useState<number>(0);
+
+  useEffect(() => {
+    // Fetch total bookings count
+    const fetchTotalCount = async () => {
+      try {
+        const res = await fetch('/api/admin/bookings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.bookings) {
+            const count = data.bookings.length;
+            setTotalCount(count);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch pending bookings count", error);
+      }
+    };
+    fetchTotalCount();
+    
+    // Optional: Poll every 30 seconds
+    const interval = setInterval(fetchTotalCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const adminName = admin?.name || 'Super Administrator';
   const adminId = admin?.adminId || 'Admin';
+
+  const dynamicNavItems = ADMIN_NAV_ITEMS.map(item => {
+    if (item.name === 'Bookings & Passes') {
+      return { 
+        ...item, 
+        badge: totalCount > 0 ? `${totalCount}` : '0',
+        badgeColor: 'bg-[#2E7D32] text-white'
+      };
+    }
+    return item;
+  });
 
   return (
     <aside className="w-64 sm:w-72 bg-[#F6F4ED] text-[#181F18] border-r border-[#E0DCD3] flex flex-col justify-between h-full select-none shadow-xl relative overflow-hidden">
@@ -108,7 +143,7 @@ export const AdminSidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onClose
 
         {/* Navigation Menu with Attractive Hover and Active Effects */}
         <nav className="px-3.5 py-1.5 space-y-1.5 font-sans">
-          {ADMIN_NAV_ITEMS.map((item) => {
+          {dynamicNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (

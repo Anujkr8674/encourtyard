@@ -41,6 +41,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
+import { checkWorkspaceAvailabilityDetailed, BookingSlot } from '@/lib/availability';
+import { CountdownBadge } from '@/components/ui/CountdownBadge';
 
 interface SpecItem {
   key: string;
@@ -69,6 +71,7 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  bookings?: BookingSlot[];
 }
 
 // 12-Hour AM/PM Time Slots (every 30 mins)
@@ -184,6 +187,18 @@ export default function WorkspaceDetailsPage() {
     setEndDate(`${nYear}-${nMonth}-${nDay}`);
     setAvailabilityStatus('idle');
   }, [rentalPlan]);
+
+  const { isAvailable, nextAvailableTimestamp } = React.useMemo(() => {
+    if (!workspace) return { isAvailable: true };
+    return checkWorkspaceAvailabilityDetailed(
+      workspace.bookings,
+      workspace.maintenanceBlocks,
+      startDate,
+      startTime,
+      endDate,
+      endTime
+    );
+  }, [workspace, startDate, startTime, endDate, endTime]);
 
   useEffect(() => {
     if (!id) return;
@@ -317,11 +332,13 @@ export default function WorkspaceDetailsPage() {
             <span>Back to All Workspaces</span>
           </Link>
 
-          {workspace.badge && (
+          {!isAvailable ? (
+            <CountdownBadge targetTimestamp={nextAvailableTimestamp} />
+          ) : workspace.badge ? (
             <span className="px-4 py-1.5 rounded-full bg-[#E65100] text-white text-xs font-mono font-bold shadow-md">
               {workspace.badge}
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* Hero Bottom Information Content in Frosted Glass Blur Badges */}
@@ -372,10 +389,13 @@ export default function WorkspaceDetailsPage() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
+                    disabled={!isAvailable}
                     onClick={scrollToBookingForm}
-                    className="px-5 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer"
+                    className={`px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all ${
+                      !isAvailable ? 'bg-gray-500 cursor-not-allowed' : 'bg-[#2E7D32] hover:bg-[#1B5E20] hover:shadow-lg cursor-pointer'
+                    }`}
                   >
-                    Reserve Space
+                    {isAvailable ? 'Reserve Space' : 'Not Available'}
                   </button>
                   <a
                     href="https://wa.me/919908209993"
@@ -805,10 +825,15 @@ export default function WorkspaceDetailsPage() {
               <div className="space-y-3">
                 <button
                   type="button"
+                  disabled={!isAvailable}
                   onClick={handleBookNow}
-                  className="w-full py-3.5 px-4 rounded-xl bg-[#2E7D32] hover:bg-[#1B5E20] active:bg-[#16471A] text-white font-bold text-sm text-center block shadow-md hover:shadow-lg transition-all active:scale-[0.99] cursor-pointer"
+                  className={`w-full py-3.5 px-4 rounded-xl text-white font-bold text-sm text-center block shadow-md transition-all ${
+                    !isAvailable
+                      ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
+                      : 'bg-[#2E7D32] hover:bg-[#1B5E20] active:bg-[#16471A] hover:shadow-lg active:scale-[0.99] cursor-pointer'
+                  }`}
                 >
-                  Book Now
+                  {isAvailable ? 'Book Now' : 'Not Available'}
                 </button>
 
                 <a
@@ -861,32 +886,54 @@ export default function WorkspaceDetailsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {relatedWorkspaces.map((rel) => (
-                <Link
-                  key={rel.id}
-                  href={`/book-space/${rel.id}`}
-                  className="bg-white rounded-3xl border border-[#E5E1D8] overflow-hidden shadow-sm hover:shadow-md hover:border-[#2E7D32]/40 transition-all group"
-                >
-                  <div className="h-44 overflow-hidden bg-[#FAF9F5]">
-                    <img
-                      src={rel.mediaUrls?.[0]?.url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80'}
-                      alt={rel.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-4 space-y-2">
-                    <span className="text-[10px] font-bold text-[#2E7D32] uppercase tracking-wider font-mono">
-                      {rel.categoryName}
-                    </span>
-                    <h4 className="font-serif font-bold text-base text-[#181F18] group-hover:text-[#2E7D32] transition-colors line-clamp-1">
-                      {rel.title}
-                    </h4>
-                    <span className="text-xs font-bold text-[#181F18] block">
-                      {rel.price || 'Flexible'}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+              {relatedWorkspaces.map((rel) => {
+                const { isAvailable: isRelAvailable, nextAvailableTimestamp: relNextAvail } = checkWorkspaceAvailabilityDetailed(
+                  rel.bookings,
+                  rel.maintenanceBlocks,
+                  startDate,
+                  startTime,
+                  endDate,
+                  endTime
+                );
+
+                return (
+                  <Link
+                    key={rel.id}
+                    href={`/book-space/${rel.id}`}
+                    className="bg-white rounded-3xl border border-[#E5E1D8] overflow-hidden shadow-sm hover:shadow-md hover:border-[#2E7D32]/40 transition-all group relative"
+                  >
+                    {!isRelAvailable ? (
+                      <div className="absolute top-3 right-3 z-10">
+                        <CountdownBadge targetTimestamp={relNextAvail} className="!text-[10px] !px-2.5 !py-0.5" />
+                      </div>
+                    ) : rel.badge ? (
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E65100] text-white text-[10px] font-mono font-bold shadow-sm select-none">
+                          {rel.badge}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="h-44 overflow-hidden bg-[#FAF9F5] relative">
+                      <img
+                        src={rel.mediaUrls?.[0]?.url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80'}
+                        alt={rel.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <span className="text-[10px] font-bold text-[#2E7D32] uppercase tracking-wider font-mono">
+                        {rel.categoryName}
+                      </span>
+                      <h4 className="font-serif font-bold text-base text-[#181F18] group-hover:text-[#2E7D32] transition-colors line-clamp-1">
+                        {rel.title}
+                      </h4>
+                      <span className="text-xs font-bold text-[#181F18] block">
+                        {rel.price || 'Flexible'}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}

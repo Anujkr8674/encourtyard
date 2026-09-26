@@ -1,83 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
-import fs from 'fs';
-import path from 'path';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-const POPULAR_PICKS_FILE = path.join(process.cwd(), 'data', 'local_popular_picks.json');
-
-function getStoredFeaturedIds(): string[] {
-  try {
-    if (fs.existsSync(POPULAR_PICKS_FILE)) {
-      const content = fs.readFileSync(POPULAR_PICKS_FILE, 'utf-8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) return parsed;
-      if (Array.isArray(parsed.featuredIds)) return parsed.featuredIds;
-    }
-  } catch (err) {
-    console.warn('Could not read local_popular_picks.json:', err);
-  }
-  return [];
-}
-
-function saveStoredFeaturedIds(ids: string[]): boolean {
-  try {
-    const dataDir = path.dirname(POPULAR_PICKS_FILE);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-    fs.writeFileSync(POPULAR_PICKS_FILE, JSON.stringify({ featuredIds: ids }, null, 2), 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('Failed to write local_popular_picks.json:', err);
-    return false;
-  }
-}
-
-function getLocalWorkspacesFallback(): any[] {
-  try {
-    const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (err) {
-    console.warn('Could not read local_workspaces.json:', err);
-  }
-  return [];
-}
-
 export async function GET(req: NextRequest) {
   try {
-    let allWorkspaces: any[] = [];
+    const allWorkspaces = await prisma.workspace.findMany({
+      where: { isActive: true },
+      orderBy: { order: 'asc' },
+    });
 
-    // 1. Fetch from Supabase
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('workspaces')
-        .select('*')
-        .eq('isActive', true)
-        .order('order', { ascending: true });
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        allWorkspaces = data;
+    const activeBookings = await prisma.booking.findMany({
+      where: {
+        status: {
+          in: ['PENDING', 'CONFIRMED']
+        }
+      },
+      select: {
+        workspaceId: true,
+        startDate: true,
+        endDate: true,
+        startTime: true,
+        endTime: true,
       }
-    } catch (sbErr) {
-      console.warn('Supabase fetch fallback for popular-picks:', sbErr);
-    }
+    });
 
-    // 2. Fallback to local JSON file
-    if (allWorkspaces.length === 0) {
-      const localList = getLocalWorkspacesFallback();
-      allWorkspaces = localList
-        .filter((w: any) => w.isActive !== false)
-        .sort((a: any, b: any) => (a.order || 1) - (b.order || 1));
-    }
-
-    // Parse specs and media
-    const formatted = allWorkspaces.map((w: any) => {
+    const formatted = allWorkspaces.map((w) => {
       let specs = [];
       let media = [];
       try {
@@ -91,14 +39,22 @@ export async function GET(req: NextRequest) {
         media = [];
       }
 
+      const wBookings = activeBookings.filter(b => b.workspaceId === w.id);
+
       return {
         ...w,
         specifications: specs,
         mediaUrls: media,
+        bookings: wBookings,
       };
     });
 
-    const featuredIds = getStoredFeaturedIds();
+    // Get popular picks from dedicated PopularPick table
+    const dbPicks = await prisma.popularPick.findMany({
+      orderBy: { order: 'asc' }
+    });
+
+    const featuredIds = dbPicks.map(p => p.workspaceId);
     let popularPicks: any[] = [];
 
     if (featuredIds.length > 0) {
@@ -109,18 +65,6 @@ export async function GET(req: NextRequest) {
           popularPicks.push(item);
         }
       }
-
-      if (popularPicks.length < 10) {
-        const chosenIdSet = new Set(popularPicks.map((p) => p.id));
-        for (const item of formatted) {
-          if (!chosenIdSet.has(item.id) && popularPicks.length < 10) {
-            popularPicks.push(item);
-            chosenIdSet.add(item.id);
-          }
-        }
-      }
-    } else {
-      popularPicks = formatted.slice(0, 10);
     }
 
     return NextResponse.json({
@@ -152,12 +96,25 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanedIds = featuredIds.map(String).slice(0, 10);
-    saveStoredFeaturedIds(cleanedIds);
+    
+    // Clear old picks and insert new ones to maintain order
+    await prisma.$transaction(async (tx) => {
+      await tx.popularPick.deleteMany();
+      
+      if (cleanedIds.length > 0) {
+        await tx.popularPick.createMany({
+          data: cleanedIds.map((id, index) => ({
+            workspaceId: id,
+            order: index
+          }))
+        });
+      }
+    });
 
     return NextResponse.json({
       success: true,
       featuredIds: cleanedIds,
-      message: 'Popular Picks top 10 list saved successfully',
+      message: 'Popular Picks top 10 list saved successfully to dedicated table',
     });
   } catch (error: any) {
     console.error('Error in /api/popular-picks POST:', error);

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, isLiveDbConfigured, localStore, LocalUser, LocalOtp } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { sendOtpEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -17,24 +17,11 @@ export async function POST(request: Request) {
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email already registered and verified
-    if (isLiveDbConfigured) {
-      try {
-        const existing = await prisma.user.findUnique({
-          where: { email: normalizedEmail },
-        });
-        if (existing && existing.isEmailVerified) {
-          return NextResponse.json(
-            { error: 'An account with this email already exists. Please sign in.' },
-            { status: 409 }
-          );
-        }
-      } catch (err) {
-        console.warn('⚠️ [Prisma DB Warning]:', err);
-      }
-    }
-
-    const existingLocal = localStore.users?.get(normalizedEmail);
-    if (existingLocal && existingLocal.isEmailVerified) {
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    
+    if (existing && existing.isEmailVerified) {
       return NextResponse.json(
         { error: 'An account with this email already exists. Please sign in.' },
         { status: 409 }
@@ -45,49 +32,35 @@ export async function POST(request: Request) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Store in local store
-    const otpData: LocalOtp = {
-      id: `otp_${Date.now()}`,
-      email: normalizedEmail,
-      otpCode,
-      purpose: 'SIGNUP_STEP_VERIFICATION',
-      expiresAt,
-      isUsed: false,
-      createdAt: new Date(),
-    };
-    localStore.otps?.set(normalizedEmail, otpData);
-
-    // Save pending info
-    const pendingData: LocalUser = {
-      id: existingLocal?.id || `user_${Date.now()}`,
-      name: name.trim(),
-      email: normalizedEmail,
-      phone: phone ? phone.trim() : null,
-      passwordHash: '',
-      company: company ? company.trim() : null,
-      role: 'USER',
-      isEmailVerified: false,
-      avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedEmail)}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    localStore.users?.set(normalizedEmail, pendingData);
-
-    // Save in Prisma if live
-    if (isLiveDbConfigured) {
-      try {
-        await prisma.otpVerification.create({
-          data: {
-            email: normalizedEmail,
-            otpCode,
-            purpose: 'SIGNUP_STEP_VERIFICATION',
-            expiresAt,
-          },
-        });
-      } catch (err) {
-        console.warn('⚠️ [Prisma DB Warning]:', err);
+    // Save pending info in Prisma
+    await prisma.user.upsert({
+      where: { email: normalizedEmail },
+      update: {
+        name: name.trim(),
+        phone: phone ? phone.trim() : null,
+        company: company ? company.trim() : null,
+      },
+      create: {
+        name: name.trim(),
+        email: normalizedEmail,
+        phone: phone ? phone.trim() : null,
+        company: company ? company.trim() : null,
+        passwordHash: '',
+        role: 'USER',
+        isEmailVerified: false,
+        avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedEmail)}`,
       }
-    }
+    });
+
+    // Save OTP in Prisma
+    await prisma.otpVerification.create({
+      data: {
+        email: normalizedEmail,
+        otpCode,
+        purpose: 'SIGNUP_STEP_VERIFICATION',
+        expiresAt,
+      },
+    });
 
     // Send Real Email via Google SMTP (Nodemailer)
     const emailResult = await sendOtpEmail({

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { localStore, syncBookingsToDisk } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { dispatchStatusUpdatedEmails, BookingEmailData } from '@/lib/email';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { parseBookingDateTime, formatTimestampToDateAndTimeString } from '@/lib/availability';
 
 export async function PATCH(
   req: NextRequest,
@@ -9,9 +11,9 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, adminNotes, paymentStatus } = body;
+    const { status, adminNotes, paymentStatus, completionType } = body;
 
-    const existing = localStore.bookings.get(id);
+    const existing = await prisma.booking.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Booking record not found' },
@@ -25,37 +27,56 @@ export async function PATCH(
 
     const now = new Date();
 
-    const updated = {
-      ...existing,
-      status: status ? (status as typeof existing.status) : existing.status,
-      paymentStatus: paymentStatus ? (paymentStatus as typeof existing.paymentStatus) : existing.paymentStatus,
-      adminNotes: adminNotes !== undefined ? adminNotes : existing.adminNotes,
-      statusUpdatedAt: isStatusChanging ? now : existing.statusUpdatedAt,
-      notesUpdatedAt: isNotesChanging ? now : existing.notesUpdatedAt,
-      updatedAt: now,
-    };
+    const updated = await prisma.booking.update({
+      where: { id },
+      data: {
+        status: status ? (status as BookingStatus) : existing.status,
+        paymentStatus: paymentStatus ? (paymentStatus as PaymentStatus) : existing.paymentStatus,
+        adminNotes: adminNotes !== undefined ? adminNotes : existing.adminNotes,
+        statusUpdatedAt: isStatusChanging ? now : existing.statusUpdatedAt,
+        notesUpdatedAt: isNotesChanging ? now : existing.notesUpdatedAt,
+      }
+    });
 
-    localStore.bookings.set(id, updated);
-    syncBookingsToDisk();
+    // Handle Maintenance Buffer if completing booking
+    if (updated.status === 'COMPLETED' && completionType === 'maintenance' && updated.workspaceId && updated.endDate && updated.endTime) {
+      const endTimestamp = parseBookingDateTime(updated.endDate, updated.endTime);
+      if (endTimestamp > 0) {
+        // Add 1 hr buffer
+        const bufferEndTimestamp = endTimestamp + 60 * 60 * 1000;
+        const { dateStr, timeStr } = formatTimestampToDateAndTimeString(bufferEndTimestamp);
+
+        await prisma.maintenanceBlock.create({
+          data: {
+            workspaceId: updated.workspaceId,
+            startDate: updated.endDate,
+            startTime: updated.endTime,
+            endDate: dateStr,
+            endTime: timeStr,
+            reason: 'Booking Auto-Maintenance Buffer',
+          }
+        });
+      }
+    }
 
     // Trigger user notification email + admin status update notification
     if (isStatusChanging || isNotesChanging) {
       const emailData: BookingEmailData = {
         id: updated.id,
-        fullName: updated.fullName,
+        fullName: updated.fullName || '',
         companyName: updated.companyName,
-        email: updated.email,
-        phone: updated.phone,
+        email: updated.email || '',
+        phone: updated.phone || '',
         workspaceTitle: updated.workspaceTitle || 'EnCourtyard Workspace',
-        categoryName: updated.categoryName,
-        locationName: updated.locationName,
-        plan: updated.plan,
-        startDate: updated.startDate,
-        endDate: updated.endDate,
-        startTime: updated.startTime,
-        endTime: updated.endTime,
+        categoryName: updated.categoryName || '',
+        locationName: updated.locationName || '',
+        plan: updated.plan as any,
+        startDate: updated.startDate || '',
+        endDate: updated.endDate || '',
+        startTime: updated.startTime || '',
+        endTime: updated.endTime || '',
         guests: updated.guests,
-        totalAmount: updated.totalAmount,
+        totalAmount: updated.totalAmount ? `₹${updated.totalAmount}` : 'Custom Quote',
         status: updated.status,
         adminNotes: updated.adminNotes,
         statusUpdatedAt: updated.statusUpdatedAt,
@@ -63,7 +84,9 @@ export async function PATCH(
         createdAt: updated.createdAt,
       };
 
-      dispatchStatusUpdatedEmails(emailData, updated.userEmail).catch((err) => {
+      const userEmail = await prisma.user.findUnique({ where: { id: updated.userId } });
+
+      dispatchStatusUpdatedEmails(emailData, userEmail?.email).catch((err) => {
         console.error('❌ [Status Update Email Error]:', err);
       });
     }
@@ -85,16 +108,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const existing = localStore.bookings.get(id);
-    if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Booking record not found' },
-        { status: 404 }
-      );
-    }
-
-    localStore.bookings.delete(id);
-    syncBookingsToDisk();
+    
+    await prisma.booking.delete({ where: { id } });
 
     return NextResponse.json({
       success: true,

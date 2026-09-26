@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, isLiveDbConfigured, localStore, LocalUser } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { hashPassword, signUserToken, USER_COOKIE_NAME, SESSION_DURATION_SECONDS } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -24,98 +24,56 @@ export async function POST(request: Request) {
     const normalizedEmail = email.trim().toLowerCase();
     const passwordHash = await hashPassword(password);
 
-    let createdUser: LocalUser | null = null;
-
-    // 1. Save in Supabase PostgreSQL
-    try {
-      // Mark OTP as used
-      if (otp) {
-        await prisma.otpVerification.updateMany({
-          where: { email: normalizedEmail, otpCode: otp.toString().trim() },
-          data: { isUsed: true },
-        });
-      }
-
-      // Upsert User
-      const dbUser = await prisma.user.upsert({
-        where: { email: normalizedEmail },
-        update: {
-          name: name || undefined,
-          phone: phone || undefined,
-          company: company || undefined,
-          passwordHash,
-          isEmailVerified: true,
-        },
-        create: {
-          name: name || 'Valued Member',
-          email: normalizedEmail,
-          phone: phone || null,
-          company: company || null,
-          passwordHash,
-          isEmailVerified: true,
-          avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedEmail)}`,
-        },
+    // Mark OTP as used
+    if (otp) {
+      await prisma.otpVerification.updateMany({
+        where: { email: normalizedEmail, otpCode: otp.toString().trim() },
+        data: { isUsed: true },
       });
-
-      if (dbUser) {
-        createdUser = {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          phone: dbUser.phone,
-          passwordHash: dbUser.passwordHash,
-          company: dbUser.company,
-          role: dbUser.role,
-          isEmailVerified: true,
-          avatarUrl: dbUser.avatarUrl,
-          createdAt: dbUser.createdAt,
-          updatedAt: dbUser.updatedAt,
-        };
-      }
-    } catch (dbErr) {
-      console.warn('⚠️ [Prisma DB Warning]:', dbErr);
     }
 
-    // 2. Also keep in Local Store for instant cache
-    if (!createdUser) {
-      const existing = localStore.users?.get(normalizedEmail);
-      createdUser = {
-        id: existing?.id || `user_${Date.now()}`,
-        name: name || existing?.name || 'Valued Member',
-        email: normalizedEmail,
-        phone: phone || existing?.phone || null,
-        company: company || existing?.company || null,
+    // Upsert User
+    const dbUser = await prisma.user.upsert({
+      where: { email: normalizedEmail },
+      update: {
+        name: name || undefined,
+        phone: phone || undefined,
+        company: company || undefined,
         passwordHash,
-        role: 'USER',
+        isEmailVerified: true,
+      },
+      create: {
+        name: name || 'Valued Member',
+        email: normalizedEmail,
+        phone: phone || null,
+        company: company || null,
+        passwordHash,
         isEmailVerified: true,
         avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedEmail)}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      localStore.users?.set(normalizedEmail, createdUser);
-    }
+      },
+    });
 
     // Generate 30-day persistent JWT session token
     const token = await signUserToken({
-      id: createdUser.id,
-      email: createdUser.email,
-      name: createdUser.name,
-      role: createdUser.role,
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      role: dbUser.role,
       isEmailVerified: true,
-      company: createdUser.company,
+      company: dbUser.company,
     });
 
     const response = NextResponse.json({
       success: true,
       message: 'Account created and verified successfully! Welcome to EnCourtyard.',
       user: {
-        id: createdUser.id,
-        name: createdUser.name,
-        email: createdUser.email,
-        phone: createdUser.phone,
-        company: createdUser.company,
-        role: createdUser.role,
-        avatarUrl: createdUser.avatarUrl,
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        phone: dbUser.phone,
+        company: dbUser.company,
+        role: dbUser.role,
+        avatarUrl: dbUser.avatarUrl,
       },
     });
 

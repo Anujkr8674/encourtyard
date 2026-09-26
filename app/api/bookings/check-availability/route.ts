@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { localStore } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: Request) {
   try {
@@ -13,16 +13,20 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!workspaceId) {
+      return NextResponse.json({ available: true, message: 'Workspace is available' });
+    }
+
     // Check existing confirmed/pending bookings for this workspace
-    const allBookings = Array.from(localStore.bookings.values());
-    const conflicting = allBookings.find(
-      (b) =>
-        b.workspaceId === workspaceId &&
-        b.status !== 'CANCELLED' &&
-        b.startDate === startDate &&
-        b.endDate === (endDate || startDate) &&
-        b.startTime === startTime
-    );
+    const conflicting = await prisma.booking.findFirst({
+      where: {
+        workspaceId,
+        status: { not: 'CANCELLED' },
+        startDate,
+        endDate: endDate || startDate,
+        startTime,
+      }
+    });
 
     if (conflicting) {
       return NextResponse.json({

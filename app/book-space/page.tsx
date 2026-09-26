@@ -39,6 +39,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
+import { CountdownBadge } from '@/components/ui/CountdownBadge';
 
 interface SpecItem {
   key: string;
@@ -67,6 +68,67 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  bookings?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
+}
+
+function parseBookingDateTime(dateStr: string, timeStr: string): number {
+  if (!dateStr || !timeStr) return 0;
+  
+  const [year, month, day] = dateStr.split('-').map(Number);
+  
+  const timeRegex = /(\d{1,2}):(\d{2})\s*(AM|PM)/i;
+  const match = timeStr.match(timeRegex);
+  if (!match) return 0;
+  
+  let [_, hoursStr, minsStr, modifier] = match;
+  let hours = parseInt(hoursStr, 10);
+  const mins = parseInt(minsStr, 10);
+  
+  if (modifier.toUpperCase() === 'PM' && hours < 12) {
+    hours += 12;
+  }
+  if (modifier.toUpperCase() === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  
+  return new Date(year, month - 1, day, hours, mins).getTime();
+}
+
+function checkWorkspaceAvailability(
+  workspace: Workspace,
+  userStartDate: string,
+  userStartTime: string,
+  userEndDate: string,
+  userEndTime: string
+): { isAvailable: boolean, nextAvailableTimestamp?: number } {
+  const combinedBlocks = [...(workspace.bookings || []), ...(workspace.maintenanceBlocks || [])];
+  
+  if (combinedBlocks.length === 0) return { isAvailable: true };
+  
+  const userStart = parseBookingDateTime(userStartDate, userStartTime);
+  const userEnd = parseBookingDateTime(userEndDate, userEndTime);
+  if (!userStart || !userEnd) return { isAvailable: true };
+
+  let isAvail = true;
+  let maxEndTime = 0;
+
+  for (const b of combinedBlocks) {
+    const bStart = parseBookingDateTime(b.startDate, b.startTime);
+    const bEnd = parseBookingDateTime(b.endDate, b.endTime);
+    if (!bStart || !bEnd) continue;
+
+    if (userStart < bEnd && userEnd > bStart) {
+      isAvail = false;
+      if (bEnd > maxEndTime) {
+        maxEndTime = bEnd;
+      }
+    }
+  }
+  
+  if (!isAvail) {
+     return { isAvailable: false, nextAvailableTimestamp: maxEndTime };
+  }
+  return { isAvailable: true };
 }
 
 interface CategoryOption {
@@ -945,6 +1007,7 @@ export default function BookSpacePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {paginatedWorkspaces.map((ws) => {
                   const firstMedia = ws.mediaUrls?.[0];
+                  const { isAvailable, nextAvailableTimestamp } = checkWorkspaceAvailability(ws, startDate, startTime, endDate, endTime);
 
                   return (
                     <div
@@ -986,13 +1049,17 @@ export default function BookSpacePage() {
                           </div>
 
                           {/* Badge / Status Tag */}
-                          {ws.badge && (
+                          {!isAvailable ? (
+                            <div className="absolute top-3 right-3">
+                              <CountdownBadge targetTimestamp={nextAvailableTimestamp} className="!text-[10px] !px-2.5 !py-0.5" />
+                            </div>
+                          ) : ws.badge ? (
                             <div className="absolute top-3 right-3">
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E65100] text-white text-[10px] font-mono font-bold shadow-sm select-none">
                                 {ws.badge}
                               </span>
                             </div>
-                          )}
+                          ) : null}
 
                           {/* Bottom Bar on Image: Price & Capacity */}
                           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs select-none">
@@ -1058,8 +1125,10 @@ export default function BookSpacePage() {
                         {/* 2. Book Now Button -> triggers auth check modal if guest, else navigates to /book */}
                         <button
                           type="button"
+                          disabled={!isAvailable}
                           onClick={(e) => {
                             e.preventDefault();
+                            if (!isAvailable) return;
                             const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`;
                             if (user || isAuthenticated) {
                               router.push(targetUrl);
@@ -1068,9 +1137,13 @@ export default function BookSpacePage() {
                               setShowAuthModal(true);
                             }
                           }}
-                          className="flex-1 py-2.5 px-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] text-xs font-bold text-center shadow-xs hover:shadow-md transition-all duration-200 active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1 ${
+                            !isAvailable 
+                              ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
+                              : 'bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] hover:shadow-md active:scale-95 cursor-pointer'
+                          }`}
                         >
-                          <span>Book Now</span>
+                          <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
                         </button>
                       </div>
 

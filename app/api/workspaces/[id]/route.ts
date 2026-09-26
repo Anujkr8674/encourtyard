@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
-import fs from 'fs';
-import path from 'path';
-
-export const dynamic = 'force-dynamic';
-
-function getLocalWorkspacesFallback(): any[] {
-  try {
-    const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (err) {
-    console.warn('Could not read local_workspaces.json:', err);
-  }
-  return [];
-}
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
@@ -26,28 +8,14 @@ export async function GET(
   try {
     const { id } = await params;
 
-    let workspace: any = null;
-
-    // 1. Direct Supabase query
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('workspaces')
-        .select('*')
-        .or(`id.eq.${id},slug.eq.${id}`)
-        .single();
-
-      if (!error && data) {
-        workspace = data;
+    const workspace = await prisma.workspace.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { slug: id }
+        ]
       }
-    } catch (sbErr) {
-      console.warn('Supabase get workspace error:', sbErr);
-    }
-
-    // 2. local JSON fallback
-    if (!workspace) {
-      const all = getLocalWorkspacesFallback();
-      workspace = all.find((w: any) => w.id === id || w.slug === id);
-    }
+    });
 
     if (!workspace) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
@@ -66,12 +34,41 @@ export async function GET(
       media = [];
     }
 
+    const activeBookings = await prisma.booking.findMany({
+      where: {
+        workspaceId: workspace.id,
+        status: {
+          in: ['PENDING', 'CONFIRMED']
+        }
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+        startTime: true,
+        endTime: true,
+      }
+    });
+
+    const activeMaintenanceBlocks = await prisma.maintenanceBlock.findMany({
+      where: {
+        workspaceId: workspace.id,
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+        startTime: true,
+        endTime: true,
+      }
+    });
+
     return NextResponse.json({
       success: true,
       workspace: {
         ...workspace,
         specifications: specs,
         mediaUrls: media,
+        bookings: activeBookings,
+        maintenanceBlocks: activeMaintenanceBlocks,
       },
     });
   } catch (error: any) {
@@ -106,9 +103,7 @@ export async function PUT(
       isActive,
     } = body;
 
-    const updatePayload: any = {
-      updatedAt: new Date().toISOString(),
-    };
+    const updatePayload: any = {};
     if (title !== undefined) updatePayload.title = title;
     if (categoryId !== undefined) updatePayload.categoryId = categoryId;
     if (categoryName !== undefined) updatePayload.categoryName = categoryName;
@@ -127,40 +122,24 @@ export async function PUT(
     if (order !== undefined) updatePayload.order = order;
     if (isActive !== undefined) updatePayload.isActive = isActive;
 
-    let updatedWorkspace: any = null;
-
-    // 1. Direct Supabase update
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('workspaces')
-        .update(updatePayload)
-        .or(`id.eq.${id},slug.eq.${id}`)
-        .select();
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        updatedWorkspace = data[0];
+    // We must find the id since the param might be a slug
+    const existing = await prisma.workspace.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { slug: id }
+        ]
       }
-    } catch (sbErr) {
-      console.warn('Supabase workspace update error:', sbErr);
-    }
+    });
 
-    // 2. local JSON file fallback
-    try {
-      const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
-      const all = getLocalWorkspacesFallback();
-      const idx = all.findIndex((w: any) => w.id === id || w.slug === id);
-      if (idx >= 0) {
-        all[idx] = { ...all[idx], ...updatePayload };
-        if (!updatedWorkspace) updatedWorkspace = all[idx];
-        fs.writeFileSync(filePath, JSON.stringify(all, null, 2), 'utf-8');
-      }
-    } catch (fsErr) {
-      console.warn('Could not update local_workspaces.json:', fsErr);
-    }
-
-    if (!updatedWorkspace) {
+    if (!existing) {
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
+
+    const updatedWorkspace = await prisma.workspace.update({
+      where: { id: existing.id },
+      data: updatePayload,
+    });
 
     let specs = [];
     let media = [];
@@ -200,23 +179,19 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Direct Supabase delete
-    try {
-      await supabaseAdmin
-        .from('workspaces')
-        .delete()
-        .or(`id.eq.${id},slug.eq.${id}`);
-    } catch (sbErr) {
-      console.warn('Supabase workspace delete error:', sbErr);
-    }
+    const existing = await prisma.workspace.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { slug: id }
+        ]
+      }
+    });
 
-    try {
-      const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
-      const all = getLocalWorkspacesFallback();
-      const filtered = all.filter((w: any) => w.id !== id && w.slug !== id);
-      fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf-8');
-    } catch (fsErr) {
-      console.warn('Could not delete from local_workspaces.json:', fsErr);
+    if (existing) {
+      await prisma.workspace.delete({
+        where: { id: existing.id },
+      });
     }
 
     return NextResponse.json({

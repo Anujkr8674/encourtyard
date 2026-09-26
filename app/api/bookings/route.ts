@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma, isLiveDbConfigured, localStore, syncBookingsToDisk, LocalBooking } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { dispatchBookingCreatedEmails, BookingEmailData } from '@/lib/email';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
 
 export async function POST(req: Request) {
   try {
@@ -42,88 +43,53 @@ export async function POST(req: Request) {
       );
     }
 
-    const bookingId = `BK-${Math.floor(10000 + Math.random() * 90000)}`;
-
-    const newLocalBooking: LocalBooking = {
-      id: bookingId,
-      userId: session.id,
-      userEmail: session.email,
-      userName: session.name,
-      workspaceId: workspaceId || undefined,
-      workspaceTitle: workspaceTitle || 'EnCourtyard Premium Workspace',
-      workspaceSlug: workspaceSlug || undefined,
-      workspaceImage: workspaceImage || undefined,
-      categoryName: categoryName || 'Botanical Workspaces',
-      locationName: locationName || 'Maruthi Plaza, Khairtabad, Hyderabad',
-      fullName: fullName.trim(),
-      companyName: companyName ? companyName.trim() : null,
-      email: email.trim(),
-      phone: phone.trim(),
-      spaceType: spaceType || 'workspace',
-      plan: plan || 'monthly',
-      startDate: startDate || new Date().toISOString().split('T')[0],
-      endDate: endDate || startDate || new Date().toISOString().split('T')[0],
-      startTime: startTime || '09:00 AM',
-      endTime: endTime || '06:00 PM',
-      guests: Number(guests) || 1,
-      totalAmount: totalAmount || 'Custom Quote',
-      status: 'PENDING',
-      paymentStatus: 'PENDING',
-      adminNotes: null,
-      statusUpdatedAt: new Date(),
-      notesUpdatedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Save to resilient local disk store
-    localStore.bookings.set(bookingId, newLocalBooking);
-    syncBookingsToDisk();
-
-    // Try saving to Supabase PostgreSQL via Prisma if configured
-    if (isLiveDbConfigured) {
-      try {
-        await (prisma.booking as any).create({
-          data: {
-            id: bookingId,
-            userId: session.id,
-            locationId: workspaceId || 'loc-default',
-            locationName: locationName || 'Maruthi Plaza, Khairtabad, Hyderabad',
-            spaceType: spaceType || 'workspace',
-            bookingDate: new Date(startDate || Date.now()),
-            startTime: startTime || '09:00 AM',
-            endTime: endTime || '06:00 PM',
-            guests: Number(guests) || 1,
-            totalAmount: typeof totalAmount === 'number' ? totalAmount : 0,
-            status: 'PENDING',
-            paymentStatus: 'PENDING',
-          },
-        });
-      } catch (dbErr) {
-        console.warn('⚠️ [Prisma DB Booking Insert Warning]:', dbErr);
+    const newBooking = await prisma.booking.create({
+      data: {
+        userId: session.id,
+        workspaceId: workspaceId || null,
+        workspaceTitle: workspaceTitle || 'EnCourtyard Premium Workspace',
+        categoryName: categoryName || 'Botanical Workspaces',
+        locationName: locationName || 'Maruthi Plaza, Khairtabad, Hyderabad',
+        fullName: fullName.trim(),
+        companyName: companyName ? companyName.trim() : null,
+        email: email.trim(),
+        phone: phone.trim(),
+        spaceType: spaceType || 'workspace',
+        plan: plan || 'monthly',
+        bookingDate: startDate ? new Date(startDate) : new Date(),
+        startDate: startDate || new Date().toISOString().split('T')[0],
+        endDate: endDate || startDate || new Date().toISOString().split('T')[0],
+        startTime: startTime || '09:00 AM',
+        endTime: endTime || '06:00 PM',
+        guests: Number(guests) || 1,
+        totalAmount: typeof totalAmount === 'number' ? totalAmount : (totalAmount ? parseFloat(String(totalAmount).replace(/[^0-9.-]+/g, "")) : null),
+        status: 'PENDING' as BookingStatus,
+        paymentStatus: 'PENDING' as PaymentStatus,
+        adminNotes: null,
+        statusUpdatedAt: new Date(),
+        notesUpdatedAt: new Date(),
       }
-    }
+    });
 
-    // Trigger dual/single user email + admin alert notifications asynchronously
     const emailData: BookingEmailData = {
-      id: newLocalBooking.id,
-      fullName: newLocalBooking.fullName,
-      companyName: newLocalBooking.companyName,
-      email: newLocalBooking.email,
-      phone: newLocalBooking.phone,
-      workspaceTitle: newLocalBooking.workspaceTitle || 'EnCourtyard Workspace',
-      categoryName: newLocalBooking.categoryName,
-      locationName: newLocalBooking.locationName,
-      plan: newLocalBooking.plan,
-      startDate: newLocalBooking.startDate,
-      endDate: newLocalBooking.endDate,
-      startTime: newLocalBooking.startTime,
-      endTime: newLocalBooking.endTime,
-      guests: newLocalBooking.guests,
-      totalAmount: newLocalBooking.totalAmount,
-      status: newLocalBooking.status,
-      adminNotes: newLocalBooking.adminNotes,
-      createdAt: newLocalBooking.createdAt,
+      id: newBooking.id,
+      fullName: newBooking.fullName || '',
+      companyName: newBooking.companyName,
+      email: newBooking.email || '',
+      phone: newBooking.phone || '',
+      workspaceTitle: newBooking.workspaceTitle || 'EnCourtyard Workspace',
+      categoryName: newBooking.categoryName || '',
+      locationName: newBooking.locationName || '',
+      plan: newBooking.plan as any,
+      startDate: newBooking.startDate || '',
+      endDate: newBooking.endDate || '',
+      startTime: newBooking.startTime || '',
+      endTime: newBooking.endTime || '',
+      guests: newBooking.guests,
+      totalAmount: newBooking.totalAmount ? `₹${newBooking.totalAmount}` : 'Custom Quote',
+      status: newBooking.status,
+      adminNotes: newBooking.adminNotes,
+      createdAt: newBooking.createdAt,
     };
 
     dispatchBookingCreatedEmails(emailData, session.email).catch((mailErr) => {
@@ -132,7 +98,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      booking: newLocalBooking,
+      booking: newBooking,
       message: 'Reservation successfully submitted. Confirmation emails dispatched.',
     });
   } catch (error: unknown) {
@@ -152,8 +118,15 @@ export async function GET() {
       );
     }
 
-    const allBookings = Array.from(localStore.bookings.values());
-    const userBookings = allBookings.filter((b) => b.userId === session.id || b.email.toLowerCase() === session.email.toLowerCase());
+    const userBookings = await prisma.booking.findMany({
+      where: {
+        OR: [
+          { userId: session.id },
+          { email: session.email }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     return NextResponse.json({
       success: true,

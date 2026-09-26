@@ -62,11 +62,17 @@ export default function AdminBookingsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 15;
+
   // Selected Booking for Edit Modal
   const [editingBooking, setEditingBooking] = useState<BookingRecord | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<BookingRecord['status']>('PENDING');
+  const [completionType, setCompletionType] = useState<'instant' | 'maintenance'>('maintenance');
   const [adminNotesInput, setAdminNotesInput] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
 
   // Selected Booking for Details Drawer
   const [viewingBooking, setViewingBooking] = useState<BookingRecord | null>(null);
@@ -87,9 +93,9 @@ export default function AdminBookingsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Fetch Bookings from Live API
-  const fetchBookings = async () => {
+  const fetchBookings = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch('/api/admin/bookings', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
@@ -100,12 +106,19 @@ export default function AdminBookingsPage() {
     } catch (err) {
       console.error('Failed to load bookings:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchBookings();
+    
+    // Auto-refresh using polling every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchBookings(true);
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   // Filter Bookings
@@ -132,6 +145,18 @@ export default function AdminBookingsPage() {
     });
   }, [bookings, statusFilter, searchQuery]);
 
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  // Pagination Calculations
+  const totalPages = Math.ceil(filteredBookings.length / rowsPerPage);
+  const paginatedBookings = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredBookings.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredBookings, currentPage]);
+
   // Status Counts
   const counts = useMemo(() => {
     return {
@@ -147,6 +172,7 @@ export default function AdminBookingsPage() {
   const handleOpenEdit = (bk: BookingRecord) => {
     setEditingBooking(bk);
     setSelectedStatus(bk.status);
+    setCompletionType('maintenance');
     setAdminNotesInput(bk.adminNotes || '');
   };
 
@@ -155,14 +181,30 @@ export default function AdminBookingsPage() {
     if (!editingBooking) return;
     try {
       setIsUpdating(true);
+      setUpdateProgress(0);
+
+      const progressInterval = setInterval(() => {
+        setUpdateProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + 15;
+        });
+      }, 150);
+
       const res = await fetch(`/api/admin/bookings/${editingBooking.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: selectedStatus,
+          completionType: selectedStatus === 'COMPLETED' ? completionType : undefined,
           adminNotes: adminNotesInput.trim() || null,
         }),
       });
+
+      clearInterval(progressInterval);
+      setUpdateProgress(100);
+      
+      // Wait for progress animation to complete visually
+      await new Promise(r => setTimeout(r, 400));
 
       const data = await res.json();
       if (res.ok && data.success) {
@@ -195,6 +237,7 @@ export default function AdminBookingsPage() {
       });
     } finally {
       setIsUpdating(false);
+      setTimeout(() => setUpdateProgress(0), 300);
     }
   };
 
@@ -357,7 +400,7 @@ export default function AdminBookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E1D8]/60">
-                {filteredBookings.map((bk) => (
+                {paginatedBookings.map((bk) => (
                   <tr key={bk.id} className="hover:bg-[#FAF9F5]/70 transition-colors">
                     {/* Ref ID */}
                     <td className="py-3.5 px-4">
@@ -400,11 +443,11 @@ export default function AdminBookingsPage() {
                     </td>
 
                     {/* Schedule */}
-                    <td className="py-3.5 px-4">
-                      <span className="text-[#181F18] font-medium block">
+                    <td className="py-3.5 px-4 min-w-[150px] whitespace-nowrap">
+                      <span className="text-[#181F18] font-medium block text-xs">
                         {bk.startDate} ({bk.startTime})
                       </span>
-                      <span className="text-[#5C665C] text-[11px] block">
+                      <span className="text-[#5C665C] text-[11px] block mt-0.5">
                         → {bk.endDate} ({bk.endTime})
                       </span>
                       <span className="text-[10px] text-[#E65100] font-mono capitalize font-bold">
@@ -444,7 +487,7 @@ export default function AdminBookingsPage() {
                     </td>
 
                     {/* Admin Notes & Timestamp */}
-                    <td className="py-3.5 px-4 max-w-[220px]">
+                    <td className="py-3.5 px-4 min-w-[220px]">
                       {bk.adminNotes ? (
                         <div>
                           <p className="text-[#263626] font-medium line-clamp-2 text-[11px] leading-tight" title={bk.adminNotes}>
@@ -483,6 +526,32 @@ export default function AdminBookingsPage() {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-[#E5E1D8] bg-[#FAF9F5]">
+                <div className="text-xs text-[#5C665C] font-medium">
+                  Showing {(currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filteredBookings.length)} of {filteredBookings.length} entries
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-lg border border-[#E5E1D8] bg-white text-[#181F18] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EAE5DC] transition-colors cursor-pointer"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-xs font-bold text-[#181F18] px-2">{currentPage} / {totalPages}</span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-lg border border-[#E5E1D8] bg-white text-[#181F18] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EAE5DC] transition-colors cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -492,27 +561,28 @@ export default function AdminBookingsPage() {
       {/* ========================================================================= */}
       {editingBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn select-none">
-          <div className="relative z-10 w-full max-w-lg bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-left animate-scaleUp font-sans">
+          <div className="relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-left animate-scaleUp font-sans custom-scrollbar">
             
-            <div className="flex items-start justify-between pb-4 border-b border-[#E5E1D8]">
+            {/* Absolute Close Button */}
+            <button
+              onClick={() => setEditingBooking(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-neutral-100 text-[#5C665C] transition-colors cursor-pointer z-20"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="pb-4 border-b border-[#E5E1D8] pr-6">
               <div>
                 <span className="text-[10px] uppercase font-mono text-[#2E7D32] font-bold block">
                   MANAGE RESERVATION STATUS
                 </span>
-                <h3 className="font-serif text-xl font-bold text-[#181F18]">
-                  Update Status for {editingBooking.id}
+                <h3 className="font-serif text-xl font-bold text-[#181F18] pr-4">
+                  Update Status for <span className="font-sans font-medium text-lg tracking-wide break-all">{editingBooking.id}</span>
                 </h3>
                 <p className="text-xs text-[#5C665C] mt-0.5">
                   Host: <strong>{editingBooking.fullName}</strong> • Space: {editingBooking.workspaceTitle}
                 </p>
               </div>
-
-              <button
-                onClick={() => setEditingBooking(null)}
-                className="p-1.5 rounded-full hover:bg-neutral-100 text-[#5C665C] transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
             <div className="space-y-4 py-5 text-xs">
@@ -545,6 +615,45 @@ export default function AdminBookingsPage() {
                     </button>
                   ))}
                 </div>
+                
+                {/* Sub-options for COMPLETED status */}
+                {selectedStatus === 'COMPLETED' && (
+                  <div className="mt-3 p-3 rounded-xl bg-blue-50 border border-blue-200 animate-fadeIn">
+                    <label className="font-bold text-blue-900 block mb-2 text-[11px]">
+                      Completion Mode <span className="text-red-500">*</span>
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-start gap-2 cursor-pointer group">
+                        <input 
+                          type="radio" 
+                          name="completionType" 
+                          value="maintenance"
+                          checked={completionType === 'maintenance'}
+                          onChange={() => setCompletionType('maintenance')}
+                          className="mt-0.5 accent-blue-600"
+                        />
+                        <div>
+                          <span className="block font-bold text-blue-900 text-xs">Requires Maintenance (1Hr Buffer)</span>
+                          <span className="block text-[10px] text-blue-700 leading-tight mt-0.5">Blocks the workspace for 1 hour after the booking ends before it becomes available again.</span>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer pt-2 border-t border-blue-100/50 group">
+                        <input 
+                          type="radio" 
+                          name="completionType" 
+                          value="instant"
+                          checked={completionType === 'instant'}
+                          onChange={() => setCompletionType('instant')}
+                          className="mt-0.5 accent-blue-600"
+                        />
+                        <div>
+                          <span className="block font-bold text-blue-900 text-xs">Instant Available</span>
+                          <span className="block text-[10px] text-blue-700 leading-tight mt-0.5">Workspace is immediately open for new bookings on the public site.</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Customer Notes */}
@@ -586,16 +695,33 @@ export default function AdminBookingsPage() {
                 disabled={isUpdating}
                 className="px-6 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs shadow-md transition-all active:scale-98 cursor-pointer disabled:opacity-70 flex items-center gap-1.5"
               >
-                {isUpdating ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Saving & Sending Emails...</span>
-                  </>
-                ) : (
-                  <span>Save Status & Dispatch Emails</span>
-                )}
+                <span>Save Status & Dispatch Emails</span>
               </button>
             </div>
+
+            {/* Progress Overlay Modal */}
+            {isUpdating && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-3xl p-6 text-center shadow-inner">
+                <div className="w-full max-w-[260px] bg-white p-6 rounded-2xl border border-[#E5E1D8] shadow-2xl flex flex-col items-center animate-scaleUp">
+                  <div className="w-12 h-12 rounded-full bg-[#E8F5E9] flex items-center justify-center mb-3">
+                    <Mail className="w-6 h-6 text-[#2E7D32]" />
+                  </div>
+                  <h3 className="text-lg font-serif font-bold text-[#181F18] mb-1">Sending Emails...</h3>
+                  <p className="text-[11px] text-[#5C665C] mb-5">Updating status & notifying client</p>
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full bg-[#EAE5DB] rounded-full h-1.5 mb-2 overflow-hidden shadow-inner">
+                    <div 
+                      className="bg-[#2E7D32] h-full transition-all duration-150 ease-out relative" 
+                      style={{ width: `${updateProgress}%` }} 
+                    >
+                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[#2E7D32]">{updateProgress}%</span>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>

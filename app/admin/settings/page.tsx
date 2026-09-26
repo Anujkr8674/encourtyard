@@ -22,6 +22,7 @@ export default function AdminSettingsPage() {
   const [adminEmail, setAdminEmail] = useState('anujkr8674@gmail.com');
   const [senderEmail, setSenderEmail] = useState('encourtyardwebsite@gmail.com');
   const [smtpConfigured, setSmtpConfigured] = useState(true);
+  const [autoCompleteBookings, setAutoCompleteBookings] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +52,7 @@ export default function AdminSettingsPage() {
             if (data.settings.admin_email) setAdminEmail(data.settings.admin_email);
             if (data.settings.smtp_sender) setSenderEmail(data.settings.smtp_sender);
             if (data.settings.smtp_configured !== undefined) setSmtpConfigured(data.settings.smtp_configured);
+            if (data.settings.auto_complete_bookings !== undefined) setAutoCompleteBookings(data.settings.auto_complete_bookings);
           }
         }
       } catch (err) {
@@ -64,10 +66,11 @@ export default function AdminSettingsPage() {
   }, []);
 
   // Toggle Handler
-  const handleToggle = async (key: 'admin_email_notify_new_booking' | 'admin_email_notify_status_update', currentVal: boolean) => {
+  const handleToggle = async (key: 'admin_email_notify_new_booking' | 'admin_email_notify_status_update' | 'auto_complete_bookings', currentVal: boolean) => {
     const newVal = !currentVal;
     if (key === 'admin_email_notify_new_booking') setNotifyNewBooking(newVal);
     if (key === 'admin_email_notify_status_update') setNotifyStatusUpdate(newVal);
+    if (key === 'auto_complete_bookings') setAutoCompleteBookings(newVal);
 
     try {
       setSaving(true);
@@ -81,6 +84,7 @@ export default function AdminSettingsPage() {
         // Revert on error
         if (key === 'admin_email_notify_new_booking') setNotifyNewBooking(currentVal);
         if (key === 'admin_email_notify_status_update') setNotifyStatusUpdate(currentVal);
+        if (key === 'auto_complete_bookings') setAutoCompleteBookings(currentVal);
         setFeedback({
           isOpen: true,
           type: 'error',
@@ -92,6 +96,7 @@ export default function AdminSettingsPage() {
       // Revert on error
       if (key === 'admin_email_notify_new_booking') setNotifyNewBooking(currentVal);
       if (key === 'admin_email_notify_status_update') setNotifyStatusUpdate(currentVal);
+      if (key === 'auto_complete_bookings') setAutoCompleteBookings(currentVal);
     } finally {
       setSaving(false);
     }
@@ -201,6 +206,37 @@ export default function AdminSettingsPage() {
                 <span
                   className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                     notifyStatusUpdate ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Toggle 3: Auto-Complete Expired Bookings */}
+            <div className="p-4 rounded-2xl bg-[#FAF9F5] border border-[#E5E1D8] flex items-start justify-between gap-4 sm:col-span-2 md:col-span-1">
+              <div className="space-y-1">
+                <h4 className="font-bold text-xs sm:text-sm text-[#181F18]">
+                  Auto-Complete Expired Bookings
+                </h4>
+                <p className="text-[11px] sm:text-xs text-[#5C665C] leading-relaxed">
+                  Automatically mark CONFIRMED bookings as COMPLETED once their time has passed, applying a 1-hour maintenance buffer automatically.
+                </p>
+                <span className="text-[10px] text-[#2E7D32] font-mono block pt-1">
+                  Status: {autoCompleteBookings ? 'ACTIVE (Automated)' : 'MUTED (Manual Only)'}
+                </span>
+              </div>
+
+              {/* iOS-Style Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => handleToggle('auto_complete_bookings', autoCompleteBookings)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  autoCompleteBookings ? 'bg-[#2E7D32]' : 'bg-neutral-300'
+                }`}
+                aria-label="Toggle auto complete bookings"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    autoCompleteBookings ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>

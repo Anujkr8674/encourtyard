@@ -24,6 +24,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+import { useRouter } from 'next/navigation';
+import { checkWorkspaceAvailabilityDetailed, getDefaultDates, BookingSlot } from '@/lib/availability';
+import { CountdownBadge } from '@/components/ui/CountdownBadge';
+
 interface SpecItem {
   key: string;
   value: string;
@@ -51,9 +55,11 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  bookings?: BookingSlot[];
 }
 
 export const PopularPicksSection: React.FC = () => {
+  const router = useRouter();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -89,15 +95,8 @@ export const PopularPicksSection: React.FC = () => {
         setLoading(true);
         const res = await fetch('/api/popular-picks', { cache: 'no-store' });
         const data = await res.json();
-        if (data.success && Array.isArray(data.workspaces) && data.workspaces.length > 0) {
+        if (data.success && Array.isArray(data.workspaces)) {
           setWorkspaces(data.workspaces.slice(0, 10));
-        } else {
-          // Fallback to regular workspaces
-          const wsRes = await fetch('/api/workspaces', { cache: 'no-store' });
-          const wsData = await wsRes.json();
-          if (wsData.success && Array.isArray(wsData.workspaces)) {
-            setWorkspaces(wsData.workspaces.slice(0, 10));
-          }
         }
       } catch (err) {
         console.error('Failed to load popular picks:', err);
@@ -390,6 +389,15 @@ export const PopularPicksSection: React.FC = () => {
               {/* Workspace Cards (Top 10) */}
               {workspaces.map((ws, idx) => {
                 const firstMedia = ws.mediaUrls?.[0];
+                const defaultDates = getDefaultDates();
+                const { isAvailable, nextAvailableTimestamp } = checkWorkspaceAvailabilityDetailed(
+                  ws.bookings,
+                  ws.maintenanceBlocks,
+                  defaultDates.startDate,
+                  defaultDates.startTime,
+                  defaultDates.endDate,
+                  defaultDates.endTime
+                );
 
                 return (
                   <div
@@ -429,12 +437,18 @@ export const PopularPicksSection: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Top Right: Popular Rank Badge */}
-                        <div className="absolute top-3 right-3">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2E7D32] text-white text-[10px] font-mono font-bold shadow-sm select-none">
-                            #{idx + 1} PICK
-                          </span>
-                        </div>
+                        {/* Top Right: Popular Rank Badge / Booked Badge */}
+                        {!isAvailable ? (
+                          <div className="absolute top-3 right-3">
+                            <CountdownBadge targetTimestamp={nextAvailableTimestamp} className="!text-[10px] !px-2.5 !py-0.5" />
+                          </div>
+                        ) : (
+                          <div className="absolute top-3 right-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#2E7D32] text-white text-[10px] font-mono font-bold shadow-sm select-none">
+                              #{idx + 1} PICK
+                            </span>
+                          </div>
+                        )}
 
                         {/* Bottom Bar on Image: Price & Capacity */}
                         <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white text-xs select-none">
@@ -481,21 +495,28 @@ export const PopularPicksSection: React.FC = () => {
                     <div className="p-4 sm:p-5 pt-0 grid grid-cols-2 gap-2 border-t border-[#E0DCD3]/60 group-hover:border-white/15 mt-2 transition-colors">
                       <button
                         type="button"
+                        disabled={!isAvailable}
                         onClick={(e) => {
                           e.stopPropagation();
-                          openBookModal(ws);
+                          if (!isAvailable) return;
+                          const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&startDate=${defaultDates.startDate}&endDate=${defaultDates.endDate}&startTime=${encodeURIComponent(defaultDates.startTime)}&endTime=${encodeURIComponent(defaultDates.endTime)}`;
+                          router.push(targetUrl);
                         }}
-                        className="w-full py-2.5 px-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] text-xs font-bold transition-all shadow-xs hover:shadow-md flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                        className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 ${
+                          !isAvailable
+                            ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
+                            : 'bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] hover:shadow-md cursor-pointer active:scale-95'
+                        }`}
                       >
-                        <Calendar className="w-3.5 h-3.5 group-hover:text-[#0D160E] transition-colors" />
-                        <span>Book Now</span>
+                        <Calendar className={`w-3.5 h-3.5 transition-colors ${!isAvailable ? '' : 'group-hover:text-[#0D160E]'}`} />
+                        <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openDetails(ws);
+                          router.push(`/book-space/${ws.id}`);
                         }}
                         className="w-full py-2.5 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] group-hover:bg-white/10 group-hover:hover:bg-white/20 text-[#181F18] group-hover:text-white border border-[#E0DCD3] group-hover:border-white/30 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
                       >

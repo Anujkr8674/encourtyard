@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { localStore, syncSettingsToDisk } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { getSmtpConfig } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const settingsMap = localStore.settings;
+    const settings = await prisma.systemSetting.findMany();
     const smtp = getSmtpConfig();
 
-    const notifyNewBooking = settingsMap.get('admin_email_notify_new_booking')?.value !== 'false';
-    const notifyStatusUpdate = settingsMap.get('admin_email_notify_status_update')?.value !== 'false';
+    const notifyNewBookingSetting = settings.find(s => s.key === 'admin_email_notify_new_booking');
+    const notifyStatusUpdateSetting = settings.find(s => s.key === 'admin_email_notify_status_update');
+
+    const notifyNewBooking = notifyNewBookingSetting?.value !== 'false';
+    const notifyStatusUpdate = notifyStatusUpdateSetting?.value !== 'false';
 
     return NextResponse.json({
       success: true,
@@ -33,33 +36,33 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const settingsMap = localStore.settings;
-    const now = new Date();
 
     if (body.admin_email_notify_new_booking !== undefined) {
-      settingsMap.set('admin_email_notify_new_booking', {
-        key: 'admin_email_notify_new_booking',
-        value: String(body.admin_email_notify_new_booking),
-        updatedAt: now,
+      await prisma.systemSetting.upsert({
+        where: { key: 'admin_email_notify_new_booking' },
+        update: { value: String(body.admin_email_notify_new_booking) },
+        create: { key: 'admin_email_notify_new_booking', value: String(body.admin_email_notify_new_booking) }
       });
     }
 
     if (body.admin_email_notify_status_update !== undefined) {
-      settingsMap.set('admin_email_notify_status_update', {
-        key: 'admin_email_notify_status_update',
-        value: String(body.admin_email_notify_status_update),
-        updatedAt: now,
+      await prisma.systemSetting.upsert({
+        where: { key: 'admin_email_notify_status_update' },
+        update: { value: String(body.admin_email_notify_status_update) },
+        create: { key: 'admin_email_notify_status_update', value: String(body.admin_email_notify_status_update) }
       });
     }
 
-    syncSettingsToDisk();
+    const settings = await prisma.systemSetting.findMany();
+    const notifyNewBookingSetting = settings.find(s => s.key === 'admin_email_notify_new_booking');
+    const notifyStatusUpdateSetting = settings.find(s => s.key === 'admin_email_notify_status_update');
 
     return NextResponse.json({
       success: true,
       message: 'Admin notification preferences saved successfully',
       settings: {
-        admin_email_notify_new_booking: settingsMap.get('admin_email_notify_new_booking')?.value !== 'false',
-        admin_email_notify_status_update: settingsMap.get('admin_email_notify_status_update')?.value !== 'false',
+        admin_email_notify_new_booking: notifyNewBookingSetting?.value !== 'false',
+        admin_email_notify_status_update: notifyStatusUpdateSetting?.value !== 'false',
       },
     });
   } catch (error: unknown) {

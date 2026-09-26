@@ -171,4 +171,27 @@ model GalleryImage {
   @@map("gallery_images")
 }
 
+model PopularPick {
+  id          String   @id @default(uuid())
+  workspaceId String   @unique
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  @@map("popular_picks")
+}
+
+
+model MaintenanceBlock {
+  id          String   @id @default(uuid())
+  workspaceId String
+  startDate   String
+  endDate     String
+  startTime   String
+  endTime     String
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+  @@map("maintenance_blocks")
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, isLiveDbConfigured, localStore, LocalOtp } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { sendOtpEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -12,40 +12,22 @@ export async function POST(request: Request) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const targetUser = localStore.users?.get(normalizedEmail);
+    const targetUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     const userName = targetUser?.name || 'Valued Member';
 
     // Generate fresh OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Save in localStore
-    const otpData: LocalOtp = {
-      id: `otp_${Date.now()}`,
-      email: normalizedEmail,
-      otpCode,
-      purpose: 'SIGNUP_VERIFICATION',
-      expiresAt,
-      isUsed: false,
-      createdAt: new Date(),
-    };
-    localStore.otps?.set(normalizedEmail, otpData);
-
     // Save in Prisma
-    if (isLiveDbConfigured) {
-      try {
-        await prisma.otpVerification.create({
-          data: {
-            email: normalizedEmail,
-            otpCode,
-            purpose: 'SIGNUP_VERIFICATION',
-            expiresAt,
-          },
-        });
-      } catch (err) {
-        console.warn('⚠️ [Prisma DB Warning]:', err);
-      }
-    }
+    await prisma.otpVerification.create({
+      data: {
+        email: normalizedEmail,
+        otpCode,
+        purpose: 'SIGNUP_VERIFICATION',
+        expiresAt,
+      },
+    });
 
     // Send email
     await sendOtpEmail({

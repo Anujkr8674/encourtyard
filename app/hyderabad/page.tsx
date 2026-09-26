@@ -35,6 +35,11 @@ function useTypewriter(text: string, speed: number = 50) {
 export default function HyderabadPage() {
   const heroHeadingText = "Premium Workspaces in Hyderabad.";
   const typedHeading = useTypewriter(heroHeadingText, 70);
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
 
   return (
     <div className="flex flex-col w-full max-w-full overflow-x-hidden min-h-screen">
@@ -48,7 +53,7 @@ export default function HyderabadPage() {
           <img 
             src="/images/book.png" 
             alt="Hyderabad Workspace" 
-            className="w-full h-full object-cover object-center filter brightness-100 contrast-105"
+            className={`w-full h-full object-cover object-center filter brightness-100 contrast-105 transition-transform duration-[7000ms] ease-out ${isLoaded ? 'scale-105' : 'scale-100'}`}
           />
         </div>
 

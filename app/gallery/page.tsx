@@ -68,6 +68,11 @@ export default function GalleryPage() {
     []
   );
   const { typedLines, currentLineIndex, isTyping } = useLineTypewriter(typewriterLines, 30);
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -122,7 +127,7 @@ export default function GalleryPage() {
           <img 
             src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2000&q=80" 
             alt="Gallery Hero" 
-            className="w-full h-full object-cover object-center filter brightness-100 contrast-105"
+            className={`w-full h-full object-cover object-center filter brightness-100 contrast-105 transition-transform duration-[7000ms] ease-out ${isLoaded ? 'scale-105' : 'scale-100'}`}
           />
         </div>
 

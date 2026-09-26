@@ -166,12 +166,13 @@ export const Hero: React.FC = () => {
                 <img
                   src={slide.image}
                   alt={slide.titleLine1}
-                  className={`w-full h-full object-cover object-center sm:object-right transition-transform duration-[7000ms] ease-out ${isActive ? 'scale-105' : 'scale-100'
+                  className={`w-full h-full object-cover object-center sm:object-right filter brightness-100 contrast-105 transition-transform duration-[7000ms] ease-out ${isActive ? 'scale-105' : 'scale-100'
                     }`}
                 />
               </div>
             );
           })}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10" />
         </div>
 
         {/* Main Hero Foreground Content with 50px+ top clearance in window view */}

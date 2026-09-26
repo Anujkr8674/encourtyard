@@ -1,62 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
-import fs from 'fs';
-import path from 'path';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
-
-function getLocalWorkspacesFallback(): any[] {
-  try {
-    const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn('Could not read local_workspaces.json:', err);
-  }
-  return [];
-}
 
 export async function GET(req: NextRequest) {
   try {
     const categoryId = req.nextUrl?.searchParams?.get('categoryId');
 
-    let workspaces: any[] = [];
+    const whereClause = categoryId ? { categoryId } : {};
 
-    // 1. Try Supabase
-    try {
-      let query = supabaseAdmin
-        .from('workspaces')
-        .select('*')
-        .order('order', { ascending: true });
+    const workspaces = await prisma.workspace.findMany({
+      where: whereClause,
+      orderBy: { order: 'asc' },
+    });
 
-      if (categoryId) {
-        query = query.eq('categoryId', categoryId);
+    const activeBookings = await prisma.booking.findMany({
+      where: {
+        status: {
+          in: ['PENDING', 'CONFIRMED']
+        }
+      },
+      select: {
+        workspaceId: true,
+        startDate: true,
+        endDate: true,
+        startTime: true,
+        endTime: true,
       }
+    });
 
-      const { data, error } = await query;
-      if (!error && Array.isArray(data) && data.length > 0) {
-        workspaces = data;
+    const activeMaintenanceBlocks = await prisma.maintenanceBlock.findMany({
+      select: {
+        workspaceId: true,
+        startDate: true,
+        endDate: true,
+        startTime: true,
+        endTime: true,
       }
-    } catch (sbErr) {
-      console.warn('Supabase fetch error for workspaces:', sbErr);
-    }
+    });
 
-    // 2. Fallback to local JSON file
-    if (workspaces.length === 0) {
-      let localList = getLocalWorkspacesFallback();
-      if (categoryId) {
-        localList = localList.filter((w) => w.categoryId === categoryId);
-      }
-      workspaces = localList.sort((a, b) => (a.order || 0) - (b.order || 0));
-    }
-
-    // Parse JSON fields safely if stringified and ensure fallback data
-    const formatted = workspaces.map((w: any) => {
+    // Parse JSON fields safely
+    const formatted = workspaces.map((w) => {
       let specs = [];
       let media = [];
       try {
@@ -70,10 +54,15 @@ export async function GET(req: NextRequest) {
         media = [];
       }
 
+      const wBookings = activeBookings.filter(b => b.workspaceId === w.id);
+      const wMaintenanceBlocks = activeMaintenanceBlocks.filter(b => b.workspaceId === w.id);
+
       return {
         ...w,
         specifications: specs,
         mediaUrls: media,
+        bookings: wBookings,
+        maintenanceBlocks: wMaintenanceBlocks,
       };
     });
 
@@ -84,12 +73,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error in GET /api/workspaces:', error);
-    const fallbackList = getLocalWorkspacesFallback();
-    return NextResponse.json({
-      success: true,
-      workspaces: fallbackList,
-      count: fallbackList.length,
-    });
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch workspaces' },
+      { status: 500 }
+    );
   }
 }
 
@@ -126,52 +113,24 @@ export async function POST(req: NextRequest) {
     const specsJson = typeof specifications === 'string' ? specifications : JSON.stringify(specifications || []);
     const mediaJson = typeof mediaUrls === 'string' ? mediaUrls : JSON.stringify(mediaUrls || []);
 
-    const newWorkspaceData = {
-      id: `ws-${Date.now()}`,
-      title: title.trim(),
-      slug: `${slug}-${Date.now().toString().slice(-4)}`,
-      categoryId: categoryId.trim(),
-      categoryName: categoryName?.trim() || 'Workspace Category',
-      shortDescription: shortDescription.trim(),
-      longDescription: longDescription?.trim() || null,
-      specifications: specsJson,
-      mediaUrls: mediaJson,
-      price: price?.trim() || null,
-      capacity: capacity?.trim() || null,
-      location: location?.trim() || null,
-      badge: badge?.trim() || null,
-      order: typeof order === 'number' ? order : 1,
-      isActive: isActive !== false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    let createdWorkspace = newWorkspaceData;
-
-    // Save directly to Supabase
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('workspaces')
-        .insert(newWorkspaceData)
-        .select()
-        .single();
-
-      if (!error && data) {
-        createdWorkspace = data;
-      }
-    } catch (sbErr) {
-      console.warn('Supabase workspace create fallback:', sbErr);
-    }
-
-    // Also persist to local JSON file
-    try {
-      const filePath = path.join(process.cwd(), 'data', 'local_workspaces.json');
-      const currentList = getLocalWorkspacesFallback();
-      const updatedList = [createdWorkspace, ...currentList.filter(w => w.id !== createdWorkspace.id)];
-      fs.writeFileSync(filePath, JSON.stringify(updatedList, null, 2), 'utf-8');
-    } catch (fsErr) {
-      console.warn('Could not write workspace to local_workspaces.json:', fsErr);
-    }
+    const createdWorkspace = await prisma.workspace.create({
+      data: {
+        title: title.trim(),
+        slug: `${slug}-${Date.now().toString().slice(-4)}`,
+        categoryId: categoryId.trim(),
+        categoryName: categoryName?.trim() || 'Workspace Category',
+        shortDescription: shortDescription.trim(),
+        longDescription: longDescription?.trim() || null,
+        specifications: specsJson,
+        mediaUrls: mediaJson,
+        price: price?.trim() || null,
+        capacity: capacity?.trim() || null,
+        location: location?.trim() || null,
+        badge: badge?.trim() || null,
+        order: typeof order === 'number' ? order : 1,
+        isActive: isActive !== false,
+      },
+    });
 
     return NextResponse.json({
       success: true,

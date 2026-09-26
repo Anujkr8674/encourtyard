@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, isLiveDbConfigured, localStore } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { comparePassword, signUserToken, USER_COOKIE_NAME, SESSION_DURATION_SECONDS } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -15,34 +15,10 @@ export async function POST(request: Request) {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    let user = localStore.users?.get(normalizedEmail);
-
-    // Check in Prisma if live
-    if (isLiveDbConfigured) {
-      try {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: normalizedEmail },
-        });
-
-        if (dbUser) {
-          user = {
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            phone: dbUser.phone,
-            passwordHash: dbUser.passwordHash,
-            company: dbUser.company,
-            role: dbUser.role,
-            isEmailVerified: dbUser.isEmailVerified,
-            avatarUrl: dbUser.avatarUrl,
-            createdAt: dbUser.createdAt,
-            updatedAt: dbUser.updatedAt,
-          };
-        }
-      } catch (dbErr) {
-        console.warn('⚠️ [Prisma DB Warning]:', dbErr);
-      }
-    }
+    
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
     if (!user) {
       return NextResponse.json(

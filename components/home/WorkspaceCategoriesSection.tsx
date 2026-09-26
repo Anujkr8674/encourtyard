@@ -18,6 +18,8 @@ import {
   RefreshCw,
   FolderOpen
 } from 'lucide-react';
+import { checkWorkspaceAvailabilityDetailed, getDefaultDates, BookingSlot } from '@/lib/availability';
+import { CountdownBadge } from '@/components/ui/CountdownBadge';
 
 // Sub-Item Interface
 export interface SubCategoryItem {
@@ -29,6 +31,8 @@ export interface SubCategoryItem {
   bookLink: string;
   capacity?: string | null;
   badge?: string | null;
+  bookings?: BookingSlot[];
+  maintenanceBlocks?: BookingSlot[];
 }
 
 // Category Interface
@@ -176,10 +180,11 @@ export const WorkspaceCategoriesSection: React.FC = () => {
             title: ws.title,
             description: ws.shortDescription,
             image: getWorkspaceImage(ws, dbCat.imageUrl || ''),
-            link: `/workspaces?category=${dbCat.slug || dbCat.id}&id=${ws.id}`,
-            bookLink: `/book?category=${dbCat.slug || dbCat.id}&workspace=${ws.slug || ws.id}`,
+            link: `/book-space/${ws.id}`,
+            bookLink: `/book?workspace=${ws.id}`,
             capacity: ws.capacity,
             badge: ws.badge,
+            bookings: ws.bookings,
           }));
 
           const catIcon = getCategoryIcon(dbCat.name, dbCat.slug);
@@ -928,59 +933,92 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     >
                       {currentActiveCategory.subItems.length > 0 ? (
-                        currentActiveCategory.subItems.map((subItem) => (
-                          <div
-                            key={subItem.id}
-                            className="group bg-white text-[#181F18] rounded-2xl border border-white/10 hover:border-white/30 overflow-hidden shadow-warm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between w-[210px] sm:w-[220px] shrink-0 snap-start select-none"
-                          >
-                            {/* Thumbnail Image */}
-                            <div className="aspect-[16/11] w-full overflow-hidden bg-[#EAE5DB] relative">
-                              <img
-                                src={subItem.image}
-                                alt={subItem.title}
-                                className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out pointer-events-none"
-                                loading="lazy"
-                              />
-                            </div>
+                        currentActiveCategory.subItems.map((subItem) => {
+                          const defaultDates = getDefaultDates();
+                          const { isAvailable, nextAvailableTimestamp } = checkWorkspaceAvailabilityDetailed(
+                            subItem.bookings,
+                            subItem.maintenanceBlocks,
+                            defaultDates.startDate,
+                            defaultDates.startTime,
+                            defaultDates.endDate,
+                            defaultDates.endTime
+                          );
+                          const finalBookLink = `${subItem.bookLink}&startDate=${defaultDates.startDate}&endDate=${defaultDates.endDate}&startTime=${encodeURIComponent(defaultDates.startTime)}&endTime=${encodeURIComponent(defaultDates.endTime)}`;
 
-                            {/* Text Details */}
-                            <div className="p-3.5 flex flex-col justify-between flex-grow">
-                              <div className="mb-3">
-                                <h4 className="font-serif font-bold text-xs sm:text-sm text-[#181F18] group-hover:text-[#263626] transition-colors leading-tight mb-1">
-                                  {subItem.title}
-                                </h4>
-                                <p className="text-[11px] text-[#5C665C] font-sans leading-snug line-clamp-2">
-                                  {subItem.description}
-                                </p>
+                          return (
+                            <div
+                              key={subItem.id}
+                              className="group bg-white text-[#181F18] rounded-2xl border border-white/10 hover:border-white/30 overflow-hidden shadow-warm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between w-[210px] sm:w-[220px] shrink-0 snap-start select-none relative"
+                            >
+                              {/* Top Right: Booked Badge */}
+                              {!isAvailable ? (
+                                <div className="absolute top-2 right-2 z-10">
+                                  <CountdownBadge targetTimestamp={nextAvailableTimestamp} className="!text-[9px] !px-2.5 !py-0.5" />
+                                </div>
+                              ) : subItem.badge ? (
+                                <div className="absolute top-2 right-2 z-10">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E65100] text-white text-[9px] font-mono font-bold shadow-sm select-none">
+                                    {subItem.badge}
+                                  </span>
+                                </div>
+                              ) : null}
+
+                              {/* Thumbnail Image */}
+                              <div className="aspect-[16/11] w-full overflow-hidden bg-[#EAE5DB] relative">
+                                <img
+                                  src={subItem.image}
+                                  alt={subItem.title}
+                                  className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out pointer-events-none"
+                                  loading="lazy"
+                                />
                               </div>
 
-                              {/* Card Footer with BOOK NOW Button & Direct Link */}
-                              <div className="pt-2.5 border-t border-[#F2EEE7] flex items-center justify-between gap-2">
-                                <Link
-                                  href={subItem.bookLink}
-                                  onClick={(e) => {
-                                    if (subDragDistance > 10) e.preventDefault();
-                                  }}
-                                  className="flex-1 bg-[#263626] hover:bg-[#181F18] text-white text-[11px] font-semibold py-1.5 px-3 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
-                                >
-                                  <CalendarCheck className="w-3 h-3 text-[#4ADE80]" />
-                                  <span>Book Now</span>
-                                </Link>
+                              {/* Text Details */}
+                              <div className="p-3.5 flex flex-col justify-between flex-grow">
+                                <div className="mb-3">
+                                  <h4 className="font-serif font-bold text-xs sm:text-sm text-[#181F18] group-hover:text-[#263626] transition-colors leading-tight mb-1">
+                                    {subItem.title}
+                                  </h4>
+                                  <p className="text-[11px] text-[#5C665C] font-sans leading-snug line-clamp-2">
+                                    {subItem.description}
+                                  </p>
+                                </div>
 
-                                <Link
-                                  href={subItem.link}
-                                  onClick={(e) => {
-                                    if (subDragDistance > 10) e.preventDefault();
-                                  }}
-                                  className="w-7 h-7 rounded-lg bg-[#FAF9F5] hover:bg-[#263626] text-[#263626] hover:text-white border border-[#E5E1D8] flex items-center justify-center transition-all shrink-0"
-                                  title="View Details"
-                                >
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                </Link>
+                                {/* Card Footer with BOOK NOW Button & Direct Link */}
+                                <div className="pt-2.5 border-t border-[#F2EEE7] flex items-center justify-between gap-2">
+                                  {isAvailable ? (
+                                    <Link
+                                      href={finalBookLink}
+                                      onClick={(e) => {
+                                        if (subDragDistance > 10) e.preventDefault();
+                                      }}
+                                      className="flex-1 bg-[#263626] hover:bg-[#181F18] text-white text-[11px] font-semibold py-1.5 px-3 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                                    >
+                                      <CalendarCheck className="w-3 h-3 text-[#4ADE80]" />
+                                      <span>Book Now</span>
+                                    </Link>
+                                  ) : (
+                                    <div className="flex-1 bg-[#E5E1D8] text-[#8C968C] text-[11px] font-semibold py-1.5 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1.5 cursor-not-allowed">
+                                      <CalendarCheck className="w-3 h-3 text-[#8C968C]" />
+                                      <span>Not Available</span>
+                                    </div>
+                                  )}
+
+                                  <Link
+                                    href={subItem.link}
+                                    onClick={(e) => {
+                                      if (subDragDistance > 10) e.preventDefault();
+                                    }}
+                                    className="w-7 h-7 rounded-lg bg-[#FAF9F5] hover:bg-[#263626] text-[#263626] hover:text-white border border-[#E5E1D8] flex items-center justify-center transition-all shrink-0"
+                                    title="View Details"
+                                  >
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                  </Link>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <div className="p-6 bg-white/10 rounded-2xl border border-dashed border-white/20 flex flex-col justify-center items-center text-center w-[260px] shrink-0 text-white">
                           <p className="text-xs font-semibold text-white mb-1">
