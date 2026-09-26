@@ -72,6 +72,7 @@ interface Workspace {
   order: number;
   isActive: boolean;
   bookings?: BookingSlot[];
+  maintenanceBlocks?: BookingSlot[];
 }
 
 // 12-Hour AM/PM Time Slots (every 30 mins)

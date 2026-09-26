@@ -265,7 +265,7 @@ export default function AdminBookingsPage() {
         </div>
 
         <button
-          onClick={fetchBookings}
+          onClick={() => fetchBookings()}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white hover:bg-neutral-50 text-[#181F18] border border-[#E5E1D8] text-xs font-bold shadow-xs transition-all cursor-pointer self-start sm:self-center"
         >
           <RotateCcw className="w-3.5 h-3.5 text-[#2E7D32]" />

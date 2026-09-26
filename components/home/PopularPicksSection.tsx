@@ -56,6 +56,7 @@ interface Workspace {
   order: number;
   isActive: boolean;
   bookings?: BookingSlot[];
+  maintenanceBlocks?: BookingSlot[];
 }
 
 export const PopularPicksSection: React.FC = () => {

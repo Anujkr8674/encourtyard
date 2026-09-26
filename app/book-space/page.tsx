@@ -69,6 +69,7 @@ interface Workspace {
   order: number;
   isActive: boolean;
   bookings?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
+  maintenanceBlocks?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
 }
 
 function parseBookingDateTime(dateStr: string, timeStr: string): number {
