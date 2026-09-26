@@ -438,14 +438,14 @@ export const Hero: React.FC = () => {
                   onChange={(e) => setSelectedLocation(e.target.value)}
                   className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#181F18] focus:outline-none cursor-pointer"
                 >
-                  <option value="bangalore">Bangalore (12 Centres)</option>
+                  {/* <option value="bangalore">Bangalore (12 Centres)</option>
                   <option value="delhi">Delhi (10 Centres)</option>
                   <option value="gurgaon">Gurgaon (14 Centres)</option>
-                  <option value="chennai">Chennai (9 Centres)</option>
-                  <option value="hyderabad">Hyderabad (9 Centres)</option>
-                  <option value="mumbai">Mumbai (15 Centres)</option>
+                  <option value="chennai">Chennai (9 Centres)</option> */}
+                  <option value="hyderabad">Hyderabad </option>
+                  {/* <option value="mumbai">Mumbai (15 Centres)</option>
                   <option value="noida">Noida (7 Centres)</option>
-                  <option value="pune">Pune (3 Centres)</option>
+                  <option value="pune">Pune (3 Centres)</option> */}
                 </select>
               </div>
             </div>

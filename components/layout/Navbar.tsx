@@ -131,14 +131,16 @@ export const Navbar: React.FC = () => {
   }, [mobileMenuOpen]);
 
   const isHome = pathname === '/';
-  const hasHeroCover = pathname === '/' || pathname === '/book-space' || pathname.startsWith('/book-space') || pathname === '/hyderabad' || pathname === '/about' || pathname === '/contact';
+  const hasHeroCover = pathname === '/' || pathname === '/book-space' || pathname.startsWith('/book-space') || pathname === '/hyderabad' || pathname === '/about' || pathname === '/contact' || pathname === '/gallery';
 
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Book Space', href: '/book-space' },
+        { name: 'Meeting Rooms', href: '/meeting-rooms' },
     { name: 'Hyderabad', href: '/hyderabad' },
-    { name: 'Meeting Rooms', href: '/meeting-rooms' },
+
     // { name: 'Pricing & Plans', href: '/pricing' },
+    { name: 'Gallery', href: '/gallery' },
     { name: 'About ', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];

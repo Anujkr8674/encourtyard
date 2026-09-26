@@ -159,4 +159,16 @@ model Workspace {
   @@map("workspaces")
 }
 
+model GalleryImage {
+  id          String   @id @default(uuid())
+  url         String
+  heading     String?
+  description String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("gallery_images")
+}
+
 

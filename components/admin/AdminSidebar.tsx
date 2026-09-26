@@ -19,7 +19,8 @@ import {
   Sparkles,
   ChevronRight,
   Shield,
-  Layers
+  Layers,
+  Image
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -34,6 +35,7 @@ export const ADMIN_NAV_ITEMS: SidebarItem[] = [
   { name: 'Dashboard Overview', href: '/admin', icon: LayoutDashboard },
   { name: 'Workspace Category', href: '/admin/categories', icon: Layers, badge: 'Live', badgeColor: 'bg-[#2E7D32] text-white' },
   { name: 'Workspaces', href: '/admin/workspaces', icon: Building2, badge: 'New', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
+  { name: 'Gallery', href: '/admin/gallery', icon: Image as any, badge: 'New', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
   { name: 'Popular Picks', href: '/admin/popular-picks', icon: Sparkles, badge: 'Top 10', badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300' },
   // { name: 'Client Companies', href: '/admin/companies', icon: Building2, badge: '28' },
   { name: 'Member Directory', href: '/admin/members', icon: Users, badge: '342' },

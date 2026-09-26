@@ -83,3 +83,35 @@ export async function uploadWorkspaceMedia(file: Buffer | Blob | File, fileName:
     return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
   }
 }
+
+export const GALLERY_STORAGE_FOLDER = 'gallery';
+
+/**
+ * Uploads an image file to Supabase Storage in bucket 'encourtyard-upload' under 'gallery/'
+ */
+export async function uploadGalleryImage(file: Buffer | Blob | File, fileName: string, contentType?: string): Promise<string> {
+  const cleanFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const filePath = `${GALLERY_STORAGE_FOLDER}/${cleanFileName}`;
+
+  try {
+    const { error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, file, {
+        contentType: contentType || 'image/jpeg',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('Supabase storage gallery image upload warning:', error.message);
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl || `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+  } catch (err: any) {
+    console.error('Failed to upload gallery image to Supabase:', err);
+    return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+  }
+}

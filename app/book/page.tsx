@@ -500,7 +500,7 @@ function BookPageContent() {
                     {/* Phone Number */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-[#181F18]">
-                        Genuine Mobile Number <span className="text-red-500">*</span>
+                        Mobile Number <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="tel"

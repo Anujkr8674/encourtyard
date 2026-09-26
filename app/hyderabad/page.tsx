@@ -43,7 +43,8 @@ export default function HyderabadPage() {
       <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
         {/* Background Image / Overlay - Keeping hero dark for contrast */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/70 via-[#0E170E]/40 to-[#0E170E]/80 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10" />
+         
           <img 
             src="/images/book.png" 
             alt="Hyderabad Workspace" 
@@ -54,34 +55,30 @@ export default function HyderabadPage() {
         {/* Foreground Content with Typewriter and Centered Frosted Glass Blur text boxes */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full my-auto text-center flex flex-col items-center justify-center">
           
-          <ScrollReveal animation="fade-up" duration={1000}>
+          {/* <ScrollReveal animation="fade-up" duration={1000}>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md mb-4 sm:mb-6">
               <span className="w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse shadow-[0_0_8px_rgba(46,125,50,0.8)]" />
               <span className="text-[10px] sm:text-xs font-bold tracking-widest text-[#E3EBE3] uppercase font-mono">
                 Now Open in HITEC City
               </span>
             </div>
-          </ScrollReveal>
+          </ScrollReveal> */}
 
           {/* Text Row with Backdrop Blur strictly isolated */}
-          <div className="flex justify-center mb-4">
-            <div className="inline-block p-4 sm:p-8 rounded-3xl backdrop-blur-md bg-black/20 border border-white/10 shadow-2xl">
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-serif tracking-tight text-white leading-[1.15] text-center">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#E3EBE3]">
-                  {typedHeading}
-                </span>
-                <span className="animate-pulse opacity-70 ml-1 text-white align-baseline">|</span>
+          <div className="flex justify-center mb-6">
+            <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-3xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-colors">
+              <h1 className="font-serif text-xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#141F14] leading-[1.15] text-center">
+                {typedHeading}
+                <span className="inline-block w-1 sm:w-1.5 h-6 sm:h-9 bg-[#2E7D32] ml-1 align-middle animate-pulse" />
               </h1>
             </div>
           </div>
           
           <ScrollReveal animation="glide-up" delay={800}>
             <div className="flex justify-center mt-4">
-              <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-black/20 backdrop-blur-md border border-white/10 shadow-[0_8px_25px_rgba(0,0,0,0.1)] text-center max-w-2xl">
-                <p className="text-sm sm:text-lg text-[#E3EBE3] font-light leading-relaxed">
-                  Experience the pinnacle of corporate luxury and productivity in the heart of India's Silicon Valley. 
-                  Elevate your business with our architectural marvels.
-                </p>
+              <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-sm sm:text-lg text-[#181F18] font-sans shadow-[0_8px_25px_rgba(0,0,0,0.1)] leading-relaxed max-w-2xl text-center font-medium">
+                Experience the pinnacle of corporate luxury and productivity in the heart of India's Silicon Valley. 
+                Elevate your business with our architectural marvels.
               </div>
             </div>
           </ScrollReveal>

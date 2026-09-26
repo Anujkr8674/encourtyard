@@ -95,7 +95,7 @@ export default function AboutPage() {
       <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
         {/* Background Image / Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/70 via-[#0E170E]/40 to-[#0E170E]/80 z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10" />
           <img 
             src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=2000&q=80" 
             alt="About EnCourtyard" 
@@ -106,10 +106,10 @@ export default function AboutPage() {
         {/* Foreground Content with Typewriter and Centered Frosted Glass Blur text boxes */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full my-auto text-center flex flex-col items-center justify-center">
           
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-[#4ADE80] mb-6">
+          {/* <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-[#4ADE80] mb-6">
             <Compass className="w-3.5 h-3.5" />
             <span>About & Philosophy</span>
-          </div>
+          </div> */}
 
           <div className="flex flex-col items-center gap-3 mb-6">
             <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-3xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
