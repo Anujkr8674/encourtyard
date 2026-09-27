@@ -220,6 +220,7 @@ export default function BookSpacePage() {
   const [endTime, setEndTime] = useState<string>('06:00 PM');
   const [maxPrice, setMaxPrice] = useState<number>(200000);
   const [selectedCapacity, setSelectedCapacity] = useState<string>('all');
+  const [capacities, setCapacities] = useState<string[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'recommended' | 'price-asc' | 'price-desc' | 'capacity-desc'>('recommended');
 
@@ -234,7 +235,7 @@ export default function BookSpacePage() {
   );
   const { typedLines, currentLineIndex, isTyping } = useLineTypewriter(typewriterLines, 30);
 
-  // Default dates initialization (Today & Next Month)
+  // Default dates initialization and URL search params
   useEffect(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -251,6 +252,35 @@ export default function BookSpacePage() {
 
     setStartDate(todayStr);
     setEndDate(nextMonthStr);
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const catParam = urlParams.get('category');
+      const capParam = urlParams.get('capacity');
+      
+      let shouldScroll = false;
+
+      if (catParam) {
+        setSelectedCategory(catParam);
+        shouldScroll = true;
+      }
+      if (capParam) {
+        setSelectedCapacity(capParam);
+        shouldScroll = true;
+      }
+
+      if (shouldScroll) {
+        // Delay slightly to ensure page has rendered before calculating scroll position
+        setTimeout(() => {
+          const element = document.getElementById('workspaces-section');
+          if (element) {
+            const yOffset = -80; // Clearance for fixed header
+            const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+          }
+        }, 500);
+      }
+    }
   }, []);
 
   // Fetch workspaces and categories from API with defensive fallback handling
@@ -268,6 +298,12 @@ export default function BookSpacePage() {
           const wsData = await wsRes.json();
           if (wsData && wsData.success && Array.isArray(wsData.workspaces)) {
             setWorkspaces(wsData.workspaces);
+            const uniqueCapacities = Array.from(new Set(
+              wsData.workspaces
+                .map((w: any) => w.capacity)
+                .filter((c: any) => Boolean(c))
+            )) as string[];
+            setCapacities(uniqueCapacities.sort());
           }
         }
 
@@ -332,11 +368,7 @@ export default function BookSpacePage() {
 
       // Capacity filter
       if (selectedCapacity !== 'all') {
-        const numCap = extractNumericCapacity(ws.capacity);
-        if (selectedCapacity === '1-2' && (numCap < 1 || numCap > 2)) return false;
-        if (selectedCapacity === '3-6' && (numCap < 3 || numCap > 6)) return false;
-        if (selectedCapacity === '7-15' && (numCap < 7 || numCap > 15)) return false;
-        if (selectedCapacity === '16+' && numCap < 16) return false;
+        if (ws.capacity !== selectedCapacity) return false;
       }
 
       // Amenities filter
@@ -599,27 +631,35 @@ export default function BookSpacePage() {
           TEAM CAPACITY
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {[
-            { id: 'all', label: 'Any' },
-            { id: '1-2', label: '1–2 Pax' },
-            { id: '3-6', label: '3–6 Pax' },
-            { id: '7-15', label: '7–15 Pax' },
-            { id: '16+', label: '16+ Pax' },
-          ].map((cap) => (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCapacity('all');
+              setCurrentPage(1);
+            }}
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all cursor-pointer ${
+              selectedCapacity === 'all'
+                ? 'bg-[#263626] text-white font-bold shadow-sm'
+                : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+            }`}
+          >
+            Any
+          </button>
+          {capacities.map((cap) => (
             <button
-              key={cap.id}
+              key={cap}
               type="button"
               onClick={() => {
-                setSelectedCapacity(cap.id);
+                setSelectedCapacity(cap);
                 setCurrentPage(1);
               }}
               className={`py-1.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all cursor-pointer ${
-                selectedCapacity === cap.id
+                selectedCapacity === cap
                   ? 'bg-[#263626] text-white font-bold shadow-sm'
                   : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
               }`}
             >
-              {cap.label}
+              {cap}
             </button>
           ))}
         </div>

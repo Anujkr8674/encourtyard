@@ -87,6 +87,82 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return `${formattedHours}:${formattedMinutes} ${period}`;
 });
 
+const RevealSection: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({ children, className = '', delay = 0 }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => setIsVisible(true), delay);
+          if (ref.current) observer.unobserve(ref.current);
+        }
+      },
+      { threshold: 0.05, rootMargin: '0px 0px -50px 0px' }
+    );
+    
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [delay]);
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+const FAQAccordion = ({ workspace }: { workspace: Workspace }) => {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const faqs = [
+    {
+      question: `Are there hidden fees associated with this ${workspace.categoryName}?`,
+      answer: `No, the listed pricing is all-inclusive. It covers high-speed internet, premium coffee, electricity, cleaning, and security for ${workspace.title}.`
+    },
+    {
+      question: "How fast is the internet connection?",
+      answer: "You will have access to our secure, ultra-low latency 1Gbps Fiber connection, backed up by redundant lines to ensure zero downtime."
+    },
+    {
+      question: `What happens if I need to expand my team size beyond ${workspace.capacity}?`,
+      answer: `We offer flexible membership paths! If your team outgrows ${workspace.capacity}, you can easily upgrade to a larger adjacent office or add customized dedicated desks subject to availability.`
+    }
+  ];
+
+  return (
+    <div className="space-y-3">
+      {faqs.map((faq, index) => (
+        <div key={index} className={`border rounded-xl overflow-hidden transition-all duration-300 ${openIndex === index ? 'border-[#2E7D32]/40 shadow-sm' : 'border-[#E5E1D8] hover:border-[#2E7D32]/40'}`}>
+          <button
+            onClick={() => setOpenIndex(openIndex === index ? null : index)}
+            className="w-full flex items-center justify-between p-4 bg-white hover:bg-[#FAF9F5] transition-colors text-left"
+          >
+            <h4 className="text-sm font-bold text-[#181F18] pr-4">{faq.question}</h4>
+            <div className={`transform transition-transform duration-300 ${openIndex === index ? 'rotate-180 text-[#2E7D32]' : 'text-[#5C665C]'}`}>
+              <ArrowDown className="w-4 h-4" />
+            </div>
+          </button>
+          <div 
+            className={`transition-all duration-300 ease-in-out bg-white overflow-hidden ${openIndex === index ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}
+          >
+            <div className="p-4 pt-0">
+              <p className="text-xs text-[#5C665C] leading-relaxed">
+                {faq.answer}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export default function WorkspaceDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -97,6 +173,7 @@ export default function WorkspaceDetailsPage() {
   const [relatedWorkspaces, setRelatedWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [isFullscreenGalleryOpen, setIsFullscreenGalleryOpen] = useState(false);
 
   // Today's Date String for disabling past dates (YYYY-MM-DD)
   const todayDate = React.useMemo(() => {
@@ -446,7 +523,8 @@ export default function WorkspaceDetailsPage() {
                   <img
                     src={activeMedia.url}
                     alt={activeMedia.name || workspace.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer transition-transform duration-500 group-hover:scale-105"
+                    onDoubleClick={() => setIsFullscreenGalleryOpen(true)}
                   />
                 )}
 
@@ -474,24 +552,38 @@ export default function WorkspaceDetailsPage() {
               {/* Thumbnail Selector Strip */}
               {mediaList.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-                  {mediaList.map((media, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setActiveMediaIndex(idx)}
-                      className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                        activeMediaIndex === idx
-                          ? 'border-[#2E7D32] shadow-md scale-102'
-                          : 'border-[#E5E1D8] opacity-60 hover:opacity-100'
-                      }`}
-                    >
-                      <img
-                        src={media.url}
-                        alt={media.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
+                  {mediaList.slice(0, 4).map((media, idx) => {
+                    const isLastVisible = idx === 3;
+                    const remainingCount = mediaList.length - 4;
+                    const showOverlay = isLastVisible && remainingCount > 0;
+                    const isActive = activeMediaIndex === idx || (showOverlay && activeMediaIndex >= 3);
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActiveMediaIndex(idx)}
+                        className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                          isActive
+                            ? 'border-[#2E7D32] shadow-md scale-102 opacity-100'
+                            : 'border-[#E5E1D8] opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={media.url}
+                          alt={media.name}
+                          className="w-full h-full object-cover"
+                        />
+                        {showOverlay && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
+                            <span className="text-white font-bold text-sm sm:text-base">
+                              +{remainingCount} more
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </section>
@@ -510,18 +602,26 @@ export default function WorkspaceDetailsPage() {
             </div>
 
             {/* 2.2 Detailed Space Overview */}
-            <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
+            <RevealSection delay={100}>
+            <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2E7D32]/40 transition-all duration-300 group">
               <h2 className="font-serif text-2xl font-bold text-[#181F18]">
                 Space Overview & Concept
               </h2>
-              <p className="text-sm sm:text-base text-[#5C665C] leading-relaxed">
+              {/* <p className="text-sm sm:text-base text-[#5C665C] leading-relaxed">
                 {workspace.longDescription || workspace.shortDescription}
+              </p> */}
+              <p className="text-sm sm:text-base text-[#5C665C] leading-relaxed">
+                {workspace.shortDescription}
+                <br />
+                {workspace.longDescription}
               </p>
             </section>
+            </RevealSection>
 
             {/* 2.3 Specifications Grid */}
+            <RevealSection delay={200}>
             {workspace.specifications && workspace.specifications.length > 0 && (
-              <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+              <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2E7D32]/40 transition-all duration-300 group">
                 <h2 className="font-serif text-2xl font-bold text-[#181F18]">
                   Architectural & Technical Specs
                 </h2>
@@ -529,7 +629,7 @@ export default function WorkspaceDetailsPage() {
                   {workspace.specifications.map((spec, sIdx) => (
                     <div
                       key={sIdx}
-                      className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-1"
+                      className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-1 hover:border-[#2E7D32]/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                     >
                       <span className="text-[11px] uppercase tracking-wider text-[#5C665C] font-mono font-bold block">
                         {spec.key}
@@ -542,9 +642,11 @@ export default function WorkspaceDetailsPage() {
                 </div>
               </section>
             )}
+            </RevealSection>
 
             {/* 2.4 Signature Amenities Included */}
-            <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+            <RevealSection delay={300}>
+            <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2E7D32]/40 transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <h2 className="font-serif text-2xl font-bold text-[#181F18]">
                   Signature Sanctuary Amenities
@@ -557,7 +659,7 @@ export default function WorkspaceDetailsPage() {
                 {defaultAmenities.map((amenity, aIdx) => (
                   <div
                     key={aIdx}
-                    className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-[#FAF9F5] border border-[#E5E1D8]"
+                    className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-[#FAF9F5] border border-[#E5E1D8] hover:border-[#2E7D32]/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                   >
                     <div className="p-2 rounded-xl bg-white border border-[#E5E1D8] shrink-0">
                       {amenity.icon}
@@ -574,9 +676,11 @@ export default function WorkspaceDetailsPage() {
                 ))}
               </div>
             </section>
+            </RevealSection>
 
             {/* 2.5 Location Map & Verification Card */}
-            <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+            <RevealSection delay={400}>
+            <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2E7D32]/40 transition-all duration-300 group">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="font-serif text-2xl font-bold text-[#181F18]">
@@ -611,6 +715,52 @@ export default function WorkspaceDetailsPage() {
                 />
               </div>
             </section>
+            </RevealSection>
+
+            {/* 2.6 Rental Terms */}
+            <RevealSection delay={100}>
+              <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2E7D32]/40 transition-all duration-300 group">
+                <h2 className="font-serif text-2xl font-bold text-[#181F18]">
+                  Rental Terms for {workspace.title}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-1.5 hover:border-[#2E7D32]/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <h4 className="text-sm font-bold text-[#181F18]">Access & Usage</h4>
+                    <p className="text-xs text-[#5C665C] leading-relaxed">
+                      Enjoy secure 24/7 access to your {workspace.categoryName} space. Includes complimentary utilities, high-speed fiber, and premium coffee setup.
+                    </p>
+                  </div>
+                  <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-1.5 hover:border-[#2E7D32]/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <h4 className="text-sm font-bold text-[#181F18]">Booking Commitment</h4>
+                    <p className="text-xs text-[#5C665C] leading-relaxed">
+                      Instant reservation allows for immediate move-in. Flexible cancellation terms apply up to 7 days before your scheduled start date.
+                    </p>
+                  </div>
+                  <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-1.5 hover:border-[#2E7D32]/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <h4 className="text-sm font-bold text-[#181F18]">Guest Policy</h4>
+                    <p className="text-xs text-[#5C665C] leading-relaxed">
+                      Your space accommodates up to {workspace.capacity || 'the assigned capacity'} people. You may host short-term meetings in designated common areas.
+                    </p>
+                  </div>
+                  <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-1.5 hover:border-[#2E7D32]/60 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <h4 className="text-sm font-bold text-[#181F18]">Maintenance & Upkeep</h4>
+                    <p className="text-xs text-[#5C665C] leading-relaxed">
+                      Daily professional cleaning and IT support are included to ensure your workspace remains pristine and fully functional.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </RevealSection>
+
+            {/* 2.7 FAQs */}
+            <RevealSection delay={200}>
+              <section className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-[#2E7D32]/40 transition-all duration-300 group">
+                <h2 className="font-serif text-2xl font-bold text-[#181F18]">
+                  Frequently Asked Questions
+                </h2>
+                <FAQAccordion workspace={workspace} />
+              </section>
+            </RevealSection>
 
           </div>
 
@@ -642,7 +792,7 @@ export default function WorkspaceDetailsPage() {
                 </div>
               </div>
 
-              {/* Rental Duration Plan Toggle */}
+              {/* Rental Duration Plan Toggle - COMMENTED OUT AS PER USER REQUEST
               <div className="grid grid-cols-3 gap-2 bg-[#FAF9F5] p-1.5 rounded-2xl border border-[#E5E1D8]">
                 {(['monthly', 'daily', 'hourly'] as const).map((plan) => (
                   <button
@@ -659,6 +809,7 @@ export default function WorkspaceDetailsPage() {
                   </button>
                 ))}
               </div>
+              */}
 
               {/* Booking Inputs */}
               <div className="space-y-3.5">
@@ -1023,6 +1174,71 @@ export default function WorkspaceDetailsPage() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. FULL SCREEN IMAGE GALLERY MODAL                                         */}
+      {/* ========================================================================= */}
+      {isFullscreenGalleryOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl animate-fadeIn">
+          {/* Close Button */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreenGalleryOpen(false)}
+            className="absolute top-6 right-6 z-[110] p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Left Arrow */}
+          {mediaList.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handlePrevMedia(); }}
+              className="absolute left-6 top-1/2 -translate-y-1/2 z-[110] p-4 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          {/* Main Fullscreen Image */}
+          <div 
+            className="w-full h-full p-4 sm:p-12 flex items-center justify-center"
+            onClick={() => setIsFullscreenGalleryOpen(false)} // Close when clicking backdrop
+          >
+            {activeMedia.type === 'video' ? (
+              <div 
+                className="w-full max-w-5xl aspect-video bg-[#181F18] flex items-center justify-center text-white rounded-2xl cursor-default"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Video className="w-24 h-24 text-[#2E7D32]" />
+              </div>
+            ) : (
+              <img
+                src={activeMedia.url}
+                alt={activeMedia.name || workspace.title}
+                className="max-w-full max-h-full object-contain rounded-xl cursor-default"
+                onClick={(e) => e.stopPropagation()} // Prevent close when clicking image
+              />
+            )}
+          </div>
+
+          {/* Right Arrow */}
+          {mediaList.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleNextMedia(); }}
+              className="absolute right-6 top-1/2 -translate-y-1/2 z-[110] p-4 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+
+          {/* Image Counter */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[110] px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-mono tracking-wider">
+            {activeMediaIndex + 1} / {mediaList.length}
           </div>
         </div>
       )}

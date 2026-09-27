@@ -136,7 +136,7 @@ export const Navbar: React.FC = () => {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Book Space', href: '/book-space' },
-        { name: 'Meeting Rooms', href: '/meeting-rooms' },
+        // { name: 'Meeting Rooms', href: '/meeting-rooms' },
     { name: 'Hyderabad', href: '/hyderabad' },
 
     // { name: 'Pricing & Plans', href: '/pricing' },

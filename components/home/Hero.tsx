@@ -76,9 +76,45 @@ function useLineTypewriter(lines: string[], speed: number = 32) {
 export const Hero: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeSearchTab, setActiveSearchTab] = useState<'workspace' | 'meeting' | 'team'>('workspace');
-  const [selectedLocation, setSelectedLocation] = useState('bangalore');
-  const [selectedType, setSelectedType] = useState('private-office');
-  const [selectedTeamSize, setSelectedTeamSize] = useState('1-4');
+  const [selectedType, setSelectedType] = useState('all');
+  const [selectedTeamSize, setSelectedTeamSize] = useState('all');
+  
+  const [categories, setCategories] = useState<{id: string, name: string, slug: string}[]>([]);
+  const [capacities, setCapacities] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const [catRes, spaceRes] = await Promise.all([
+          fetch('/api/categories', { cache: 'no-store' }),
+          fetch('/api/workspaces', { cache: 'no-store' })
+        ]);
+        
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          if (catData.success) {
+            setCategories(catData.categories);
+          }
+        }
+        
+        if (spaceRes.ok) {
+          const spaceData = await spaceRes.json();
+          if (spaceData.success && spaceData.workspaces) {
+            const uniqueCapacities = Array.from(new Set(
+              spaceData.workspaces
+                .map((w: any) => w.capacity)
+                .filter((c: any) => Boolean(c))
+            )) as string[];
+            setCapacities(uniqueCapacities.sort());
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch filter data", error);
+      }
+    };
+    
+    fetchFilters();
+  }, []);
   const router = useRouter();
 
   const slides: HeroSlide[] = [
@@ -134,9 +170,9 @@ export const Hero: React.FC = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (activeSearchTab === 'meeting') {
-      router.push(`/meeting-rooms?location=${selectedLocation}`);
+      router.push(`/meeting-rooms?location=hyderabad`);
     } else {
-      router.push(`/workspaces?location=${selectedLocation}&type=${selectedType}&size=${selectedTeamSize}`);
+      router.push(`/book-space?category=${selectedType !== 'all' ? selectedType : ''}&capacity=${selectedTeamSize !== 'all' ? selectedTeamSize : ''}`);
     }
   };
 
@@ -427,27 +463,16 @@ export const Hero: React.FC = () => {
           {/* Search Inputs Row */}
           <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
 
-            {/* Location Select */}
+            {/* Location Static Display */}
             <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#E5E1D8] flex items-center gap-2.5">
               <MapPin className="w-4 h-4 text-[#2D3E2D] shrink-0" />
               <div className="w-full text-left">
                 <label className="block text-[9px] font-bold uppercase text-[#738273] tracking-wider">
-                  Select Location
+                  Location
                 </label>
-                <select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#181F18] focus:outline-none cursor-pointer"
-                >
-                  {/* <option value="bangalore">Bangalore (12 Centres)</option>
-                  <option value="delhi">Delhi (10 Centres)</option>
-                  <option value="gurgaon">Gurgaon (14 Centres)</option>
-                  <option value="chennai">Chennai (9 Centres)</option> */}
-                  <option value="hyderabad">Hyderabad </option>
-                  {/* <option value="mumbai">Mumbai (15 Centres)</option>
-                  <option value="noida">Noida (7 Centres)</option>
-                  <option value="pune">Pune (3 Centres)</option> */}
-                </select>
+                <div className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#181F18] pt-0.5">
+                  Hyderabad
+                </div>
               </div>
             </div>
 
@@ -463,11 +488,10 @@ export const Hero: React.FC = () => {
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#181F18] focus:outline-none cursor-pointer"
                 >
-                  <option value="private-office">Private Office</option>
-                  <option value="dedicated-desk">Dedicated Desk</option>
-                  <option value="hot-desk">Hot Desk</option>
-                  <option value="meeting-room">Meeting Room</option>
-                  <option value="team-suite">Team Suite</option>
+                  <option value="all">All Types</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -477,18 +501,17 @@ export const Hero: React.FC = () => {
               <Users className="w-4 h-4 text-[#2D3E2D] shrink-0" />
               <div className="w-full text-left">
                 <label className="block text-[9px] font-bold uppercase text-[#738273] tracking-wider">
-                  Team Size
+                  Capacity / Team Size
                 </label>
                 <select
                   value={selectedTeamSize}
                   onChange={(e) => setSelectedTeamSize(e.target.value)}
                   className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#181F18] focus:outline-none cursor-pointer"
                 >
-                  <option value="1">1 Person</option>
-                  <option value="1-4">2 – 4 Persons</option>
-                  <option value="5-15">5 – 15 Persons</option>
-                  <option value="16-30">16 – 30 Persons</option>
-                  <option value="30+">30+ Enterprise</option>
+                  <option value="all">Any Size</option>
+                  {capacities.map((cap, idx) => (
+                    <option key={idx} value={cap}>{cap}</option>
+                  ))}
                 </select>
               </div>
             </div>

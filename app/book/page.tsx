@@ -394,10 +394,10 @@ function BookPageContent() {
                   <span>Base Workspace Rate:</span>
                   <span className="font-semibold text-[#181F18]">{workspace?.price || 'Custom Quote'}</span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span>Selected Rental Plan:</span>
                   <span className="font-semibold text-[#181F18] capitalize">{rentalPlan}</span>
-                </div>
+                </div> */}
                 <div className="flex justify-between">
                   <span>Attendees / Seats:</span>
                   <span className="font-semibold text-[#181F18]">{guestCount} Member{guestCount > 1 ? 's' : ''}</span>
@@ -520,7 +520,7 @@ function BookPageContent() {
                     2. Workspace Schedule & Duration
                   </h4>
 
-                  {/* Rental Plan Toggle */}
+                  {/* Rental Plan Toggle - COMMENTED OUT AS PER USER REQUEST
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-[#181F18]">
                       Rental Plan Frequency
@@ -542,6 +542,7 @@ function BookPageContent() {
                       ))}
                     </div>
                   </div>
+                  */}
 
                   {/* Multi-Row Date & Time Pickers */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
