@@ -144,7 +144,7 @@ export const Footer: React.FC = () => {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Book Space', href: '/book-space' },
-                { label: 'Workspaces', href: '/workspaces' },
+                { label: 'Workspaces', href: '/book-space' },
                 { label: 'Pricing Plans', href: '/pricing' },
                 { label: 'Meeting Rooms', href: '/meeting-rooms' },
                 { label: 'About Us', href: '/about' },
@@ -180,8 +180,8 @@ export const Footer: React.FC = () => {
               {[
                 { label: 'Community Events', href: '/about' },
                 { label: 'Member FAQs', href: '/about#faq' },
-                { label: 'Virtual Tours', href: '/workspaces' },
-                { label: 'Enterprise Solutions', href: '/workspaces' },
+                { label: 'Virtual Tours', href: '/book-space' },
+                { label: 'Enterprise Solutions', href: '/book-space' },
                 { label: 'Privacy Policy', href: '/privacy' },
                 { label: 'Terms & Conditions', href: '/terms' },
               ].map((link, idx) => (

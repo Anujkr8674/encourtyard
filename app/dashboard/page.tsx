@@ -33,7 +33,7 @@ export default function UserDashboardPage() {
   // If loading session, show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center text-[#181F18]">
+      <div className="min-h-screen bg-white flex items-center justify-center text-[#181F18]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-3 border-[#2E7D32] border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-mono tracking-widest uppercase text-[#5C665C]">
@@ -47,7 +47,7 @@ export default function UserDashboardPage() {
   // If NOT logged in as User, show User Sign In
   if (!user) {
     return (
-      <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#FAF9F5] flex items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-white flex items-center justify-center relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
@@ -95,7 +95,7 @@ export default function UserDashboardPage() {
   ];
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen">
+    <div className="bg-white min-h-screen">
       {/* Dashboard Header Banner */}
       <section className="bg-[#181F18] text-white pt-32 pb-16 border-b border-[#263626] relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -722,7 +722,7 @@ export default function BookSpacePage() {
   );
 
   return (
-    <div className="bg-[#FAF9F5] text-[#181F18] min-h-screen">
+    <div className="bg-white text-[#181F18] min-h-screen">
 
       {/* ========================================================================= */}
       {/* 1. HERO SECTION (80vh) WITH FULL-BLEED book.png, MOVING ZOOM & CENTERED FROSTED TEXT */}

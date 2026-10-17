@@ -83,7 +83,7 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
           </p>
 
           {/* Meta Specifications */}
-          <div className="grid grid-cols-2 gap-3 py-3 px-3.5 bg-[#FAF9F5] rounded-xl border border-[#E5E1D8] text-xs text-[#5C665C] mb-5">
+          <div className="grid grid-cols-2 gap-3 py-3 px-3.5 bg-[#F4F6F4] rounded-xl border border-[#E5E1D8] text-xs text-[#5C665C] mb-5">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-[#E3EBE3] flex items-center justify-center text-[#263626]">
                 <Users className="w-3.5 h-3.5" />

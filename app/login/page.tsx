@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#FAF9F5] flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-white flex items-center justify-center relative overflow-hidden">
       {/* Background Ambience */}
       <div
         className="absolute inset-0 opacity-10 pointer-events-none"

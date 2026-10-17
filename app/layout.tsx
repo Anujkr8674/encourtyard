@@ -57,7 +57,7 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${jakarta.variable} h-full antialiased scroll-smooth overflow-x-clip`}
     >
-      <body className="min-h-full flex flex-col bg-[#FAF9F5] text-[#181F18] selection:bg-[#263626] selection:text-white overflow-x-clip w-full max-w-full">
+      <body className="min-h-full flex flex-col bg-white text-[#181F18] selection:bg-[#263626] selection:text-white overflow-x-clip w-full max-w-full">
         <AuthProvider>
           <FeedbackProvider>
             <Navbar />

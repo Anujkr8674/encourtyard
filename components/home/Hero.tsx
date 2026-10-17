@@ -187,7 +187,7 @@ export const Hero: React.FC = () => {
 
   return (
     <>
-      <section className="relative w-full h-screen min-h-[100vh] bg-[#FAF8F5] pt-28 sm:pt-32 lg:pt-36 pb-8 flex flex-col justify-center overflow-hidden">
+      <section className="relative w-full h-screen min-h-[100vh] bg-white pt-28 sm:pt-32 lg:pt-36 pb-8 flex flex-col justify-center overflow-hidden">
 
         {/* Full-Bleed Background Image Slider */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -412,7 +412,7 @@ export const Hero: React.FC = () => {
 
       {/* Section 2: Overlapping Multi-Tab Quick Search Widget (Slight subtle touch on Hero Section) */}
       <div className="relative z-30 -mt-5 sm:-mt-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="relative bg-white p-5 sm:p-7 rounded-3xl shadow-[0_16px_50px_rgba(0,0,0,0.08)] border border-[#E5E1D8]">
+        <div className="relative bg-white p-5 sm:p-7 rounded-3xl sm:rounded-[32px] shadow-[0_20px_50px_-10px_rgba(24,31,24,0.12),0_0_1px_1px_rgba(24,31,24,0.04)] border border-[#DDD7CA]">
 
           {/* Whimsical Handwritten Note on Top Right */}
           <div className="absolute -top-10 right-6 hidden md:flex items-center gap-2 select-none pointer-events-none text-[#2D3E2D]">
@@ -423,12 +423,12 @@ export const Hero: React.FC = () => {
           </div>
 
           {/* Top Search Tabs */}
-          <div className="flex items-center gap-4 sm:gap-6 border-b border-[#E5E1D8] pb-3 mb-4 text-xs sm:text-sm font-semibold overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-4 sm:gap-6 border-b border-[#EAE5DB] pb-3 mb-4 text-xs sm:text-sm font-semibold overflow-x-auto no-scrollbar">
 
             <button
               onClick={() => setActiveSearchTab('workspace')}
               className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeSearchTab === 'workspace'
-                ? 'bg-[#2D3E2D] text-white shadow-xs'
+                ? 'bg-[#263724] text-white shadow-xs'
                 : 'text-[#5C665C] hover:text-[#181F18]'
                 }`}
             >
@@ -439,7 +439,7 @@ export const Hero: React.FC = () => {
             <button
               onClick={() => setActiveSearchTab('meeting')}
               className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeSearchTab === 'meeting'
-                ? 'bg-[#2D3E2D] text-white shadow-xs'
+                ? 'bg-[#263724] text-white shadow-xs'
                 : 'text-[#5C665C] hover:text-[#181F18]'
                 }`}
             >
@@ -450,7 +450,7 @@ export const Hero: React.FC = () => {
             <button
               onClick={() => setActiveSearchTab('team')}
               className={`px-4 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${activeSearchTab === 'team'
-                ? 'bg-[#2D3E2D] text-white shadow-xs'
+                ? 'bg-[#263724] text-white shadow-xs'
                 : 'text-[#5C665C] hover:text-[#181F18]'
                 }`}
             >
@@ -464,8 +464,8 @@ export const Hero: React.FC = () => {
           <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
 
             {/* Location Static Display */}
-            <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#E5E1D8] flex items-center gap-2.5">
-              <MapPin className="w-4 h-4 text-[#2D3E2D] shrink-0" />
+            <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#DDD7CA] hover:border-[#263724]/40 transition-colors flex items-center gap-2.5">
+              <MapPin className="w-4 h-4 text-[#263724] shrink-0" />
               <div className="w-full text-left">
                 <label className="block text-[9px] font-bold uppercase text-[#738273] tracking-wider">
                   Location
@@ -477,8 +477,8 @@ export const Hero: React.FC = () => {
             </div>
 
             {/* Workspace Type Select */}
-            <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#E5E1D8] flex items-center gap-2.5">
-              <Briefcase className="w-4 h-4 text-[#2D3E2D] shrink-0" />
+            <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#DDD7CA] hover:border-[#263724]/40 transition-colors flex items-center gap-2.5">
+              <Briefcase className="w-4 h-4 text-[#263724] shrink-0" />
               <div className="w-full text-left">
                 <label className="block text-[9px] font-bold uppercase text-[#738273] tracking-wider">
                   Workspace Type
@@ -497,8 +497,8 @@ export const Hero: React.FC = () => {
             </div>
 
             {/* Team Size Select */}
-            <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#E5E1D8] flex items-center gap-2.5">
-              <Users className="w-4 h-4 text-[#2D3E2D] shrink-0" />
+            <div className="px-3.5 py-2.5 bg-[#FAF9F5] rounded-xl border border-[#DDD7CA] hover:border-[#263724]/40 transition-colors flex items-center gap-2.5">
+              <Users className="w-4 h-4 text-[#263724] shrink-0" />
               <div className="w-full text-left">
                 <label className="block text-[9px] font-bold uppercase text-[#738273] tracking-wider">
                   Capacity / Team Size
@@ -519,7 +519,7 @@ export const Hero: React.FC = () => {
             {/* Search Submit Button */}
             <button
               type="submit"
-              className="w-full h-full min-h-[50px] bg-[#2D3E2D] hover:bg-[#3D523D] text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-warm active:scale-[0.99]"
+              className="w-full h-full min-h-[50px] bg-[#263724] hover:bg-[#344A32] text-white font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(38,55,36,0.22)] hover:shadow-[0_8px_24px_rgba(38,55,36,0.3)] hover:-translate-y-0.5 active:translate-y-0"
             >
               <Search className="w-4 h-4 text-[#A3D9A5]" />
               <span>Search</span>

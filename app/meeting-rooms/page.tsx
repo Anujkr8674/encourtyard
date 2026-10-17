@@ -56,21 +56,19 @@ export default function MeetingRoomsPage() {
   ];
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen">
-      {/* Page Hero with Dark Canvas */}
-      <section className="bg-[#181F18] text-white pt-32 pb-20 border-b border-[#263626] relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(#3A4D3A_1px,transparent_1px)] [background-size:28px_28px] opacity-25 pointer-events-none" />
-
+    <div className="bg-white min-h-screen">
+      {/* Page Hero with Clean White Canvas */}
+      <section className="bg-white text-[#181F18] pt-32 pb-16 border-b border-[#E5E1D8] relative overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-[#4ADE80]">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-semibold text-[#2E7D32]">
               <Monitor className="w-3.5 h-3.5" />
               <span>Smart Meeting & Event Suites</span>
             </div>
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.12]">
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#181F18] leading-[1.12]">
               Architectural rooms engineered for impactful decisions.
             </h1>
-            <p className="text-base sm:text-lg text-[#C5D5C5] leading-relaxed font-sans">
+            <p className="text-base sm:text-lg text-[#5C665C] leading-relaxed font-sans">
               From high-stakes 16-person executive boardrooms to 70-person keynote amphitheaters, experience seamless AV tech, acoustic privacy, and concierge hospitality.
             </p>
           </div>
@@ -101,7 +99,7 @@ export default function MeetingRoomsPage() {
       </section>
 
       {/* AV Technology & Smart Suite Specs */}
-      <section className="py-20 bg-[#F7F5F0] border-y border-[#E5E1D8]">
+      <section className="py-20 bg-white border-y border-[#E5E1D8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">

@@ -95,7 +95,7 @@ export const TestimonialsSection: React.FC = () => {
   const reviewsStream = [...GOOGLE_REVIEWS, ...GOOGLE_REVIEWS, ...GOOGLE_REVIEWS];
 
   return (
-    <section className="py-20 lg:py-24 primary-section-bg border-b border-[#E5E1D8] relative overflow-hidden">
+    <section className="py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
 
         {/* Section Header */}

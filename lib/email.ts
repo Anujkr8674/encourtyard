@@ -129,7 +129,7 @@ export async function sendOtpEmail({
           </div>
           <div class="footer">
             © ${new Date().getFullYear()} EnCourtyard Workspaces Ltd. All rights reserved.<br>
-            79 Centres across 8 Premium Cities in India.
+          
           </div>
         </div>
       </body>

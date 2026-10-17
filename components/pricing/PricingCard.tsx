@@ -97,7 +97,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
           className={`py-3.5 px-4 rounded-xl text-xs space-y-1 my-5 ${
             isHighlighted
               ? 'bg-[#1A261A] border border-[#3A4D3A] text-[#E3EBE3]'
-              : 'bg-[#FAF9F5] border border-[#E5E1D8] text-[#263626]'
+              : 'bg-[#F4F6F4] border border-[#E5E1D8] text-[#263626]'
           }`}
         >
           <div className="font-semibold text-sm">{plan.accessHours}</div>
@@ -127,7 +127,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
         className={`px-7 sm:px-8 py-7 border-t rounded-b-2xl flex-grow ${
           isHighlighted
             ? 'border-[#3A4D3A] bg-[#223022]'
-            : 'border-[#E5E1D8] bg-[#FAF9F5]'
+            : 'border-[#E5E1D8] bg-[#FAFAF8]'
         }`}
       >
         <span

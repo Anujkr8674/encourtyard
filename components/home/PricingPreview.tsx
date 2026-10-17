@@ -10,19 +10,19 @@ export const PricingPreview: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24 primary-section-bg border-b border-[#E5E1D8] relative overflow-hidden">
+    <section className="py-16 sm:py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
       <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Outer Section Banner Card (Matching WhyEnCourtyard 3D Aesthetics) */}
-        <div className="relative rounded-[28px] sm:rounded-[36px] lg:rounded-[40px] bg-[#FBF9F4] border border-[#E8E2D6] shadow-[0_10px_35px_-12px_rgba(38,54,38,0.06)] overflow-hidden p-6 sm:p-8 lg:p-10 xl:p-12">
+        <div className="relative rounded-[28px] sm:rounded-[36px] lg:rounded-[40px] bg-white border border-[#E5E1D8] shadow-[0_10px_35px_-12px_rgba(38,54,38,0.06)] overflow-hidden p-6 sm:p-8 lg:p-10 xl:p-12">
 
           {/* Organic 3D Layered Architectural Backdrop Accents */}
           <div
-            className="hidden lg:block absolute top-0 right-[25%] w-[420px] h-[420px] rounded-tl-[120px] rounded-tr-[180px] rounded-bl-[140px] bg-gradient-to-br from-[#ECE7DB]/70 to-[#DFD8C8]/40 pointer-events-none z-0"
+            className="hidden lg:block absolute top-0 right-[25%] w-[420px] h-[420px] rounded-tl-[120px] rounded-tr-[180px] rounded-bl-[140px] bg-gradient-to-br from-[#F5F5F3]/50 to-[#EAE8E3]/30 pointer-events-none z-0"
             aria-hidden="true"
           />
           <div
-            className="hidden lg:block absolute -bottom-10 left-[20%] w-[180px] h-[180px] rounded-full bg-[#E5DFD1]/50 pointer-events-none z-0"
+            className="hidden lg:block absolute -bottom-10 left-[20%] w-[180px] h-[180px] rounded-full bg-[#F0ECE1]/30 pointer-events-none z-0"
             aria-hidden="true"
           />
 
@@ -42,7 +42,7 @@ export const PricingPreview: React.FC = () => {
 
               <div className="flex items-center gap-4 sm:gap-6 shrink-0 flex-wrap">
                 {/* Monthly / Yearly Toggle with High-Contrast Save 20% Badge */}
-                <div className="bg-[#EBE6DC] p-1 rounded-full flex items-center border border-[#D5CEC2] shadow-xs">
+                <div className="bg-[#F4F6F4] p-1 rounded-full flex items-center border border-[#E5E1D8] shadow-xs">
                   <button
                     onClick={() => setBillingCycle('monthly')}
                     className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${

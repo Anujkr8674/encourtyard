@@ -89,31 +89,29 @@ export default function PricingPage() {
   );
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen">
-      {/* Page Hero with Dark Architectural Canvas */}
-      <section className="bg-[#181F18] text-white pt-32 pb-20 border-b border-[#263626] relative overflow-hidden text-center">
-        <div className="absolute inset-0 bg-[radial-gradient(#3A4D3A_1px,transparent_1px)] [background-size:28px_28px] opacity-25 pointer-events-none" />
-
+    <div className="bg-white min-h-screen">
+      {/* Page Hero with Clean White Architectural Canvas */}
+      <section className="bg-white text-[#181F18] pt-32 pb-16 border-b border-[#E5E1D8] relative overflow-hidden text-center">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-[#4ADE80] mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-semibold text-[#2E7D32] mb-4">
             <DollarSign className="w-3.5 h-3.5" />
             <span>Clear & Transparent Plans</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.12] max-w-3xl mx-auto">
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#181F18] leading-[1.12] max-w-3xl mx-auto">
             Memberships built with clarity and flexibility.
           </h1>
-          <p className="text-base sm:text-lg text-[#C5D5C5] max-w-2xl mx-auto mt-4 leading-relaxed font-sans">
+          <p className="text-base sm:text-lg text-[#5C665C] max-w-2xl mx-auto mt-4 leading-relaxed font-sans">
             Choose the membership that aligns with your ambition. Upgrade, downscale, or customize as your business evolves.
           </p>
 
           {/* Billing Switcher */}
-          <div className="inline-flex items-center p-1.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 mt-8 shadow-lg">
+          <div className="inline-flex items-center p-1.5 bg-[#F4F6F4] rounded-xl border border-[#E5E1D8] mt-8 shadow-xs">
             <button
               onClick={() => setBillingCycle('monthly')}
               className={`px-6 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 billingCycle === 'monthly'
-                  ? 'bg-white text-[#181F18] shadow-sm'
-                  : 'text-white/80 hover:text-white'
+                  ? 'bg-[#263626] text-white shadow-sm'
+                  : 'text-[#5C665C] hover:text-[#181F18]'
               }`}
             >
               Monthly Billing
@@ -122,12 +120,12 @@ export default function PricingPage() {
               onClick={() => setBillingCycle('yearly')}
               className={`px-6 py-2.5 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                 billingCycle === 'yearly'
-                  ? 'bg-white text-[#181F18] shadow-sm'
-                  : 'text-white/80 hover:text-white'
+                  ? 'bg-[#263626] text-white shadow-sm'
+                  : 'text-[#5C665C] hover:text-[#181F18]'
               }`}
             >
               <span>Annual Agreement</span>
-              <span className="bg-[#C29B38] text-[#181F18] text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <span className="bg-[#C29B38] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 Save ~18%
               </span>
             </button>
@@ -149,7 +147,7 @@ export default function PricingPage() {
       </section>
 
       {/* Detailed Plan Comparison Section */}
-      <section className="py-20 bg-[#F7F5F0] border-y border-[#E5E1D8]">
+      <section className="py-20 bg-white border-y border-[#E5E1D8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-14 text-left">
             <span className="text-xs uppercase font-mono tracking-widest text-[#263626] block mb-2 font-semibold">

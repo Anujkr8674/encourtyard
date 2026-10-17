@@ -5,7 +5,7 @@ import { ShieldCheck } from 'lucide-react';
 
 export default function TermsConditionsPage() {
   return (
-    <div className="bg-[#FAF9F5] min-h-screen flex flex-col">
+    <div className="bg-white min-h-screen flex flex-col">
       {/* Hero Section (60vh) */}
       <section className="relative h-[60vh] min-h-[450px] max-h-[700px] w-full flex flex-col justify-center overflow-hidden pt-20">
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">

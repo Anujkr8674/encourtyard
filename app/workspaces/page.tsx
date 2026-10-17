@@ -24,21 +24,19 @@ export default function WorkspacesPage() {
       : WORKSPACES.filter((w) => w.category === selectedCategory);
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen">
-      {/* Page Hero with Dark Architectural Canvas */}
-      <section className="bg-[#181F18] text-white pt-32 pb-20 border-b border-[#263626] relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(#3A4D3A_1px,transparent_1px)] [background-size:28px_28px] opacity-25 pointer-events-none" />
-
+    <div className="bg-white min-h-screen">
+      {/* Page Hero with Clean White Architectural Canvas */}
+      <section className="bg-white text-[#181F18] pt-32 pb-16 border-b border-[#E5E1D8] relative overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-[#4ADE80]">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-semibold text-[#2E7D32]">
               <Building2 className="w-3.5 h-3.5" />
               <span>Workspace Directory</span>
             </div>
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-[1.12]">
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#181F18] leading-[1.12]">
               Workspaces engineered for clarity and momentum.
             </h1>
-            <p className="text-base sm:text-lg text-[#C5D5C5] leading-relaxed">
+            <p className="text-base sm:text-lg text-[#5C665C] leading-relaxed">
               Explore our collection of sound-insulated private suites, fixed dedicated workstations, and vibrant open courtyard desks.
             </p>
           </div>

@@ -14,7 +14,7 @@
     --color-beige-100: #F2EEE7;
     --color-beige-50:  #F7F5F0;
 
-    --color-cream:     #FAF9F5;
+    --color-cream:     #FFFFFF;
     --color-white:     #FFFFFF;
 
     --color-charcoal:  #181F18;
@@ -34,9 +34,9 @@
   }
 
   body {
-    background-color: var(--color-cream);
+    background-color: #FFFFFF;
     color: var(--color-charcoal);
-    font-family: var(--font-sans), system-ui, sans-serif;
+    font-family: Tahoma, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
@@ -44,8 +44,12 @@
     width: 100%;
   }
 
-  h1, h2, h3, .font-serif {
-    font-family: var(--font-serif), Georgia, serif;
+  h1,
+  h2,
+  h3,
+  .font-serif {
+    font-family: Tahoma, Arial, sans-serif;
+    font-weight: 700;
     letter-spacing: -0.015em;
   }
 }
@@ -58,17 +62,17 @@
 .bg-olive-100 { background-color: #E3EBE3; }
 .bg-olive-50  { background-color: #F1F5F1; }
 
-.bg-beige-200 { background-color: #EAE5DB; }
-.bg-beige-100 { background-color: #F2EEE7; }
-.bg-beige-50  { background-color: #F7F5F0; }
-.bg-cream     { background-color: #FAF9F5; }
+.bg-beige-200 { background-color: #F8F9FA; }
+.bg-beige-100 { background-color: #FAFAFA; }
+.bg-beige-50  { background-color: #FFFFFF; }
+.bg-cream     { background-color: #FFFFFF; }
 
-/* Dedicated Alternating Section Backgrounds */
+/* Dedicated Section Backgrounds - Clean White Across All Sections */
 .primary-section-bg, .bg-primary-section { 
-  background-color: #FAF9F5; 
+  background-color: #FFFFFF; 
 }
 .secondary-section-bg, .bg-secondary-section { 
-  background-color: #F4F0E6; 
+  background-color: #FFFFFF; 
 }
 
 .text-olive-900 { color: #1A261A; }
@@ -183,6 +187,10 @@
   font-family: 'Caveat', 'Brush Script MT', 'Dancing Script', cursive, sans-serif;
 }
 
+/* .font-handwriting {
+  font-family: Tahoma, Arial, sans-serif;
+} */
+
 @keyframes floatSlow {
   0%, 100% { transform: translateY(0px) translateZ(20px); }
   50% { transform: translateY(-8px) translateZ(30px); }
@@ -228,7 +236,7 @@
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #FAF9F5;
+  background: #FFFFFF;
 }
 ::-webkit-scrollbar-thumb {
   background: #D5CEC2;

@@ -50,11 +50,11 @@ export const PresenceCitySection: React.FC = () => {
   };
 
   return (
-    <section id="our-presence" className="py-12 sm:py-16 lg:py-20 primary-section-bg border-b border-[#E5E1D8] relative overflow-hidden">
+    <section id="our-presence" className="py-12 sm:py-16 lg:py-20 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Bordered Card Container */}
-        <div className="bg-[#FAF9F5] rounded-3xl border border-[#E2DDD3] p-5 sm:p-8 lg:p-10 shadow-warm relative overflow-hidden">
+        <div className="bg-white rounded-3xl border border-[#E5E1D8] p-5 sm:p-8 lg:p-10 shadow-warm relative overflow-hidden">
           
           {/* Header Row */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4 pb-6 border-b border-[#E5E1D8]">

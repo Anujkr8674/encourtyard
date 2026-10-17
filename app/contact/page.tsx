@@ -61,7 +61,7 @@ export default function ContactPage() {
   }, []);
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen flex flex-col">
+    <div className="bg-white min-h-screen flex flex-col">
       {/* 1. Hero Section (80vh) */}
       <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
         {/* Background Image / Overlay */}
@@ -119,7 +119,7 @@ export default function ContactPage() {
       </section>
 
       {/* Location & Opening Hours Section */}
-      <section id="location-hours" className="py-20 bg-[#F7F5F0] border-t border-[#E5E1D8]">
+      <section id="location-hours" className="py-20 bg-white border-t border-[#E5E1D8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             

@@ -288,7 +288,7 @@ export const PopularPicksSection: React.FC = () => {
   return (
     <section
       id="popular-picks"
-      className="py-16 sm:py-20 secondary-section-bg relative overflow-hidden border-b border-[#E0DCD3]"
+      className="py-16 sm:py-20 bg-white relative overflow-hidden border-b border-[#E5E1D8]"
     >
       {/* Ambient Botanical Glow */}
       <div className="absolute top-1/2 left-0 w-96 h-96 bg-[#2E7D32]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 -z-10" />

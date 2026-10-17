@@ -61,12 +61,32 @@ const YouTubeIcon = () => (
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [quickDropdownOpen, setQuickDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const quickDropdownRef = useRef<HTMLDivElement>(null);
+  const quickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { user, admin, isAuthenticated, isAdmin, logout } = useAuth();
   const { showSuccess } = useFeedbackModal();
+
+  const handleQuickMouseEnter = () => {
+    if (quickTimeoutRef.current) {
+      clearTimeout(quickTimeoutRef.current);
+      quickTimeoutRef.current = null;
+    }
+    setQuickDropdownOpen(true);
+  };
+
+  const handleQuickMouseLeave = () => {
+    if (quickTimeoutRef.current) {
+      clearTimeout(quickTimeoutRef.current);
+    }
+    quickTimeoutRef.current = setTimeout(() => {
+      setQuickDropdownOpen(false);
+    }, 300);
+  };
 
   const handleSignOut = () => {
     setProfileDropdownOpen(false);
@@ -93,9 +113,15 @@ export const Navbar: React.FC = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setProfileDropdownOpen(false);
       }
+      if (quickDropdownRef.current && !quickDropdownRef.current.contains(event.target as Node)) {
+        setQuickDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (quickTimeoutRef.current) clearTimeout(quickTimeoutRef.current);
+    };
   }, []);
 
   // Listen for scroll to toggle background
@@ -116,6 +142,7 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setMobileMenuOpen(false);
     setProfileDropdownOpen(false);
+    setQuickDropdownOpen(false);
   }, [pathname]);
 
   // Prevent background scrolling when drawer is open
@@ -166,13 +193,19 @@ export const Navbar: React.FC = () => {
         {/* Main Navigation Bar */}
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 sm:h-28 lg:h-28 flex items-center justify-between">
 
-          {/* Brand Logo with Premium Frosted Capsule & Pop-up Hover Effect */}
+          {/* Brand Logo: Clean transparent on page load, subtle frosted capsule when scrolled */}
           <Link
             href="/"
             className="group flex items-center focus:outline-none py-1 transition-all duration-300 transform hover:scale-108 hover:-translate-y-0.5 shrink-0"
             aria-label="EnCourtyard Home"
           >
-            <div className="bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/25 hover:border-[#4ADE80]/70 rounded-2xl px-3.5 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_30px_rgba(74,222,128,0.4)] transition-all duration-300 flex items-center justify-center">
+            <div
+              className={`transition-all duration-300 flex items-center justify-center rounded-2xl ${
+                scrolled
+                  ? 'bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/25 hover:border-[#4ADE80]/70 px-3.5 py-2 shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
+                  : 'bg-transparent border border-transparent backdrop-blur-none shadow-none px-1 py-1'
+              }`}
+            >
               <img
                 src="/images/logo.png"
                 alt="EnCourtyard"
@@ -200,7 +233,7 @@ export const Navbar: React.FC = () => {
             })}
           </div>
 
-          {/* Right Action Controls: Dynamic Auth State + Schedule CTA + Drawer Trigger */}
+          {/* Right Action Controls: Dynamic Auth State + Quick Book Dropdown + Drawer Trigger */}
           <div className="flex items-center gap-3">
             {/* If NOT Authenticated: Show Sign In Button */}
             {!isAuthenticated ? (
@@ -296,16 +329,163 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* Schedule a Visit CTA Button aligned to the right */}
-            <Button
-              href="/about#visit-form"
-              variant="primary"
-              size="sm"
-              className="hidden sm:inline-flex bg-[#2E7D32] hover:bg-[#388E3C] text-white font-semibold rounded-full px-5 py-2 shadow-lg border border-[#4ADE80]/40 transition-all hover:scale-105"
-              icon={<ArrowRight className="w-3.5 h-3.5" />}
+            {/* Quick Button with Dropdown Trigger (Opens on Hover or Click) */}
+            <div
+              className="relative"
+              ref={quickDropdownRef}
+              onMouseEnter={handleQuickMouseEnter}
+              onMouseLeave={handleQuickMouseLeave}
             >
-              Schedule a Visit
-            </Button>
+              <button
+                type="button"
+                onClick={() => setQuickDropdownOpen(!quickDropdownOpen)}
+                className="hidden sm:inline-flex items-center gap-2 bg-[#2E7D32] hover:bg-[#388E3C] text-white font-semibold text-xs sm:text-sm rounded-full px-4 sm:px-5 py-2.5 shadow-lg border border-[#4ADE80]/40 transition-all hover:scale-105 cursor-pointer select-none group"
+                aria-expanded={quickDropdownOpen}
+                aria-haspopup="true"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#A3D9A5] group-hover:rotate-12 transition-transform" />
+                <span>Quick Book</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-white/90 transition-transform duration-300 ${
+                    quickDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Quick Book Services Dropdown Card (Matches User's Mockup) */}
+              {quickDropdownOpen && (
+                <div
+                  className="absolute right-0 top-full pt-2.5 w-[340px] sm:w-[390px] z-50"
+                  onMouseEnter={handleQuickMouseEnter}
+                  onMouseLeave={handleQuickMouseLeave}
+                >
+                  <div className="rounded-3xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] p-4 sm:p-5 animate-fadeIn font-sans">
+                    
+                    {/* Dropdown Header */}
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#EAE5DB]">
+                      <span className="text-xs sm:text-sm font-bold text-[#181F18] tracking-tight">
+                        Quick book services :
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
+                        aria-label="Close quick book menu"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* 3 Services Cards */}
+                    <div className="space-y-3">
+                      
+                      {/* Item 1: Book Your Space -> /book-space */}
+                      <Link
+                        href="/book-space"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#1B271B] to-[#121B12] hover:from-[#243524] hover:to-[#172317] border border-[#2D3E2D] hover:border-[#4ADE80]/50 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        {/* Left Thumbnail */}
+                        <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-[#263626] relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=400&q=80"
+                            alt="Book Your Space"
+                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-1 text-left">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3D9A5] font-semibold block mb-0.5">
+                            On Demand
+                          </span>
+                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                            Book Your Space
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[#C5D3C5] font-sans leading-tight line-clamp-2">
+                            Get access to premium workspace for a day
+                          </p>
+                        </div>
+
+                        {/* Arrow Button */}
+                        <div className="w-8 h-8 rounded-full bg-white text-[#141C14] group-hover/card:bg-[#4ADE80] group-hover/card:text-[#0E150F] flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+
+                      {/* Item 2: Book Meeting / Conference Room -> /meeting-rooms */}
+                      <Link
+                        href="/meeting-rooms"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#1B271B] to-[#121B12] hover:from-[#243524] hover:to-[#172317] border border-[#2D3E2D] hover:border-[#4ADE80]/50 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        {/* Left Thumbnail */}
+                        <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-[#263626] relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=400&q=80"
+                            alt="Meeting Rooms"
+                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-1 text-left">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3D9A5] font-semibold block mb-0.5">
+                            On Demand
+                          </span>
+                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                            Meeting rooms
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[#C5D3C5] font-sans leading-tight line-clamp-2">
+                            Host your stakeholders and drive decisions.
+                          </p>
+                        </div>
+
+                        {/* Arrow Button */}
+                        <div className="w-8 h-8 rounded-full bg-white text-[#141C14] group-hover/card:bg-[#4ADE80] group-hover/card:text-[#0E150F] flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+
+                      {/* Item 3: Schedule a Visit / Book a Tour -> /contact */}
+                      <Link
+                        href="/contact"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#1B271B] to-[#121B12] hover:from-[#243524] hover:to-[#172317] border border-[#2D3E2D] hover:border-[#4ADE80]/50 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        {/* Left Thumbnail */}
+                        <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden shrink-0 bg-[#263626] relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80"
+                            alt="Book a Tour"
+                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-1 text-left">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#A3D9A5] font-semibold block mb-0.5">
+                            Introducing
+                          </span>
+                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                            Book a Tour
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[#C5D3C5] font-sans leading-tight line-clamp-2">
+                            Visit any EnCourtyard and check out the space in person.
+                          </p>
+                        </div>
+
+                        {/* Arrow Button */}
+                        <div className="w-8 h-8 rounded-full bg-white text-[#141C14] group-hover/card:bg-[#4ADE80] group-hover/card:text-[#0E150F] flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Drawer Trigger (ONLY visible in mobile/tablet, hidden on desktop lg:hidden) */}
             <button
@@ -336,7 +516,7 @@ export const Navbar: React.FC = () => {
         <div>
           <div className="flex items-center justify-between pb-6 border-b border-white/10">
             <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 group">
-              <div className="bg-black/30 group-hover:bg-black/50 p-2 rounded-2xl border border-white/20 group-hover:border-[#4ADE80]/60 transition-all duration-300 transform group-hover:scale-105">
+              <div className="p-1 transition-all duration-300 transform group-hover:scale-105">
                 <img
                   src="/images/logo.png"
                   alt="EnCourtyard"
@@ -521,18 +701,46 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Full-width CTA button at bottom */}
-          <div className="pt-2">
-            <Button
-              href="/about#visit-form"
-              variant="primary"
-              size="lg"
-              className="w-full justify-center bg-[#2E7D32] hover:bg-[#388E3C] text-white font-semibold py-3.5 rounded-xl border border-[#4ADE80]/30 shadow-lg"
-              icon={<ArrowRight className="w-4 h-4" />}
+          {/* Quick Book Services List in Mobile Drawer */}
+          <div className="pt-2 space-y-2">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-[#A3BFA3] font-bold block mb-1">
+              Quick Book Services
+            </span>
+            <Link
+              href="/book-space"
               onClick={() => setMobileMenuOpen(false)}
+              className="w-full p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-between text-xs font-semibold transition-all"
             >
-              Schedule a Visit
-            </Button>
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-4 h-4 text-[#4ADE80]" />
+                <span>Book Your Space</span>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-[#A3BFA3]" />
+            </Link>
+
+            <Link
+              href="/meeting-rooms"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full p-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white flex items-center justify-between text-xs font-semibold transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <Building2 className="w-4 h-4 text-[#4ADE80]" />
+                <span>Meeting / Conference Rooms</span>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-[#A3BFA3]" />
+            </Link>
+
+            <Link
+              href="/contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full p-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#388E3C] border border-[#4ADE80]/40 text-white flex items-center justify-between text-xs font-semibold shadow-md transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <Calendar className="w-4 h-4 text-white" />
+                <span>Book a Tour / Schedule a Visit</span>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-white" />
+            </Link>
           </div>
 
         </div>

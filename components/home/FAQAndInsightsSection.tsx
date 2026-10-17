@@ -45,24 +45,24 @@ export const FAQAndInsightsSection: React.FC = () => {
   };
 
   return (
-    <section className="py-20 lg:py-24 secondary-section-bg border-b border-[#E5E1D8] relative overflow-hidden">
+    <section className="py-16 sm:py-22 lg:py-26 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Centered Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-14">
-          <span className="text-[11px] font-mono uppercase tracking-widest text-[#738273] font-bold block mb-2">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold mb-3">
             FREQUENTLY ASKED QUESTIONS
           </span>
           <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#181F18] tracking-tight leading-tight">
             Frequently Asked Questions
           </h2>
-          <p className="text-sm sm:text-base text-[#5C665C] mt-2.5 font-sans">
-            Get quick answers to common questions about memberships, amenities, and booking.
+          <p className="text-sm sm:text-base text-[#5C665C] mt-2.5 font-sans leading-relaxed">
+            Everything you need to know about our workspaces, memberships, and flexible terms.
           </p>
         </div>
 
         {/* Centered Accordion FAQ List */}
-        <div className="space-y-4">
+        <div className="space-y-3.5 sm:space-y-4">
           {FAQS_DATA.map((faq, idx) => {
             const isOpen = openFaq === idx;
 
@@ -70,26 +70,26 @@ export const FAQAndInsightsSection: React.FC = () => {
               <div
                 key={idx}
                 onClick={() => toggleFaq(idx)}
-                className={`bg-white rounded-2xl sm:rounded-3xl border transition-all duration-300 cursor-pointer overflow-hidden p-5 sm:p-6 shadow-[0_4px_16px_rgba(24,31,24,0.04)] ${
+                className={`rounded-2xl sm:rounded-3xl border transition-all duration-300 cursor-pointer overflow-hidden p-5 sm:p-6 group ${
                   isOpen
-                    ? 'border-[#263626] ring-2 ring-[#263626]/10 shadow-md'
-                    : 'border-[#E5E1D8] hover:border-[#263626]/40 hover:shadow-lg'
+                    ? 'bg-white border-2 border-[#263626] shadow-xl ring-4 ring-[#263626]/10 -translate-y-0.5'
+                    : 'bg-[#FAF9F5] hover:bg-white border-[#DDD7CA] hover:border-[#263626] shadow-[0_4px_16px_-4px_rgba(24,31,24,0.06)] hover:shadow-xl hover:-translate-y-0.5'
                 }`}
               >
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
+                  <div className="flex items-center gap-3.5 sm:gap-4">
                     <div
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${
+                      className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300 ${
                         isOpen
-                          ? 'bg-[#263626] text-white'
-                          : 'bg-[#FAF9F5] text-[#263626] border border-[#E5E1D8]'
+                          ? 'bg-[#263626] text-[#4ADE80] shadow-md'
+                          : 'bg-white text-[#263626] border border-[#DDD7CA] shadow-2xs group-hover:bg-[#263626] group-hover:text-white group-hover:border-[#263626]'
                       }`}
                     >
-                      <HelpCircle className="w-4 h-4" />
+                      <HelpCircle className="w-4.5 h-4.5" />
                     </div>
                     <h3
-                      className={`font-serif font-bold text-base sm:text-lg transition-colors duration-300 ${
-                        isOpen ? 'text-[#263626]' : 'text-[#181F18]'
+                      className={`font-serif font-bold text-base sm:text-lg transition-colors duration-300 leading-snug ${
+                        isOpen ? 'text-[#263626]' : 'text-[#181F18] group-hover:text-[#263626]'
                       }`}
                     >
                       {faq.q}
@@ -97,10 +97,10 @@ export const FAQAndInsightsSection: React.FC = () => {
                   </div>
 
                   <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${
                       isOpen
-                        ? 'bg-[#263626] text-white rotate-180'
-                        : 'bg-[#FAF9F5] text-[#263626] border border-[#E5E1D8]'
+                        ? 'bg-[#263626] text-white rotate-180 shadow-xs'
+                        : 'bg-white text-[#263626] border border-[#DDD7CA] group-hover:border-[#263626]'
                     }`}
                   >
                     <ChevronDown className="w-4 h-4" />
@@ -110,11 +110,11 @@ export const FAQAndInsightsSection: React.FC = () => {
                 {/* Animated Expandable Answer */}
                 <div
                   className={`grid transition-all duration-300 ease-in-out ${
-                    isOpen ? 'grid-rows-[1fr] opacity-100 mt-4 pt-4 border-t border-[#F0EBE1]' : 'grid-rows-[0fr] opacity-0'
+                    isOpen ? 'grid-rows-[1fr] opacity-100 mt-4 pt-4 border-t border-[#EAE5DB]' : 'grid-rows-[0fr] opacity-0'
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <p className="text-xs sm:text-sm text-[#5C665C] font-sans leading-relaxed pl-10.5 sm:pl-11.5">
+                    <p className="text-xs sm:text-[14.5px] text-[#425042] font-sans leading-relaxed pl-12.5 sm:pl-14">
                       {faq.a}
                     </p>
                   </div>
@@ -125,20 +125,20 @@ export const FAQAndInsightsSection: React.FC = () => {
         </div>
 
         {/* Centered Support CTA Footer */}
-        <div className="mt-10 sm:mt-12 p-6 sm:p-8 rounded-3xl bg-[#FAF9F5] border border-[#E8E2D6] text-center flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="mt-10 sm:mt-14 p-6 sm:p-8 rounded-[28px] bg-gradient-to-br from-[#FAF9F5] via-[#F5F2EB] to-[#FAF9F5] border border-[#DDD7CA] shadow-[0_12px_36px_-10px_rgba(24,31,24,0.08)] text-center flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-left">
             <h4 className="font-serif font-bold text-base sm:text-lg text-[#181F18]">
               Still have questions?
             </h4>
-            <p className="text-xs sm:text-sm text-[#6A786A] font-sans mt-0.5">
-              Our community concierge team is here to help you anytime.
+            <p className="text-xs sm:text-sm text-[#5C665C] font-sans mt-0.5">
+              Our community concierge team is here to assist you anytime.
             </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/about#contact"
-              className="inline-flex items-center gap-2 bg-[#263626] hover:bg-[#384D34] text-white px-5 py-2.5 rounded-full font-sans text-xs font-semibold transition-all duration-300 shadow-xs hover:shadow-md"
+              className="inline-flex items-center gap-2 bg-[#263626] hover:bg-[#344A32] text-white px-6 py-3 rounded-full font-sans text-xs sm:text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-0.5"
             >
               <span>Contact Concierge</span>
               <ArrowRight className="w-3.5 h-3.5" />

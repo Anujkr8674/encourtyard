@@ -325,7 +325,7 @@ export default function WorkspaceDetailsPage() {
 
   if (loading) {
     return (
-      <div className="bg-[#FAF9F5] min-h-screen text-[#181F18] flex items-center justify-center pt-24">
+      <div className="bg-white min-h-screen text-[#181F18] flex items-center justify-center pt-24">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-3 border-[#2E7D32] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="font-serif text-lg text-[#5C665C]">Loading workspace sanctuary...</p>
@@ -336,7 +336,7 @@ export default function WorkspaceDetailsPage() {
 
   if (!workspace) {
     return (
-      <div className="bg-[#FAF9F5] min-h-screen text-[#181F18] flex items-center justify-center pt-24 px-4">
+      <div className="bg-white min-h-screen text-[#181F18] flex items-center justify-center pt-24 px-4">
         <div className="text-center max-w-md space-y-5 bg-white border border-[#E5E1D8] p-8 rounded-3xl shadow-sm">
           <div className="w-16 h-16 rounded-full bg-[#FAF9F5] text-[#2E7D32] flex items-center justify-center mx-auto border border-[#E5E1D8]">
             <Building2 className="w-8 h-8" />
@@ -384,7 +384,7 @@ export default function WorkspaceDetailsPage() {
   ];
 
   return (
-    <div className="bg-[#FAF9F5] text-[#181F18] min-h-screen">
+    <div className="bg-white text-[#181F18] min-h-screen">
       
       {/* ========================================================================= */}
       {/* 1. HERO SECTION (80vh) WITH MOVING COVER IMAGE & FROSTED BLUR TEXT BADGES */}

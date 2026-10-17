@@ -108,10 +108,10 @@ export const FeaturesTickerMarquee: React.FC = () => {
   const repeatedFeatures = [...TICKER_FEATURES, ...TICKER_FEATURES, ...TICKER_FEATURES];
 
   return (
-    <div className="relative w-full bg-[#0D140E] border-y border-[#263626] text-white py-3.5 overflow-hidden select-none group z-10 shadow-inner">
+    <div className="relative w-full bg-white border-y border-[#E5E1D8] text-[#181F18] py-3.5 overflow-hidden select-none group z-10 shadow-xs">
       {/* Left/Right Edge Gradient Fade Masks */}
-      <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-[#0D140E] to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-[#0D140E] to-transparent z-10 pointer-events-none" />
+      <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-28 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
 
       {/* Marquee Track with CSS Animation */}
       <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] will-change-transform">
@@ -120,20 +120,20 @@ export const FeaturesTickerMarquee: React.FC = () => {
           return (
             <div
               key={`${item.id}-${idx}`}
-              className="inline-flex items-center gap-2.5 mx-5 sm:mx-7 text-xs sm:text-sm font-medium whitespace-nowrap tracking-wide hover:text-[#4ADE80] transition-colors"
+              className="inline-flex items-center gap-2.5 mx-5 sm:mx-7 text-xs sm:text-sm font-medium whitespace-nowrap tracking-wide hover:text-[#2E7D32] transition-colors"
             >
               {/* Icon with Glowing Badge */}
-              <div className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(74,222,128,0.15)]">
-                <Icon className={`w-3.5 h-3.5 ${item.color || 'text-[#4ADE80]'}`} />
+              <div className="w-6 h-6 rounded-lg bg-[#E8F5E9] border border-[#C8E6C9] flex items-center justify-center shrink-0 shadow-xs">
+                <Icon className="w-3.5 h-3.5 text-[#2E7D32]" />
               </div>
 
               {/* Label */}
-              <span className="text-[#E3EBE3] font-sans font-medium">
+              <span className="text-[#181F18] font-sans font-medium">
                 {item.label}
               </span>
 
               {/* Dot Separator */}
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 ml-3 shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2E7D32]/40 ml-3 shrink-0" />
             </div>
           );
         })}

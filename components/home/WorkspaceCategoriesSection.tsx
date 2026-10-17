@@ -416,7 +416,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
   return (
     <section
       id="categories"
-      className="py-14 sm:py-20 lg:py-24 secondary-section-bg border-b border-[#E5E1D8] relative overflow-hidden select-none"
+      className="py-14 sm:py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden select-none"
     >
       {/* Background Watermark & Botanical Atmosphere */}
       <div className="hidden lg:block absolute top-10 right-16 select-none pointer-events-none opacity-40 z-0">
@@ -481,19 +481,6 @@ export const WorkspaceCategoriesSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Feature Background Image (Only on desktop and only after database categories are loaded) */}
-        {!loading && categories.length > 0 && bgImageToShow && (
-          <div className="hidden lg:block absolute top-12 bottom-3 left-[48%] right-[20.5%] rounded-t-[36px] rounded-b-2xl overflow-hidden shadow-2xl border border-[#D5CEC2] z-0 pointer-events-none transition-all duration-500">
-            <img
-              key={bgImageToShow}
-              src={bgImageToShow}
-              alt={currentFeaturedCard?.name || 'Workspace Category'}
-              className="w-full h-full object-cover object-top transition-opacity duration-700 ease-in-out"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
-          </div>
-        )}
-
         {/* Dynamic Content: Loading State Skeleton / DB Categories */}
         {loading ? (
           <div className="space-y-6 animate-pulse">
@@ -502,9 +489,9 @@ export const WorkspaceCategoriesSection: React.FC = () => {
               {[1, 2, 3, 4, 5].map((idx) => (
                 <div
                   key={idx}
-                  className="w-[220px] sm:w-[240px] h-[260px] rounded-2xl bg-[#EAE5DC]/60 border border-[#E0DCD3] shrink-0 p-4 flex flex-col justify-between"
+                  className="w-[220px] sm:w-[240px] h-[260px] rounded-2xl bg-[#FAF9F5] border border-[#DDD7CA] shrink-0 p-4 flex flex-col justify-between"
                 >
-                  <div className="aspect-[4/3] w-full rounded-xl bg-[#DDD7CB]/70" />
+                  <div className="aspect-[4/3] w-full rounded-xl bg-[#EAE5DC]" />
                   <div className="space-y-2 mt-3">
                     <div className="h-4 bg-[#DDD7CB] rounded w-3/4" />
                     <div className="h-3 bg-[#DDD7CB]/70 rounded w-full" />
@@ -514,7 +501,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
             </div>
 
             {/* Bottom Panel Skeleton */}
-            <div className="bg-[#FAF9F5] rounded-3xl border border-[#E2DDD3] p-7 shadow-sm">
+            <div className="bg-[#FAF9F5] rounded-3xl border border-[#DDD7CA] p-7 shadow-sm">
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#E5E1D8]">
                 <div className="w-12 h-12 rounded-2xl bg-[#DDD7CB]" />
                 <div className="space-y-2">
@@ -528,7 +515,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                   {[1, 2, 3].map((sIdx) => (
                     <div
                       key={sIdx}
-                      className="w-[220px] h-[220px] rounded-2xl bg-white border border-[#E5E1D8] p-3.5 shrink-0"
+                      className="w-[220px] h-[220px] rounded-2xl bg-white border border-[#DDD7CA] p-3.5 shrink-0"
                     >
                       <div className="aspect-[16/11] w-full rounded-lg bg-[#EAE5DC]" />
                       <div className="h-4 bg-[#DDD7CB] rounded w-3/4 mt-3" />
@@ -536,10 +523,10 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                     </div>
                   ))}
                 </div>
-                <div className="lg:col-span-4 bg-white rounded-2xl border border-[#E5E1D8] p-5 space-y-3">
+                <div className="lg:col-span-4 bg-white rounded-2xl border border-[#DDD7CA] p-5 space-y-3">
                   <div className="h-3 bg-[#DDD7CB] rounded w-36 mb-4" />
                   {[1, 2, 3, 4].map((fIdx) => (
-                    <div key={fIdx} className="h-8 rounded-xl bg-[#FAF9F5] border border-[#EBE6DC]" />
+                    <div key={fIdx} className="h-8 rounded-xl bg-[#FAF9F5] border border-[#DDD7CA]" />
                   ))}
                 </div>
               </div>
@@ -547,7 +534,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
           </div>
         ) : categories.length === 0 ? (
           /* Empty Database State */
-          <div className="bg-[#FAF9F5] rounded-3xl border border-[#E2DDD3] p-12 text-center max-w-lg mx-auto shadow-sm space-y-3">
+          <div className="bg-[#FAF9F5] rounded-3xl border border-[#DDD7CA] p-12 text-center max-w-lg mx-auto shadow-sm space-y-3">
             <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#2E7D32] flex items-center justify-center mx-auto mb-2">
               <FolderOpen className="w-7 h-7" />
             </div>
@@ -581,95 +568,19 @@ export const WorkspaceCategoriesSection: React.FC = () => {
                 }`}
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {categories.map((category, index) => {
-                const isFeatured = index === featuredIndex;
+              {categories.map((category) => {
                 const isActive = category.id === selectedCategoryId;
                 const IconComp = category.icon;
 
-                // =====================================================================
-                // 4TH / FEATURED CARD (Matches OldWorkSpaceCategory)
-                // =====================================================================
-                if (isFeatured) {
-                  return (
-                    <div
-                      key={category.id}
-                      onClick={(e) => handleCardClick(e, category.id)}
-                      className={`group border transition-all duration-300 transform flex flex-col justify-end w-[200px] sm:w-[230px] lg:w-[230px] shrink-0 snap-start cursor-pointer select-none relative ${isActive
-                        ? 'bg-[#263626] text-white border-t-2 border-x-2 border-b-0 border-[#4E6B4E] rounded-t-2xl rounded-b-none shadow-2xl z-20 pb-4 sm:pb-5 mb-0'
-                        : 'bg-white text-[#181F18] border-[#E5E1D8] rounded-2xl mb-4 sm:mb-5 shadow-warm hover:shadow-2xl hover:border-[#263626] hover:-translate-y-1.5'
-                        }`}
-                    >
-                      {/* Floating Active Category Badge on Top */}
-                      {isActive && (
-                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center">
-                          {/* <span className="bg-[#1E2D1E] text-white border border-[#3A4D3A] text-[10px] font-sans font-bold px-3 py-0.5 rounded-full shadow-md whitespace-nowrap">
-                            Active Category
-                          </span> */}
-                          {/* <div className="w-2 h-1 bg-[#1E2D1E] [clip-path:polygon(50%_100%,0_0,100%_0)]" /> */}
-                        </div>
-                      )}
-
-                      {/* Mobile/Tablet Fallback Image if below lg */}
-                      {category.imageUrl && (
-                        <div className="lg:hidden aspect-[4/3] w-full overflow-hidden bg-[#EAE5DB] relative rounded-t-2xl">
-                          <img
-                            src={category.imageUrl}
-                            alt={category.name}
-                            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out pointer-events-none"
-                            loading="lazy"
-                          />
-                          {isActive && (
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#263626]/80 via-transparent to-transparent" />
-                          )}
-                        </div>
-                      )}
-
-                      <div className="p-3.5 sm:p-5 flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <IconComp className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#4ADE80]' : 'text-[#263626]'}`} />
-                            <h3 className={`font-serif text-xs sm:text-base font-bold leading-tight ${isActive ? 'text-white' : 'text-[#181F18]'}`}>
-                              {category.name}
-                            </h3>
-                          </div>
-                          <p className={`text-[11px] sm:text-xs leading-snug line-clamp-2 ${isActive ? 'text-[#D5E2D5]' : 'text-[#5C665C]'}`}>
-                            {category.description}
-                          </p>
-                        </div>
-
-                        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ${isActive
-                          ? 'bg-white text-[#263626] shadow-sm'
-                          : 'bg-[#FAF9F5] border border-[#E5E1D8] group-hover:bg-[#263626] group-hover:text-white'
-                          }`}>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // =====================================================================
-                // STANDARD CARDS (1st, 2nd, 3rd, 5th, etc.)
-                // =====================================================================
                 return (
                   <div
                     key={category.id}
                     onClick={(e) => handleCardClick(e, category.id)}
                     className={`group border transition-all duration-300 transform flex flex-col justify-between w-[205px] sm:w-[240px] lg:w-[240px] shrink-0 snap-start cursor-pointer select-none relative ${isActive
                       ? 'bg-[#263626] text-white border-t-2 border-x-2 border-b-0 border-[#4E6B4E] rounded-t-2xl rounded-b-none shadow-2xl z-20 pb-4 sm:pb-5 mb-0'
-                      : 'bg-white text-[#181F18] border-[#E5E1D8] rounded-2xl mb-4 sm:mb-5 shadow-warm hover:shadow-2xl hover:border-[#263626] hover:-translate-y-1.5'
+                      : 'bg-[#FAF9F5] hover:bg-white text-[#181F18] border-[#DDD7CA] hover:border-[#263626] rounded-2xl mb-4 sm:mb-5 shadow-[0_4px_16px_-4px_rgba(24,31,24,0.06)] hover:shadow-2xl hover:-translate-y-1.5'
                       }`}
                   >
-                    {/* Floating Active Category Badge on Top */}
-                    {isActive && (
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center">
-                        {/* <span className="bg-[#1E2D1E] text-white border border-[#3A4D3A] text-[10px] font-sans font-bold px-3 py-0.5 rounded-full shadow-md whitespace-nowrap">
-                          Active Category
-                        </span> */}
-                        {/* <div className="w-2 h-1 bg-[#1E2D1E] [clip-path:polygon(50%_100%,0_0,100%_0)]" /> */}
-                      </div>
-                    )}
-
                     {/* Thumbnail Image */}
                     <div className="aspect-[4/3] w-full overflow-hidden bg-[#EAE5DB] relative rounded-t-2xl">
                       {category.imageUrl ? (
@@ -705,7 +616,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
 
                       <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 shrink-0 ${isActive
                         ? 'bg-white text-[#263626] shadow-sm'
-                        : 'bg-[#FAF9F5] border border-[#E5E1D8] group-hover:bg-[#263626] group-hover:text-white'
+                        : 'bg-white border border-[#DDD7CA] group-hover:bg-[#263626] group-hover:text-white group-hover:border-[#263626]'
                         }`}>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </div>

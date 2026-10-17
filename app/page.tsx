@@ -32,9 +32,9 @@ export default function HomePage() {
       </ScrollReveal>
 
       {/* 3. Popular Picks Workspaces Slider Section - Unique Botanical Bloom 3D Depth Transition */}
-      <ScrollReveal animation="botanical-bloom" duration={1300} threshold={0.05}>
+      {/* <ScrollReveal animation="botanical-bloom" duration={1300} threshold={0.05}>
         <PopularPicksSection />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 4. City Presence Section - Unique Slide-In from Left with Subtle Angle */}
       {/* <ScrollReveal animation="slide-left" duration={1200} threshold={0.06}>
@@ -59,9 +59,9 @@ export default function HomePage() {
       </ScrollReveal>
 
       {/* 6. Pricing & Membership Preview - Unique Soft Zoom-In & Focus */}
-      <ScrollReveal animation="zoom-in" duration={1200} threshold={0.06}>
+      {/* <ScrollReveal animation="zoom-in" duration={1200} threshold={0.06}>
         <PricingPreview />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 7. Community Growth & Strategic Stats - Unique Vertical Expansive Reveal */}
       <ScrollReveal animation="expand-y" duration={1250} threshold={0.06}>
@@ -69,9 +69,9 @@ export default function HomePage() {
       </ScrollReveal>
 
       {/* 8. Google Reviews & Testimonials Marquee - Atmospheric Luxury Blur-In */}
-      <ScrollReveal animation="blur-in" duration={1350} threshold={0.06}>
+      {/* <ScrollReveal animation="blur-in" duration={1350} threshold={0.06}>
         <TestimonialsSection />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 9. FAQs & Insights Hub - Elegant Skewed Glide-Up */}
       <ScrollReveal animation="glide-up" duration={1200} threshold={0.06}>

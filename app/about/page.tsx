@@ -95,7 +95,7 @@ export default function AboutPage() {
   const { typedLines, currentLineIndex, isTyping } = useLineTypewriter(typewriterLines, 30);
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen flex flex-col">
+    <div className="bg-white min-h-screen flex flex-col">
       {/* 1. Hero Section (80vh) */}
       <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
         {/* Background Image / Overlay */}
@@ -193,7 +193,7 @@ export default function AboutPage() {
       </section>
 
       {/* Core Values Grid */}
-      <section className="py-20 bg-[#F7F5F0] border-y border-[#E5E1D8]">
+      <section className="py-20 bg-white border-y border-[#E5E1D8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16 space-y-2">
             <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
@@ -211,7 +211,7 @@ export default function AboutPage() {
                 className="bg-white p-7 rounded-2xl border border-[#E5E1D8] shadow-warm hover:shadow-warm-lg hover:border-[#263626] transition-all flex flex-col justify-between transform hover:-translate-y-1"
               >
                 <div>
-                  <div className="w-13 h-13 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] flex items-center justify-center mb-5">
+                  <div className="w-13 h-13 rounded-xl bg-[#F4F6F4] border border-[#E5E1D8] flex items-center justify-center mb-5">
                     {v.icon}
                   </div>
                   <h3 className="font-serif text-xl font-bold text-[#181F18] mb-2">
