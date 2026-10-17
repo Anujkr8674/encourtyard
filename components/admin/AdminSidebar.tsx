@@ -11,7 +11,7 @@ import {
   Calendar,
   MapPin,
   Monitor,
-  DollarSign,
+  IndianRupee,
   ShieldCheck,
   Settings,
   LogOut,
@@ -42,7 +42,7 @@ export const ADMIN_NAV_ITEMS: SidebarItem[] = [
   { name: 'Bookings & Passes', href: '/admin/bookings', icon: Calendar, badge: '0 New', badgeColor: 'bg-[#2E7D32] text-white' },
   // { name: 'Centres & Cities', href: '/admin/locations', icon: MapPin, badge: '79' },
   // { name: 'Meeting Rooms', href: '/admin/meeting-rooms', icon: Monitor },
-  // { name: 'Revenue & Invoices', href: '/admin/revenue', icon: DollarSign, badge: '+14%', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
+  // { name: 'Revenue & Invoices', href: '/admin/revenue', icon: IndianRupee, badge: '+14%', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
   // { name: 'Security Audit Logs', href: '/admin/logs', icon: ShieldCheck },
   { name: 'System Settings', href: '/admin/settings', icon: Settings },
 ];

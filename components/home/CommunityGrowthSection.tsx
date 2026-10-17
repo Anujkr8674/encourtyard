@@ -85,7 +85,7 @@ export const CommunityGrowthSection: React.FC = () => {
                   <Users className="w-5 h-5" />
                 </div>
                 <span className="font-serif text-3xl sm:text-4xl font-bold text-white block tracking-tight">
-                  5,000+
+                  1,000+
                 </span>
                 <span className="text-xs sm:text-[13px] text-[#D1E0D1] font-sans font-medium block mt-1">
                   Community Members
@@ -111,10 +111,10 @@ export const CommunityGrowthSection: React.FC = () => {
                   <Building2 className="w-5 h-5" />
                 </div>
                 <span className="font-serif text-3xl sm:text-4xl font-bold text-white block tracking-tight">
-                  8
+                  24/7
                 </span>
                 <span className="text-xs sm:text-[13px] text-[#D1E0D1] font-sans font-medium block mt-1">
-                  Vibrant Cities
+                  Dedicated Support
                 </span>
               </div>
 

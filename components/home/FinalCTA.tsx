@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowRight, Play, Phone, MapPin, Users, Layers, Compass } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Play, Phone, MapPin, Users, Layers, Compass, Sparkles, Calendar, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 const FEATURE_PILLS = [
@@ -73,66 +74,54 @@ export const FinalCTA: React.FC = () => {
           {/* Left Narrative Column */}
           <div className="lg:col-span-5 space-y-5 text-left">
             <span className="text-[11px] font-mono uppercase tracking-widest text-[#4ADE80] font-bold block">
-              READY TO GET STARTED?
+             READY TO EXPERIENCE ENCOURTYARD?
             </span>
 
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
-              Let's Build Your <br />
-              Next Chapter Together
+              Don't Just Find a Desk. <br />Find Your Workspace.
             </h2>
 
             <p className="text-sm sm:text-base text-[#E3EBE3]/90 font-sans leading-relaxed">
-              Schedule a visit, explore our spaces, or talk to our team. Experience how EnCourtyard accelerates your business momentum.
+               Whether you need a desk for a day, a cabin for your team, a meeting room for an hour, a conference hall for an event, or a workspace you can access 24/7, Encourtyard has a space for you.
             </p>
 
-            {/* CTAs: Primary Actions + WhatsApp & Call */}
-            <div className="pt-2 space-y-3.5">
-              {/* Row 1: Schedule Visit & Watch Video */}
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  href="/about#visit-form"
-                  variant="white"
-                  size="lg"
-                  className="font-bold shadow-2xl text-[#181F18] bg-white hover:bg-neutral-100"
-                  icon={<ArrowRight className="w-4 h-4" />}
-                >
-                  Schedule a Visit
-                </Button>
+            {/* CTAs: 4 Distinct Action Buttons Requested by User */}
+            <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+              {/* Button 1: Book a Tour */}
+              <Link
+                href="/about#visit-form"
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white hover:bg-neutral-100 text-[#181F18] font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl transition-all duration-200 active:scale-95 group"
+              >
+                <Sparkles className="w-4 h-4 text-[#2E7D32] group-hover:scale-110 transition-transform" />
+                <span>Book a Tour</span>
+              </Link>
 
-                <Button
-                  href="/workspaces"
-                  variant="outline"
-                  size="lg"
-                  className="border-white/50 bg-black/30 backdrop-blur-md text-white hover:bg-white hover:text-[#181F18] font-semibold"
-                  icon={<Play className="w-3.5 h-3.5 fill-current" />}
-                  iconPosition="left"
-                >
-                  Watch Video
-                </Button>
-              </div>
+              {/* Button 2: Book a Day Pass */}
+              <Link
+                href="/book-space?plan=day-pass"
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] border border-[#4ADE80]/30 transition-all duration-200 active:scale-95 group"
+              >
+                <Calendar className="w-4 h-4 text-[#86EFAC] group-hover:scale-110 transition-transform" />
+                <span>Book a Day Pass</span>
+              </Link>
 
-              {/* Row 2: WhatsApp & Call Quick Connect */}
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <a
-                  href="https://wa.me/919908209993?text=Hi%20EnCourtyard%20Team%2C%20I%20would%20like%20to%20inquire%20about%20workspace%20availability%20and%20plans."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1D4A24]/90 hover:bg-[#25D366] text-white border border-[#2E7D32] hover:border-[#25D366] backdrop-blur-md font-sans text-xs sm:text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-[0_4px_16px_rgba(37,211,102,0.35)] group"
-                >
-                  <svg className="w-4 h-4 fill-current text-[#4ADE80] group-hover:text-white transition-colors shrink-0" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
-                  </svg>
-                  <span>WhatsApp</span>
-                </a>
+              {/* Button 3: Book Conference Hall */}
+              <Link
+                href="/conference-hall"
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-black/40 hover:bg-black/60 text-white font-semibold text-xs sm:text-sm border border-white/25 hover:border-[#F59E0B] backdrop-blur-md transition-all duration-200 active:scale-95 group"
+              >
+                <Building2 className="w-4 h-4 text-[#FBBF24] group-hover:scale-110 transition-transform" />
+                <span>Book Conference Hall</span>
+              </Link>
 
-                <a
-                  href="tel:+919908209993"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#263026]/90 hover:bg-[#344034] text-white border border-white/20 hover:border-white/40 backdrop-blur-md font-sans text-xs sm:text-sm font-semibold transition-all duration-300 shadow-md group"
-                >
-                  <Phone className="w-4 h-4 text-[#4ADE80] group-hover:scale-110 transition-transform shrink-0" />
-                  <span>Call +91 99082 09993</span>
-                </a>
-              </div>
+              {/* Button 4: Contact Us */}
+              <Link
+                href="/contact"
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm border border-white/25 hover:border-white/50 backdrop-blur-md transition-all duration-200 active:scale-95 group"
+              >
+                <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-1 transition-transform" />
+                <span>Contact Us</span>
+              </Link>
             </div>
           </div>
 

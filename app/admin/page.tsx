@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { 
   Building2, 
   Users, 
-  DollarSign, 
+  IndianRupee, 
   TrendingUp, 
   Monitor, 
   ShieldCheck, 
@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
           { label: 'Total Companies', val: '28', change: '+3 this month', isPos: true, icon: Building2 },
           { label: 'Active Members', val: '342', change: '98% retention', isPos: true, icon: Users },
           { label: 'Seat Occupancy', val: '89.4%', change: '38 seats open', isPos: true, icon: MapPin },
-          { label: 'Monthly Run-Rate', val: '₹1.42 Cr', change: '+14% vs Q2', isPos: true, icon: DollarSign },
+          { label: 'Monthly Run-Rate', val: '₹1.42 Cr', change: '+14% vs Q2', isPos: true, icon: IndianRupee },
           { label: 'Room Utilization', val: '78.2%', change: 'Peak: 10am-3pm', isPos: true, icon: Monitor },
         ].map((kpi, idx) => {
           const Icon = kpi.icon;

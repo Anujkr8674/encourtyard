@@ -543,52 +543,105 @@ function BookPageContent() {
                   */}
 
                   {/* Multi-Row Date & Time Pickers */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    
-                    {/* From Date & Time */}
-                    <div className="space-y-1.5 text-left">
-                      <label className="text-xs font-bold text-[#181F18]">
-                        From Date & Time
-                      </label>
-                      <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-                        <MaterialDatePicker
-                          value={startDate}
-                          minDate={todayDate}
-                          onChange={(newDate) => {
-                            setStartDate(newDate);
-                            if (newDate > endDate) setEndDate(newDate);
-                          }}
-                          align="left"
-                        />
-                        <MaterialTimePicker
-                          value={startTime}
-                          onChange={(newTime) => setStartTime(newTime)}
-                          align="right"
-                        />
+                  {rentalPlan === 'daily' || planParam === 'daily' ? (
+                    /* Day Pass Mode: Single Day Only, Future Dates Only */
+                    <div className="space-y-3 bg-[#FAF9F5] p-4 rounded-2xl border border-[#E5E1D8]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#181F18] flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#2E7D32]" />
+                          <span>Day Pass Date (Single Day Access)</span>
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-[#185ADB] text-white text-[10px] font-mono font-bold">
+                          1 Day Only
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Single Date Picker (Future Dates Only) */}
+                        <div className="space-y-1.5 text-left">
+                          <label className="text-[11px] font-semibold text-[#5C665C]">
+                            Date (Future Dates Only) <span className="text-red-500">*</span>
+                          </label>
+                          <MaterialDatePicker
+                            value={startDate}
+                            minDate={todayDate}
+                            onChange={(newDate) => {
+                              setStartDate(newDate);
+                              setEndDate(newDate); // Strictly lock to single day
+                            }}
+                            align="left"
+                          />
+                        </div>
+
+                        {/* Timing Slots */}
+                        <div className="space-y-1.5 text-left">
+                          <label className="text-[11px] font-semibold text-[#5C665C]">
+                            Access Hours <span className="text-red-500">*</span>
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <MaterialTimePicker
+                              value={startTime}
+                              onChange={(newTime) => setStartTime(newTime)}
+                              align="left"
+                            />
+                            <MaterialTimePicker
+                              value={endTime}
+                              onChange={(newTime) => setEndTime(newTime)}
+                              align="right"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-                    {/* To Date & Time */}
-                    <div className="space-y-1.5 text-left">
-                      <label className="text-xs font-bold text-[#181F18]">
-                        To Date & Time
-                      </label>
-                      <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-                        <MaterialDatePicker
-                          value={endDate}
-                          minDate={startDate || todayDate}
-                          onChange={(newDate) => setEndDate(newDate)}
-                          align="left"
-                        />
-                        <MaterialTimePicker
-                          value={endTime}
-                          onChange={(newTime) => setEndTime(newTime)}
-                          align="right"
-                        />
+                  ) : (
+                    /* Standard Multi-Day Mode */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      
+                      {/* From Date & Time */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold text-[#181F18]">
+                          From Date & Time
+                        </label>
+                        <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                          <MaterialDatePicker
+                            value={startDate}
+                            minDate={todayDate}
+                            onChange={(newDate) => {
+                              setStartDate(newDate);
+                              if (newDate > endDate) setEndDate(newDate);
+                            }}
+                            align="left"
+                          />
+                          <MaterialTimePicker
+                            value={startTime}
+                            onChange={(newTime) => setStartTime(newTime)}
+                            align="right"
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                  </div>
+                      {/* To Date & Time */}
+                      <div className="space-y-1.5 text-left">
+                        <label className="text-xs font-bold text-[#181F18]">
+                          To Date & Time
+                        </label>
+                        <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                          <MaterialDatePicker
+                            value={endDate}
+                            minDate={startDate || todayDate}
+                            onChange={(newDate) => setEndDate(newDate)}
+                            align="left"
+                          />
+                          <MaterialTimePicker
+                            value={endTime}
+                            onChange={(newTime) => setEndTime(newTime)}
+                            align="right"
+                          />
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
 
                   {/* Number of Seats / Pax (Editable Input & Buttons) */}
                   <div className="space-y-1.5 text-left">

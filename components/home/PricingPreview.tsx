@@ -10,7 +10,7 @@ export const PricingPreview: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
+    <section className="py-16 sm:py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden font-['Tahoma',Arial,sans-serif]">
       <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Outer Section Banner Card (Matching WhyEnCourtyard 3D Aesthetics) */}
@@ -34,7 +34,7 @@ export const PricingPreview: React.FC = () => {
                 <span className="text-[11px] font-mono uppercase tracking-widest text-[#738273] font-bold block mb-2">
                   PRICING PLANS
                 </span>
-                <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#181F18] tracking-tight leading-tight">
+                <h2 className="font-['Tahoma',Arial,sans-serif] text-3xl sm:text-4xl lg:text-[40px] font-bold text-[#181F18] tracking-tight leading-tight">
                   Flexible Plans for Individuals, Teams <br className="hidden sm:inline" />
                   and Growing Businesses
                 </h2>
@@ -47,7 +47,7 @@ export const PricingPreview: React.FC = () => {
                     onClick={() => setBillingCycle('monthly')}
                     className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       billingCycle === 'monthly'
-                        ? 'bg-[#263626] text-white shadow-sm'
+                        ? 'bg-[#185ADB] text-white shadow-sm'
                         : 'text-[#5C665C] hover:text-[#181F18]'
                     }`}
                   >
@@ -57,7 +57,7 @@ export const PricingPreview: React.FC = () => {
                     onClick={() => setBillingCycle('yearly')}
                     className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                       billingCycle === 'yearly'
-                        ? 'bg-[#263626] text-white shadow-sm'
+                        ? 'bg-[#185ADB] text-white shadow-sm'
                         : 'text-[#5C665C] hover:text-[#181F18]'
                     }`}
                   >
@@ -65,8 +65,8 @@ export const PricingPreview: React.FC = () => {
                     <span
                       className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full transition-colors ${
                         billingCycle === 'yearly'
-                          ? 'bg-[#3A4E3A] text-[#86EFAC]'
-                          : 'bg-[#263626] text-white shadow-xs'
+                          ? 'bg-[#144BB8] text-[#93C5FD]'
+                          : 'bg-[#185ADB] text-white shadow-xs'
                       }`}
                     >
                       Save 20%
@@ -76,7 +76,7 @@ export const PricingPreview: React.FC = () => {
 
                 <Link
                   href="/pricing"
-                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#181F18] hover:text-[#263626] group transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#181F18] hover:text-[#185ADB] group transition-colors"
                 >
                   <span>View Detailed Pricing</span>
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -108,16 +108,16 @@ export const PricingPreview: React.FC = () => {
                     )}
 
                     <div>
-                      <h3 className="font-serif text-lg font-bold text-[#181F18] mb-2.5">
+                      <h3 className="font-['Tahoma',Arial,sans-serif] text-lg font-bold text-[#181F18] mb-2.5">
                         {plan.name}
                       </h3>
 
                       {/* Price */}
                       <div className="mb-5">
-                        <span className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
+                        <span className="font-['Tahoma',Arial,sans-serif] text-2xl sm:text-3xl font-bold text-[#181F18]">
                           {price}
                         </span>
-                        <span className="text-xs text-[#738273] font-sans ml-1">
+                        <span className="text-xs text-[#738273] font-['Tahoma',Arial,sans-serif] ml-1">
                           {plan.period}
                         </span>
                       </div>
@@ -133,16 +133,12 @@ export const PricingPreview: React.FC = () => {
                       </ul>
                     </div>
 
-                    {/* Card CTA */}
+                    {/* Card CTA Button - Cobalt Blue #185ADB */}
                     <Button
                       href={plan.link}
-                      variant={plan.isPopular ? 'primary' : 'outline'}
+                      variant="primary"
                       size="md"
-                      className={`w-full text-xs font-semibold py-2.5 rounded-xl cursor-pointer ${
-                        plan.isPopular
-                          ? 'bg-[#263626] hover:bg-[#3A4D3A] text-white shadow-sm'
-                          : 'border-[#D5CEC2] text-[#181F18] hover:bg-[#263626] hover:text-white hover:border-[#263626]'
-                      }`}
+                      className="w-full text-xs font-semibold py-2.5 rounded-xl cursor-pointer bg-[#185ADB] hover:bg-[#144BB8] text-white shadow-sm"
                     >
                       {plan.ctaText}
                     </Button>
@@ -151,25 +147,25 @@ export const PricingPreview: React.FC = () => {
                 );
               })}
 
-              {/* 5th Card: Custom Solutions for Your Team (Dark Olive Card) */}
-              <div className="bg-[#263626] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl border border-[#3A4D3A] transform hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(24,31,24,0.25)] transition-all duration-300">
+              {/* 5th Card: Custom Solutions for Your Team (Dark Green Theme) */}
+              <div className="bg-[#263626] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col justify-between shadow-2xl border border-[#3A4D3A] transform hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(20,32,20,0.35)] transition-all duration-300">
                 <div>
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[#4ADE80] font-bold block mb-2">
                     ENTERPRISE
                   </span>
-                  <h3 className="font-serif text-xl font-bold text-white mb-2.5 leading-snug">
+                  <h3 className="font-['Tahoma',Arial,sans-serif] text-xl font-bold text-white mb-2.5 leading-snug">
                     Custom Solutions for Your Team
                   </h3>
-                  <p className="text-xs text-[#E3EBE3]/80 leading-relaxed mb-6">
+                  <p className="text-xs text-[#D1E0D1]/80 leading-relaxed mb-6">
                     Need a tailored plan? Let's create one together. Dedicated floorplates, custom branding & private security.
                   </p>
                 </div>
 
                 <Button
                   href="/book?plan=enterprise"
-                  variant="white"
+                  variant="primary"
                   size="md"
-                  className="w-full text-xs font-semibold py-2.5 rounded-xl text-[#263626] shadow-warm hover:bg-white/90 cursor-pointer"
+                  className="w-full text-xs font-semibold py-2.5 rounded-xl bg-[#185ADB] hover:bg-[#144BB8] text-white shadow-md cursor-pointer"
                   icon={<ArrowRight className="w-3.5 h-3.5" />}
                 >
                   Contact Our Team

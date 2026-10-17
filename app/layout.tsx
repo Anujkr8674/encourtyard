@@ -47,6 +47,8 @@ import { AuthProvider } from '@/context/AuthContext';
 import { FeedbackProvider } from '@/context/FeedbackModalContext';
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton';
 
+import { Suspense } from 'react';
+
 export default function RootLayout({
   children,
 }: {
@@ -60,7 +62,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-white text-[#181F18] selection:bg-[#263626] selection:text-white overflow-x-clip w-full max-w-full">
         <AuthProvider>
           <FeedbackProvider>
-            <Navbar />
+            <Suspense fallback={<div className="h-24 sm:h-28" />}>
+              <Navbar />
+            </Suspense>
             <main className="flex-grow w-full max-w-full overflow-x-clip">{children}</main>
             <Footer />
             <WhatsAppButton />

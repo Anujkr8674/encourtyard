@@ -40,7 +40,7 @@ export const Footer: React.FC = () => {
   }
 
   return (
-    <footer className="relative bg-gradient-to-b from-[#1A2D1F] via-[#132217] to-[#0D1710] text-white overflow-hidden">
+    <footer className="relative bg-gradient-to-b from-[#0c1b2a] via-[#08121c] to-[#04080e] text-white overflow-hidden">
       
       {/* 1. SHIMMERING METALLIC GOLD ARCHITECTURAL RIBBON (Matching Reference Design) */}
       <div className="relative w-full overflow-hidden select-none z-20">
@@ -63,9 +63,9 @@ export const Footer: React.FC = () => {
       </div>
 
       {/* 2. VIBRANT BOTANICAL AMBIENT GLOWS & TEXTURE */}
-      <div className="absolute -top-20 left-1/4 w-[500px] h-[500px] bg-[#4ADE80]/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 right-10 w-[450px] h-[450px] bg-[#D4AF37]/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-24 left-10 w-[400px] h-[400px] bg-[#2E5E35]/30 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute -top-20 left-1/4 w-[500px] h-[500px] bg-[#2E7D32]/12 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-[450px] h-[450px] bg-[#DAA520]/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-24 left-10 w-[400px] h-[400px] bg-[#142d47]/30 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Subtle Dotted Matrix Texture */}
       <div
@@ -144,11 +144,11 @@ export const Footer: React.FC = () => {
               {[
                 { label: 'Home', href: '/' },
                 { label: 'Book Space', href: '/book-space' },
-                { label: 'Workspaces', href: '/book-space' },
-                { label: 'Pricing Plans', href: '/pricing' },
-                { label: 'Meeting Rooms', href: '/meeting-rooms' },
-                { label: 'About Us', href: '/about' },
-                { label: 'Schedule Visit', href: '/about#visit-form' },
+                { label: 'Day Pass', href: '/book-space?plan=day-pass' },
+                // { label: 'Pricing Plans', href: '/pricing' },
+                { label: 'Confrence Hall', href: '/conference-hall' },
+                // { label: 'About Us', href: '/about' },
+                { label: 'Schedule Visit', href: '/contact' },
               ].map((link, idx) => (
                 <li key={idx}>
                   <Link
@@ -178,10 +178,11 @@ export const Footer: React.FC = () => {
             
             <ul className="space-y-2.5 text-xs sm:text-[13px]">
               {[
-                { label: 'Community Events', href: '/about' },
-                { label: 'Member FAQs', href: '/about#faq' },
-                { label: 'Virtual Tours', href: '/book-space' },
-                { label: 'Enterprise Solutions', href: '/book-space' },
+                { label: 'About Us', href: '/about' },
+               
+                { label: 'Hyderabad', href: '/hyderabad' },
+                 { label: 'Gallery', href: '/gallery' },
+                // { label: 'Enterprise Solutions', href: '/book-space' },
                 { label: 'Privacy Policy', href: '/privacy' },
                 { label: 'Terms & Conditions', href: '/terms' },
               ].map((link, idx) => (

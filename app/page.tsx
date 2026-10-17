@@ -27,9 +27,9 @@ export default function HomePage() {
       <Hero />
 
       {/* 2. Features & Keywords Moving Marquee Ticker - Unique Marquee Curtain Reveal */}
-      <ScrollReveal animation="marquee-curtain" duration={1100} threshold={0.04}>
+      {/* <ScrollReveal animation="marquee-curtain" duration={1100} threshold={0.04}>
         <FeaturesTickerMarquee />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 3. Popular Picks Workspaces Slider Section - Unique Botanical Bloom 3D Depth Transition */}
       {/* <ScrollReveal animation="botanical-bloom" duration={1300} threshold={0.05}>
@@ -49,9 +49,9 @@ export default function HomePage() {
 
 
       {/* 4. Why EnCourtyard - Unique Slide-In from Right with Dynamic Tilt */}
-      <ScrollReveal animation="slide-right" duration={1200} threshold={0.06}>
+      {/* <ScrollReveal animation="slide-right" duration={1200} threshold={0.06}>
         <WhyEnCourtyard />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 5. World-Class Amenities - Unique 3D Perspective Flip/Tilt-Up */}
       <ScrollReveal animation="flip-up" duration={1300} threshold={0.06}>

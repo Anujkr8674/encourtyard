@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { DollarSign, TrendingUp, Download, ArrowUpRight, CheckCircle2, CreditCard, Calendar } from 'lucide-react';
+import { IndianRupee, TrendingUp, Download, ArrowUpRight, CheckCircle2, CreditCard, Calendar } from 'lucide-react';
 
 export default function AdminRevenuePage() {
   const invoices = [

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Monitor, Users, Wifi, Clock, Plus, CheckCircle2, DollarSign } from 'lucide-react';
+import { Monitor, Users, Wifi, Clock, Plus, CheckCircle2, IndianRupee } from 'lucide-react';
 
 export default function AdminMeetingRoomsPage() {
   const rooms = [

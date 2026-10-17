@@ -30,11 +30,11 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variantStyles = {
-    primary: 'bg-[#263626] text-white hover:bg-[#3A4D3A] focus:ring-[#263626] shadow-sm hover:shadow-warm active:translate-y-[1px]',
-    secondary: 'bg-[#F7F5F0] text-[#263626] border border-[#E5E1D8] hover:bg-[#EAE5DB] hover:border-[#DCD7CA] focus:ring-[#263626]',
-    outline: 'bg-transparent text-[#263626] border border-[#263626] hover:bg-[#263626] hover:text-white focus:ring-[#263626]',
-    white: 'bg-white text-[#263626] border border-transparent hover:bg-[#FAF9F5] shadow-sm hover:shadow-warm focus:ring-white',
-    ghost: 'bg-transparent text-[#263626] hover:text-[#3A4D3A] hover:bg-[#263626]/5 p-0 focus:ring-transparent'
+    primary: 'bg-[#2E7D32] text-white hover:bg-[#1E5C23] focus:ring-[#2E7D32] shadow-sm hover:shadow-[0_4px_20px_rgba(46,125,50,0.25)] active:translate-y-[1px]',
+    secondary: 'bg-[#F2F7F2] text-[#2E7D32] border border-[#CDE3CD] hover:bg-[#E3EFE3] hover:border-[#2E7D32]/40 focus:ring-[#2E7D32]',
+    outline: 'bg-transparent text-[#2E7D32] border border-[#2E7D32] hover:bg-[#2E7D32] hover:text-white focus:ring-[#2E7D32]',
+    white: 'bg-white text-[#2E7D32] border border-transparent hover:bg-[#FAF9F5] shadow-sm hover:shadow-md focus:ring-white',
+    ghost: 'bg-transparent text-[#2E7D32] hover:text-[#1E5C23] hover:bg-[#2E7D32]/5 p-0 focus:ring-transparent'
   };
 
   const combinedStyles = `${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;

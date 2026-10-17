@@ -378,7 +378,7 @@ export default function UserDashboardPage() {
               <div>
                 <span className="text-xs text-[#5C665C] block">Current Membership</span>
                 <strong className="text-base text-[#181F18]">Executive Private Suite (6-Person)</strong>
-                <div className="text-xs text-[#263626] font-semibold mt-0.5">$1,850.00 / month · Auto-renewing</div>
+                <div className="text-xs text-[#263626] font-semibold mt-0.5">₹29,999.00 / month · Auto-renewing</div>
               </div>
               <Badge variant="available" size="sm" dot>
                 Paid & Active

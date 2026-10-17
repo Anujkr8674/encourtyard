@@ -57,9 +57,15 @@ export async function GET(req: NextRequest) {
       const wBookings = activeBookings.filter(b => b.workspaceId === w.id);
       const wMaintenanceBlocks = activeMaintenanceBlocks.filter(b => b.workspaceId === w.id);
 
+      // Extract showInDayPass setting
+      const dayPassSpec = specs.find((s: any) => s.key === 'showInDayPass' || s.key === 'Show in Day Pass');
+      const showInDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
+      const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+
       return {
         ...w,
-        specifications: specs,
+        showInDayPass,
+        specifications: cleanSpecs,
         mediaUrls: media,
         bookings: wBookings,
         maintenanceBlocks: wMaintenanceBlocks,
@@ -97,6 +103,7 @@ export async function POST(req: NextRequest) {
       badge,
       order,
       isActive,
+      showInDayPass,
     } = body;
 
     if (!title || !categoryId || !shortDescription) {
@@ -110,7 +117,18 @@ export async function POST(req: NextRequest) {
       ? body.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-')
       : title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-    const specsJson = typeof specifications === 'string' ? specifications : JSON.stringify(specifications || []);
+    let parsedSpecs = Array.isArray(specifications)
+      ? [...specifications]
+      : typeof specifications === 'string'
+      ? JSON.parse(specifications || '[]')
+      : [];
+
+    parsedSpecs = parsedSpecs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+    if (showInDayPass) {
+      parsedSpecs.push({ key: 'showInDayPass', value: 'true' });
+    }
+
+    const specsJson = JSON.stringify(parsedSpecs);
     const mediaJson = typeof mediaUrls === 'string' ? mediaUrls : JSON.stringify(mediaUrls || []);
 
     const createdWorkspace = await prisma.workspace.create({
@@ -136,7 +154,8 @@ export async function POST(req: NextRequest) {
       success: true,
       workspace: {
         ...createdWorkspace,
-        specifications: JSON.parse(specsJson),
+        showInDayPass: !!showInDayPass,
+        specifications: parsedSpecs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass'),
         mediaUrls: JSON.parse(mediaJson),
       },
       message: 'Workspace created successfully',

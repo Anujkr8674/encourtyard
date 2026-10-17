@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Check, Star, ArrowRight, Sparkles } from 'lucide-react';
+import { Check, Star, ArrowRight } from 'lucide-react';
 import { PricingPlan } from '@/types';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 
 export interface PricingCardProps {
@@ -24,10 +23,10 @@ export const PricingCard: React.FC<PricingCardProps> = ({
 
   return (
     <div
-      className={`relative rounded-2xl border flex flex-col h-full transition-all duration-300 transform hover:-translate-y-2 ${
+      className={`relative rounded-2xl border flex flex-col h-full transition-all duration-300 transform hover:-translate-y-2 font-['Tahoma',Arial,sans-serif] ${
         isHighlighted
           ? 'bg-[#263626] text-[#FAF9F5] border-[#3A4D3A] shadow-warm-lg scale-[1.02] z-10'
-          : 'bg-white text-[#181F18] border-[#E5E1D8] shadow-warm hover:shadow-warm-lg hover:border-[#263626]'
+          : 'bg-white text-[#181F18] border-[#E5E1D8] shadow-warm hover:shadow-warm-lg hover:border-[#185ADB]'
       }`}
     >
       {/* Popular / Recommended Badge */}
@@ -49,7 +48,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
       {/* Card Header */}
       <div className={`p-7 sm:p-8 ${plan.badge ? 'pt-9' : ''}`}>
         <h3
-          className={`font-serif text-2xl sm:text-3xl font-bold mb-2 ${
+          className={`font-['Tahoma',Arial,sans-serif] text-2xl sm:text-3xl font-bold mb-2 ${
             isHighlighted ? 'text-white' : 'text-[#181F18]'
           }`}
         >
@@ -67,7 +66,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
         <div className="mt-6 mb-5">
           <div className="flex items-baseline gap-1.5">
             <span
-              className={`font-serif text-4xl sm:text-5xl font-bold tracking-tight ${
+              className={`font-['Tahoma',Arial,sans-serif] text-4xl sm:text-5xl font-bold tracking-tight ${
                 isHighlighted ? 'text-white' : 'text-[#181F18]'
               }`}
             >
@@ -110,7 +109,7 @@ export const PricingCard: React.FC<PricingCardProps> = ({
           </div>
         </div>
 
-        {/* Primary CTA */}
+        {/* Primary CTA Button - Uses Cobalt Blue #185ADB */}
         <Button
           href="/about#visit-form"
           variant={isHighlighted ? 'white' : 'primary'}

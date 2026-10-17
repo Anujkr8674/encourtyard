@@ -61,11 +61,16 @@ export async function GET(
       }
     });
 
+    const dayPassSpec = specs.find((s: any) => s.key === 'showInDayPass' || s.key === 'Show in Day Pass');
+    const showInDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
+    const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+
     return NextResponse.json({
       success: true,
       workspace: {
         ...workspace,
-        specifications: specs,
+        showInDayPass,
+        specifications: cleanSpecs,
         mediaUrls: media,
         bookings: activeBookings,
         maintenanceBlocks: activeMaintenanceBlocks,
@@ -101,6 +106,7 @@ export async function PUT(
       badge,
       order,
       isActive,
+      showInDayPass,
     } = body;
 
     const updatePayload: any = {};
@@ -109,9 +115,6 @@ export async function PUT(
     if (categoryName !== undefined) updatePayload.categoryName = categoryName;
     if (shortDescription !== undefined) updatePayload.shortDescription = shortDescription;
     if (longDescription !== undefined) updatePayload.longDescription = longDescription;
-    if (specifications !== undefined) {
-      updatePayload.specifications = typeof specifications === 'string' ? specifications : JSON.stringify(specifications);
-    }
     if (mediaUrls !== undefined) {
       updatePayload.mediaUrls = typeof mediaUrls === 'string' ? mediaUrls : JSON.stringify(mediaUrls);
     }
@@ -136,6 +139,32 @@ export async function PUT(
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
+    if (specifications !== undefined || showInDayPass !== undefined) {
+      let currentSpecs: any[] = [];
+      if (specifications !== undefined) {
+        currentSpecs = Array.isArray(specifications)
+          ? [...specifications]
+          : typeof specifications === 'string'
+          ? JSON.parse(specifications || '[]')
+          : [];
+      } else {
+        try {
+          currentSpecs = typeof existing.specifications === 'string' ? JSON.parse(existing.specifications || '[]') : existing.specifications || [];
+        } catch {
+          currentSpecs = [];
+        }
+      }
+
+      const existingDayPass = currentSpecs.some((s: any) => (s.key === 'showInDayPass' || s.key === 'Show in Day Pass') && s.value === 'true');
+      const targetDayPass = showInDayPass !== undefined ? !!showInDayPass : existingDayPass;
+
+      currentSpecs = currentSpecs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+      if (targetDayPass) {
+        currentSpecs.push({ key: 'showInDayPass', value: 'true' });
+      }
+      updatePayload.specifications = JSON.stringify(currentSpecs);
+    }
+
     const updatedWorkspace = await prisma.workspace.update({
       where: { id: existing.id },
       data: updatePayload,
@@ -154,11 +183,16 @@ export async function PUT(
       media = [];
     }
 
+    const dayPassSpec = specs.find((s: any) => s.key === 'showInDayPass' || s.key === 'Show in Day Pass');
+    const isDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
+    const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+
     return NextResponse.json({
       success: true,
       workspace: {
         ...updatedWorkspace,
-        specifications: specs,
+        showInDayPass: isDayPass,
+        specifications: cleanSpecs,
         mediaUrls: media,
       },
       message: 'Workspace updated successfully',

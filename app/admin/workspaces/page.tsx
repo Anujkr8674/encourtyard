@@ -24,7 +24,7 @@ import {
   Image as ImageIcon,
   Tag,
   ListPlus,
-  DollarSign,
+  IndianRupee,
   Users,
   MapPin,
   ExternalLink,
@@ -70,6 +70,7 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  showInDayPass?: boolean;
   createdAt: string | Date;
 }
 
@@ -80,6 +81,7 @@ export default function AdminWorkspacesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
+  const [filterDayPass, setFilterDayPass] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -106,6 +108,7 @@ export default function AdminWorkspacesPage() {
   const [formLocation, setFormLocation] = useState('');
   const [formBadge, setFormBadge] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
+  const [formShowInDayPass, setFormShowInDayPass] = useState(false);
 
   // Key-Value Specifications
   const [specifications, setSpecifications] = useState<SpecItem[]>([
@@ -354,6 +357,7 @@ export default function AdminWorkspacesPage() {
       location: formLocation.trim() || null,
       badge: formBadge.trim() || null,
       isActive: formIsActive,
+      showInDayPass: formShowInDayPass,
       order: workspaces.length + 1,
     };
 
@@ -421,6 +425,7 @@ export default function AdminWorkspacesPage() {
     setFormLocation('');
     setFormBadge('');
     setFormIsActive(true);
+    setFormShowInDayPass(false);
     setSpecifications([
       { key: 'Seating Capacity', value: '4 - 6 Pax' },
       { key: 'Soundproofing', value: 'Acoustic Double Glazed STC 65' },
@@ -445,6 +450,7 @@ export default function AdminWorkspacesPage() {
     setFormLocation(ws.location || '');
     setFormBadge(ws.badge || '');
     setFormIsActive(ws.isActive);
+    setFormShowInDayPass(!!ws.showInDayPass);
     setSpecifications(
       Array.isArray(ws.specifications) && ws.specifications.length > 0
         ? ws.specifications
@@ -579,12 +585,13 @@ export default function AdminWorkspacesPage() {
   const sortedWorkspaces = [...workspaces].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
   const filteredWorkspaces = sortedWorkspaces.filter((w) => {
     const matchCat = filterCategory === 'ALL' || w.categoryId === filterCategory;
+    const matchDayPass = !filterDayPass || !!w.showInDayPass;
     const matchSearch =
       w.title.toLowerCase().includes(search.toLowerCase()) ||
       w.shortDescription.toLowerCase().includes(search.toLowerCase()) ||
       w.categoryName.toLowerCase().includes(search.toLowerCase()) ||
       (w.location && w.location.toLowerCase().includes(search.toLowerCase()));
-    return matchCat && matchSearch;
+    return matchCat && matchDayPass && matchSearch;
   });
 
   const totalItems = filteredWorkspaces.length;
@@ -654,7 +661,10 @@ export default function AdminWorkspacesPage() {
           {/* Category Filter Dropdown */}
           <select
             value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
+            onChange={(e) => {
+              setFilterCategory(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full sm:w-auto px-3.5 py-2 bg-[#FAF9F5] border border-[#E0DCD3] focus:border-[#2E7D32] rounded-xl text-xs text-[#181F18] outline-none font-medium"
           >
             <option value="ALL">All Workspace Categories ({categories.length})</option>
@@ -664,6 +674,27 @@ export default function AdminWorkspacesPage() {
               </option>
             ))}
           </select>
+
+          {/* Day Pass Filter Button (Image 3) */}
+          <button
+            type="button"
+            onClick={() => {
+              setFilterDayPass((prev) => !prev);
+              setCurrentPage(1);
+            }}
+            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border cursor-pointer whitespace-nowrap shadow-xs ${
+              filterDayPass
+                ? 'bg-[#185ADB] text-white border-[#185ADB]'
+                : 'bg-[#FAF9F5] hover:bg-[#F0ECE1] text-[#181F18] border-[#E0DCD3]'
+            }`}
+            title="Filter workspaces enabled for Day Pass"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${filterDayPass ? 'text-white' : 'text-[#185ADB]'}`} />
+            <span>Day Pass Only</span>
+            {filterDayPass && (
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            )}
+          </button>
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
@@ -834,20 +865,28 @@ export default function AdminWorkspacesPage() {
                       {/* Status */}
                       <td className="py-3.5 px-4">
                         <div className="space-y-1">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                              ws.isActive
-                                ? 'bg-emerald-50 text-[#2E7D32] border border-emerald-200'
-                                : 'bg-red-50 text-red-700 border border-red-200'
-                            }`}
-                          >
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                ws.isActive ? 'bg-[#2E7D32] animate-pulse' : 'bg-red-500'
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                ws.isActive
+                                  ? 'bg-emerald-50 text-[#2E7D32] border border-emerald-200'
+                                  : 'bg-red-50 text-red-700 border border-red-200'
                               }`}
-                            />
-                            {ws.isActive ? 'Active' : 'Hidden'}
-                          </span>
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  ws.isActive ? 'bg-[#2E7D32] animate-pulse' : 'bg-red-500'
+                                }`}
+                              />
+                              {ws.isActive ? 'Active' : 'Hidden'}
+                            </span>
+
+                            {ws.showInDayPass && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-[#185ADB] border border-blue-200">
+                                Day Pass
+                              </span>
+                            )}
+                          </div>
                           <span className="block text-[10px] text-[#6A806A] font-mono">
                             Supabase Media
                           </span>
@@ -1562,6 +1601,30 @@ export default function AdminWorkspacesPage() {
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2E7D32]"></div>
+                </label>
+              </div>
+
+              {/* 7. Show in Day Pass Toggle (Image 2) */}
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#FAF9F5] border border-[#E0DCD3]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#181F18] block">Show in Day Pass</span>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#185ADB] text-[10px] font-mono font-bold">
+                      Day Pass
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-[#5C665C] block">
+                    Display this workspace office on the single-day Day Pass booking page
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formShowInDayPass}
+                    onChange={(e) => setFormShowInDayPass(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#185ADB]"></div>
                 </label>
               </div>
 

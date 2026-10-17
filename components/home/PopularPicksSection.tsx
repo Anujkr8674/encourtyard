@@ -291,15 +291,15 @@ export const PopularPicksSection: React.FC = () => {
       className="py-16 sm:py-20 bg-white relative overflow-hidden border-b border-[#E5E1D8]"
     >
       {/* Ambient Botanical Glow */}
-      <div className="absolute top-1/2 left-0 w-96 h-96 bg-[#2E7D32]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 -z-10" />
-      <div className="absolute top-1/2 right-0 w-96 h-96 bg-[#4ADE80]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 -z-10" />
+      <div className="absolute top-1/2 left-0 w-96 h-96 bg-[#185ADB]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 -z-10" />
+      <div className="absolute top-1/2 right-0 w-96 h-96 bg-[#60A5FA]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header with Title & Navigation Controls */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[#2E7D32] text-xs font-mono font-bold tracking-wider uppercase mb-2 shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#2E7D32]" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EBF2FF] border border-[#C7DCFF] text-[#185ADB] text-xs font-mono font-bold tracking-wider uppercase mb-2 shadow-2xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#185ADB]" />
               <span>POPULAR WORK SPACES</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] tracking-tight">
@@ -314,13 +314,13 @@ export const PopularPicksSection: React.FC = () => {
           <div className="flex items-center gap-3 shrink-0">
             {/* Drag Hint Indicator */}
             <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-mono text-[#6A806A] bg-white px-2.5 py-1 rounded-full border border-[#E0DCD3] select-none shadow-2xs">
-              <MoveHorizontal className="w-3 h-3 text-[#2E7D32]" />
+              <MoveHorizontal className="w-3 h-3 text-[#185ADB]" />
               <span>Drag or swipe cards</span>
             </span>
 
             <Link
               href="/workspaces"
-              className="text-xs font-bold text-[#2E7D32] hover:text-[#1E5C23] flex items-center gap-1.5 transition-colors group mr-1"
+              className="text-xs font-bold text-[#185ADB] hover:text-[#144BB8] flex items-center gap-1.5 transition-colors group mr-1"
             >
               <span>Explore All</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -330,7 +330,7 @@ export const PopularPicksSection: React.FC = () => {
             <button
               type="button"
               onClick={handlePrev}
-              className="w-11 h-11 rounded-2xl bg-white hover:bg-[#2E7D32] text-[#181F18] hover:text-white border border-[#E0DCD3] hover:border-[#2E7D32] flex items-center justify-center transition-all shadow-sm cursor-pointer active:scale-95"
+              className="w-11 h-11 rounded-2xl bg-white hover:bg-[#185ADB] text-[#181F18] hover:text-white border border-[#E0DCD3] hover:border-[#185ADB] flex items-center justify-center transition-all shadow-sm cursor-pointer active:scale-95"
               aria-label="Previous Slide"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -340,7 +340,7 @@ export const PopularPicksSection: React.FC = () => {
             <button
               type="button"
               onClick={handleNext}
-              className="w-11 h-11 rounded-2xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white flex items-center justify-center transition-all shadow-md hover:shadow-lg cursor-pointer active:scale-95"
+              className="w-11 h-11 rounded-2xl bg-[#185ADB] hover:bg-[#144BB8] text-white flex items-center justify-center transition-all shadow-md hover:shadow-lg cursor-pointer active:scale-95"
               aria-label="Next Slide"
             >
               <ChevronRight className="w-5 h-5" />
@@ -492,7 +492,7 @@ export const PopularPicksSection: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Action Buttons: Book Now & Details (Enhanced contrast on hover) */}
+                    {/* Action Buttons: Book Now (Cobalt Blue) & Details */}
                     <div className="p-4 sm:p-5 pt-0 grid grid-cols-2 gap-2 border-t border-[#E0DCD3]/60 group-hover:border-white/15 mt-2 transition-colors">
                       <button
                         type="button"
@@ -506,10 +506,10 @@ export const PopularPicksSection: React.FC = () => {
                         className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 ${
                           !isAvailable
                             ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
-                            : 'bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] hover:shadow-md cursor-pointer active:scale-95'
+                            : 'bg-[#2E7D32] hover:bg-[#1E5C23] text-white hover:shadow-md cursor-pointer active:scale-95'
                         }`}
                       >
-                        <Calendar className={`w-3.5 h-3.5 transition-colors ${!isAvailable ? '' : 'group-hover:text-[#0D160E]'}`} />
+                        <Calendar className="w-3.5 h-3.5 text-[#86EFAC]" />
                         <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
                       </button>
 
@@ -552,7 +552,7 @@ export const PopularPicksSection: React.FC = () => {
                 <div className="pt-6">
                   <Link
                     href="/workspaces"
-                    className="w-full py-3 px-4 rounded-xl bg-[#2E7D32] hover:bg-[#4ADE80] text-white hover:text-[#0E150F] text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 group-hover:scale-102"
+                    className="w-full py-3 px-4 rounded-xl bg-[#185ADB] hover:bg-[#144BB8] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 group-hover:scale-102"
                   >
                     <span>View All Workspaces</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -574,7 +574,7 @@ export const PopularPicksSection: React.FC = () => {
                   markUserInteraction();
                   scrollToSlide(i);
                 }}
-                className={`h-2 rounded-full transition-all cursor-pointer ${currentIndex === i ? 'w-8 bg-[#2E7D32]' : 'w-2 bg-[#D0C9BE] hover:bg-[#5C665C]'
+                className={`h-2 rounded-full transition-all cursor-pointer ${currentIndex === i ? 'w-8 bg-[#185ADB]' : 'w-2 bg-[#D0C9BE] hover:bg-[#5C665C]'
                   }`}
                 aria-label={`Go to slide ${i + 1}`}
               />
@@ -598,7 +598,7 @@ export const PopularPicksSection: React.FC = () => {
             <div className="p-5 sm:p-6 border-b border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[#2E7D32] text-[10px] font-mono font-bold uppercase tracking-wider">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#EBF2FF] border border-[#C7DCFF] text-[#185ADB] text-[10px] font-mono font-bold uppercase tracking-wider">
                     {selectedWorkspace.categoryName}
                   </span>
                   {selectedWorkspace.badge && (
@@ -687,7 +687,7 @@ export const PopularPicksSection: React.FC = () => {
                   setDetailsModalOpen(false);
                   openBookModal(selectedWorkspace);
                 }}
-                className="px-6 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#185ADB] hover:bg-[#144BB8] text-white font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Calendar className="w-3.5 h-3.5" />
                 <span>Book This Workspace</span>
@@ -711,7 +711,7 @@ export const PopularPicksSection: React.FC = () => {
             {/* Modal Header */}
             <div className="p-5 border-b border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#2E7D32] block">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#185ADB] block">
                   INSTANT TOUR & BOOKING REQUEST
                 </span>
                 <h3 className="font-serif text-lg font-bold text-[#181F18] mt-0.5">
@@ -731,7 +731,7 @@ export const PopularPicksSection: React.FC = () => {
             <form onSubmit={handleBookSubmit} className="p-5 space-y-4">
               {bookingSuccess ? (
                 <div className="p-6 text-center space-y-2 animate-scaleUp">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#2E7D32] flex items-center justify-center mx-auto shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-[#EBF2FF] text-[#185ADB] flex items-center justify-center mx-auto shadow-sm">
                     <Check className="w-6 h-6" />
                   </div>
                   <h4 className="font-serif text-base font-bold text-[#181F18]">
@@ -753,7 +753,7 @@ export const PopularPicksSection: React.FC = () => {
                       placeholder="e.g. Gautam Sharma"
                       value={bookingName}
                       onChange={(e) => setBookingName(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#2E7D32]"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#185ADB]"
                     />
                   </div>
 
@@ -767,7 +767,7 @@ export const PopularPicksSection: React.FC = () => {
                       placeholder="gautam@company.com"
                       value={bookingEmail}
                       onChange={(e) => setBookingEmail(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#2E7D32]"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#185ADB]"
                     />
                   </div>
 
@@ -782,7 +782,7 @@ export const PopularPicksSection: React.FC = () => {
                         placeholder="+91 98765 43210"
                         value={bookingPhone}
                         onChange={(e) => setBookingPhone(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#2E7D32]"
+                        className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#185ADB]"
                       />
                     </div>
 
@@ -794,14 +794,14 @@ export const PopularPicksSection: React.FC = () => {
                         type="date"
                         value={bookingDate}
                         onChange={(e) => setBookingDate(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#2E7D32]"
+                        className="w-full px-3.5 py-2 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#185ADB]"
                       />
                     </div>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                    className="w-full py-2.5 rounded-xl bg-[#185ADB] hover:bg-[#144BB8] text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Confirm Booking & Reserve</span>

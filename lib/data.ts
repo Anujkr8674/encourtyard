@@ -10,7 +10,7 @@ export const WORKSPACES: Workspace[] = [
     description: 'Sound-insulated premium suites featuring floor-to-ceiling natural light, acoustic oak paneling, Herman Miller ergonomic chairs, and private biometric access. Complete with dedicated fiber line and configurable executive layout.',
     capacity: '4 – 8 Persons',
     sqft: '350 sq.ft',
-    startingPrice: '$1,850',
+    startingPrice: '₹29,999',
     billingPeriod: 'per month',
     availability: 'available',
     availabilityText: '2 Suites Available',
@@ -42,7 +42,7 @@ export const WORKSPACES: Workspace[] = [
     description: 'A permanent desk reserved exclusively for you in a quiet, design-focused zone. Comes equipped with a motorized standing desk, lockable credenza, dual-monitor arm mounts, and ergonomic lumbar support seating.',
     capacity: '1 Person',
     sqft: '60 sq.ft',
-    startingPrice: '$420',
+    startingPrice: '₹11,999',
     billingPeriod: 'per month',
     availability: 'available',
     availabilityText: '5 Desks Available',
@@ -73,7 +73,7 @@ export const WORKSPACES: Workspace[] = [
     description: 'Work anywhere inspiration strikes. Choose between our sun-drenched central courtyard, sound-softened library tables, or open café benching. Perfect for hybrid workers and independent creators who crave variety.',
     capacity: '1 Person (Flexible)',
     sqft: 'Shared 4,000 sq.ft Commons',
-    startingPrice: '$260',
+    startingPrice: '₹6,999',
     billingPeriod: 'per month',
     availability: 'available',
     availabilityText: 'Open Enrollment',
@@ -104,7 +104,7 @@ export const WORKSPACES: Workspace[] = [
     description: 'A self-contained corporate wing designed for scale. Includes dedicated internal meeting pod, executive phone rooms, private kitchen/lounge option, and custom IT infrastructure configured to your security specifications.',
     capacity: '12 – 25 Persons',
     sqft: '1,200 sq.ft',
-    startingPrice: '$5,200',
+    startingPrice: '₹75,000',
     billingPeriod: 'per month',
     availability: 'limited',
     availabilityText: '1 Suite Remaining',
@@ -135,7 +135,7 @@ export const WORKSPACES: Workspace[] = [
     description: 'Tailored for architects, product designers, and digital media teams. Features expansive solid wood pinup walls, drafting surfaces, acoustic damping, and dedicated gear storage.',
     capacity: '6 – 10 Persons',
     sqft: '680 sq.ft',
-    startingPrice: '$3,100',
+    startingPrice: '₹45,000',
     billingPeriod: 'per month',
     availability: 'available',
     availabilityText: 'Available Next Month',
@@ -166,9 +166,9 @@ export const MEETING_ROOMS: MeetingRoom[] = [
     tagline: 'High-stakes board meetings, investor pitches, and executive governance.',
     description: 'Centrally anchored by a handcrafted solid oak 14-seat table, this boardroom features dual 4K Sony displays, Neat Bar Pro AI video conferencing, beamforming acoustic ceiling mics, and integrated motorized privacy drapery.',
     capacity: '14 – 16 Persons',
-    hourlyPrice: '$95 / hr',
-    halfDayPrice: '$340 (4 hrs)',
-    fullDayPrice: '$620 (8 hrs)',
+    hourlyPrice: '₹2,499 / hr',
+    halfDayPrice: '₹8,999 (4 hrs)',
+    fullDayPrice: '₹15,999 (8 hrs)',
     availability: 'available',
     availabilitySample: ['9:00 AM – 11:00 AM', '2:00 PM – 4:00 PM', '4:30 PM – 6:30 PM'],
     image: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1200&q=80',
@@ -195,9 +195,9 @@ export const MEETING_ROOMS: MeetingRoom[] = [
     tagline: 'Intimate strategy huddles, sprint planning, and team retrospectives.',
     description: 'A cozy, light-filled creative sanctuary overlooking the botanical garden. Outfitted with an expansive magnetic glass whiteboard, acoustic felt walls, and 55" conferencing monitor.',
     capacity: '4 – 6 Persons',
-    hourlyPrice: '$45 / hr',
-    halfDayPrice: '$160 (4 hrs)',
-    fullDayPrice: '$290 (8 hrs)',
+    hourlyPrice: '₹1,199 / hr',
+    halfDayPrice: '₹4,299 (4 hrs)',
+    fullDayPrice: '₹7,499 (8 hrs)',
     availability: 'available',
     availabilitySample: ['10:00 AM – 1:00 PM', '1:30 PM – 3:30 PM', '5:00 PM – 7:00 PM'],
     image: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=1200&q=80',
@@ -222,9 +222,9 @@ export const MEETING_ROOMS: MeetingRoom[] = [
     tagline: 'Keynotes, product launches, panel discussions, and corporate all-hands.',
     description: 'An architectural centerpiece with 18-foot vaulted glass ceilings, modular theater seating, laser projection system, stage lighting, and integrated PA with wireless handheld and lapel mics.',
     capacity: '40 – 70 Persons',
-    hourlyPrice: '$220 / hr',
-    halfDayPrice: '$780 (4 hrs)',
-    fullDayPrice: '$1,400 (8 hrs)',
+    hourlyPrice: '₹5,999 / hr',
+    halfDayPrice: '₹21,999 (4 hrs)',
+    fullDayPrice: '₹38,999 (8 hrs)',
     availability: 'limited',
     availabilitySample: ['Morning Slot (8:30 AM – 12:30 PM)', 'Evening Reception (5:30 PM – 9:30 PM)'],
     image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
@@ -250,9 +250,9 @@ export const MEETING_ROOMS: MeetingRoom[] = [
     tagline: 'Interactive design sprints, hackathons, and corporate training seminars.',
     description: 'Flexible mobile tables that seamlessly transition from classroom to breakout clusters. Features movable whiteboard partitions, sticky-note brainstorming supplies, and dual side monitors.',
     capacity: '16 – 24 Persons',
-    hourlyPrice: '$120 / hr',
-    halfDayPrice: '$420 (4 hrs)',
-    fullDayPrice: '$760 (8 hrs)',
+    hourlyPrice: '₹2,999 / hr',
+    halfDayPrice: '₹10,999 (4 hrs)',
+    fullDayPrice: '₹19,999 (8 hrs)',
     availability: 'available',
     availabilitySample: ['9:00 AM – 1:00 PM', '1:30 PM – 5:30 PM'],
     image: 'https://images.unsplash.com/photo-1531497865144-0464ef8fb9a9?auto=format&fit=crop&w=1200&q=80',
@@ -276,8 +276,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'day-pass',
     name: 'Day Pass & Flex 5',
     targetAudience: 'For occasional visitors, remote travelers, and nomadic professionals.',
-    priceMonthly: '$35',
-    billingText: 'per day pass / or $150 for 5-Day Pack',
+    priceMonthly: '₹499',
+    billingText: 'per day pass / or ₹2,199 for 5-Day Pack',
     description: 'Immediate drop-in access to our sunlit commons, high-speed fiber, and premium coffee bar whenever you need focused momentum.',
     includedFeatures: [
       'Access to Ground & Garden Commons (8am – 7pm)',
@@ -294,9 +294,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     id: 'hot-desk-plan',
     name: 'Courtyard Hot Desk',
     targetAudience: 'For freelancers, consultants, and flexible hybrid workers.',
-    priceMonthly: '$260',
-    priceQuarterly: '$235',
-    priceYearly: '$210',
+    priceMonthly: '₹6,999',
+    priceQuarterly: '₹6,299',
+    priceYearly: '₹5,599',
     billingText: 'billed monthly · cancel anytime',
     description: 'Full unmetered access to our open architectural spaces, quiet library, and community events with flexible monthly terms.',
     includedFeatures: [
@@ -317,9 +317,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     badge: 'Most Popular',
     isPopular: true,
     targetAudience: 'For solo founders, developers, and professionals who need a fixed base.',
-    priceMonthly: '$420',
-    priceQuarterly: '$380',
-    priceYearly: '$345',
+    priceMonthly: '₹11,999',
+    priceQuarterly: '₹10,799',
+    priceYearly: '₹9,599',
     billingText: 'billed monthly · minimum 1 month',
     description: 'Your own designated ergonomic standing desk, lockable cabinet, and registered business address in an inspiring sanctuary.',
     includedFeatures: [
@@ -340,9 +340,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: 'Executive Private Suite',
     badge: 'Enterprise Grade',
     targetAudience: 'For growing startups, agencies, and enterprise satellite teams (2–25 people).',
-    priceMonthly: '$1,850',
-    priceQuarterly: '$1,700',
-    priceYearly: '$1,550',
+    priceMonthly: '₹29,999',
+    priceQuarterly: '₹26,999',
+    priceYearly: '₹23,999',
     billingText: 'starting price · custom configurations',
     description: 'Fully enclosed, sound-isolated private offices with bespoke furniture, dedicated enterprise VLAN, and concierge service.',
     includedFeatures: [
@@ -783,38 +783,68 @@ export const REFERENCE_TESTIMONIALS: Testimonial[] = [
 export const FAQS: FAQItem[] = [
   {
     id: 'faq-1',
-    question: 'How flexible are EnCourtyard membership agreements?',
-    answer: 'We believe flexibility is essential for modern business. Our Hot Desk and Dedicated Desk memberships operate on simple month-to-month terms with a 30-day notice. Private Suites are available on flexible 3, 6, or 12-month agreements with built-in upgrade paths as your team scales.',
-    category: 'membership'
-  },
-  {
-    id: 'faq-2',
-    question: 'Can I schedule a personal tour of the space before committing?',
-    answer: 'Absolutely. We encourage prospective members to book a complimentary 30-minute private tour. You will walk through the floorplans, experience the courtyard, test our ergonomic workstations, and enjoy a coffee prepared by our barista.',
+    question: 'Is Encourtyard open 24/7?',
+    answer: 'Yes. Encourtyard Workspaces is open 24/7, including nights and weekends. You can work according to your schedule, including night shifts.',
     category: 'general'
   },
   {
+    id: 'faq-2',
+    question: 'Can I book a workspace for just one day?',
+    answer: 'Yes. Day Passes are available for professionals who need a workspace without a long-term commitment.',
+    category: 'membership'
+  },
+  {
     id: 'faq-3',
-    question: 'Are meeting rooms included in membership plans?',
-    answer: 'Yes. Dedicated Desks include 8 monthly meeting room credits, and Private Suites include 20 to 40 monthly credits. Additional hours can be reserved at preferential member discount rates directly through our concierge.',
+    question: 'Can I book a meeting room by the hour?',
+    answer: 'Yes. Our meeting rooms are available for hourly bookings.',
     category: 'meeting-rooms'
   },
   {
     id: 'faq-4',
-    question: 'What are the access hours for members and visitors?',
-    answer: 'Dedicated Desk and Private Suite members enjoy 24/7 unmetered biometric keycard access 365 days a year. Hot Desk members have access Monday through Friday from 8:00 AM to 8:00 PM. Front desk concierge support is active weekdays 8:00 AM to 6:00 PM.',
-    category: 'general'
+    question: 'Can I book the conference hall by the hour?',
+    answer: 'Yes. Our 20-seater conference hall can be booked on an hourly basis.',
+    category: 'meeting-rooms'
   },
   {
     id: 'faq-5',
-    question: 'Can I register EnCourtyard as my official business address?',
-    answer: 'Yes! Dedicated Desk and Private Suite plans include official commercial business address registration, physical mail sorting, and secure package receipt with email notifications upon arrival.',
-    category: 'billing'
+    question: 'Do you have private cabins?',
+    answer: 'Yes. Encourtyard has 8 private cabins suitable for individuals, startups, and teams.',
+    category: 'membership'
   },
   {
     id: 'faq-6',
-    question: 'Are there parking and bicycle storage options available?',
-    answer: 'Yes. We provide secure indoor bicycle storage with air pumps, EV charging stations, and reserved underground car parking stalls available as an optional monthly add-on.',
+    question: 'How many open desks do you have?',
+    answer: 'We have 110 open desks available for professionals, freelancers, entrepreneurs, and teams.',
+    category: 'membership'
+  },
+  {
+    id: 'faq-7',
+    question: 'Do you have a podcast studio?',
+    answer: 'Yes. Our Studio Room has a podcast setup already installed and is designed for podcasts, interviews, and content creation.',
+    category: 'amenities'
+  },
+  {
+    id: 'faq-8',
+    question: 'Is tea and coffee available?',
+    answer: 'Yes. Members can enjoy unlimited tea and coffee.',
+    category: 'amenities'
+  },
+  {
+    id: 'faq-9',
+    question: 'Do you have a cafeteria?',
+    answer: 'Yes. We have a dedicated cafeteria for members and visitors.',
+    category: 'amenities'
+  },
+  {
+    id: 'faq-10',
+    question: 'Do you offer flexible rental plans?',
+    answer: 'Yes. We offer flexible rental plans and payment structures depending on your workspace requirements.',
+    category: 'billing'
+  },
+  {
+    id: 'faq-11',
+    question: 'Can I work at night?',
+    answer: 'Absolutely. We\'re open 24/7, so you can work late into the night or start your workday whenever it suits you.',
     category: 'general'
   }
 ];

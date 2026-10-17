@@ -430,18 +430,80 @@ export async function sendStatusUpdateEmail(
   try {
     const transporter = createTransporter();
 
-    // Color theme based on status
+    const normalizedStatus = (booking.status || '').toUpperCase().trim();
+
+    // Status-specific template configuration
+    let statusBadge = `STATUS UPDATED: ${booking.status}`;
     let statusBg = '#E8F5E9';
     let statusTextColor = '#2E7D32';
-    if (booking.status === 'CANCELLED') {
-      statusBg = '#FFEBEE';
-      statusTextColor = '#C62828';
-    } else if (booking.status === 'COMPLETED') {
-      statusBg = '#E3F2FD';
-      statusTextColor = '#1565C0';
-    } else if (booking.status === 'PENDING') {
+    let statusBorderColor = '#4ADE80';
+    let emailSubject = `EnCourtyard Booking Status Updated: ${booking.id} is now ${booking.status}`;
+    let headline = `Hello, ${booking.fullName}!`;
+    let statusMessage = `The status of your reservation <strong>${booking.id}</strong> for <strong>${booking.workspaceTitle}</strong> has been updated to <strong>${booking.status}</strong>.`;
+    let nextStepsBox = '';
+
+    if (normalizedStatus === 'CONFIRMED') {
+      statusBadge = 'RESERVATION CONFIRMED';
+      statusBg = '#E8F5E9';
+      statusTextColor = '#1B5E20';
+      statusBorderColor = '#2E7D32';
+      emailSubject = `✅ Reservation Confirmed: Your workspace at EnCourtyard is ready (${booking.id})`;
+      headline = 'Your Workspace Reservation is Officially Confirmed!';
+      statusMessage = `Great news! Your booking for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) has been approved and confirmed by the EnCourtyard team. Your workspace will be fully prepared for your arrival.`;
+      nextStepsBox = `
+        <div style="background: #F1F8E9; border: 1px solid #C5E1A5; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #2E7D32; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #1B5E20; margin-bottom: 6px;">Check-In & Arrival Guidelines:</strong>
+          • Present this confirmation email or booking ID at the EnCourtyard reception on arrival.<br>
+          • Unlimited artisan tea, coffee, and high-speed Wi-Fi access will be ready.<br>
+          • Reserved duration: <strong>${booking.startDate} (${booking.startTime})</strong> to <strong>${booking.endDate} (${booking.endTime})</strong>.
+        </div>
+      `;
+    } else if (normalizedStatus === 'PENDING') {
+      statusBadge = 'RESERVATION PENDING REVIEW';
       statusBg = '#FFF8E1';
-      statusTextColor = '#F57F17';
+      statusTextColor = '#B78103';
+      statusBorderColor = '#F59E0B';
+      emailSubject = `⏳ Booking Received: Reservation ${booking.id} is Pending Review`;
+      headline = 'Your Reservation Request is Under Review';
+      statusMessage = `Thank you for choosing EnCourtyard. Your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) is currently in <strong>Pending</strong> status while our concierge team verifies scheduling and seat allocation.`;
+      nextStepsBox = `
+        <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 6px;">What to Expect Next:</strong>
+          • No immediate action is required from you. Our team is reviewing your schedule.<br>
+          • You will receive an email update as soon as the reservation status is confirmed.<br>
+          • For urgent queries or instant booking verification, chat with us on WhatsApp at +91 99082 09993.
+        </div>
+      `;
+    } else if (normalizedStatus === 'COMPLETED' || normalizedStatus === 'COMPLETE') {
+      statusBadge = 'SESSION COMPLETED';
+      statusBg = '#EFF6FF';
+      statusTextColor = '#1E40AF';
+      statusBorderColor = '#3B82F6';
+      emailSubject = `✨ Booking Completed: Thank you for working with EnCourtyard (${booking.id})`;
+      headline = 'Thank You for Working at EnCourtyard!';
+      statusMessage = `Your workspace session for booking <strong>${booking.id}</strong> (<strong>${booking.workspaceTitle}</strong>) has been marked as <strong>Completed</strong>. We truly hope you had a productive, inspiring, and comfortable work session.`;
+      nextStepsBox = `
+        <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #0369A1; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0C4A6E; margin-bottom: 6px;">We Look Forward to Seeing You Again:</strong>
+          • Need to reserve your next day pass, private cabin, or conference room? Book anytime on our portal.<br>
+          • Have feedback or custom team requirements? Simply reply to this email to connect with our team.
+        </div>
+      `;
+    } else if (normalizedStatus === 'CANCELLED' || normalizedStatus === 'CANCELED') {
+      statusBadge = 'BOOKING CANCELLED';
+      statusBg = '#FEF2F2';
+      statusTextColor = '#B91C1C';
+      statusBorderColor = '#EF4444';
+      emailSubject = `⚠️ Reservation Cancellation: Booking ${booking.id}`;
+      headline = 'Your Workspace Reservation Has Been Cancelled';
+      statusMessage = `This is to notify you that your booking <strong>${booking.id}</strong> for <strong>${booking.workspaceTitle}</strong> scheduled for <strong>${booking.startDate}</strong> has been <strong>Cancelled</strong>.`;
+      nextStepsBox = `
+        <div style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 6px;">Important Information:</strong>
+          • If you requested this cancellation or if a refund applies, our support desk will process it per policy.<br>
+          • If this was cancelled by mistake or you need to reschedule, reach out to us at <a href="mailto:support@encourtyard.com" style="color: #DC2626; font-weight: bold; text-decoration: underline;">support@encourtyard.com</a> or call +91 99082 09993.
+        </div>
+      `;
     }
 
     const htmlContent = `
@@ -450,7 +512,7 @@ export async function sendStatusUpdateEmail(
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>EnCourtyard Booking Status Update</title>
+        <title>${emailSubject}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F5; margin: 0; padding: 24px; color: #181F18; }
           .container { max-width: 580px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E1D8; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
@@ -458,12 +520,12 @@ export async function sendStatusUpdateEmail(
           .logo-text { font-size: 24px; font-weight: 700; letter-spacing: 2px; color: #FFFFFF; margin: 0; }
           .sub-logo { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #4ADE80; margin-top: 6px; }
           .content { padding: 36px 32px; }
-          .status-badge { display: inline-block; padding: 8px 18px; border-radius: 9999px; background: ${statusBg}; color: ${statusTextColor}; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
-          .greeting { font-size: 22px; font-weight: 700; color: #181F18; margin-bottom: 8px; }
-          .message { font-size: 14px; line-height: 1.6; color: #5C665C; margin-bottom: 20px; }
-          .notes-box { background: #FAF9F5; border-left: 4px solid #2E7D32; border-radius: 8px; padding: 14px 18px; margin: 20px 0; font-size: 13px; color: #263626; }
+          .status-badge { display: inline-block; padding: 8px 18px; border-radius: 9999px; background: ${statusBg}; color: ${statusTextColor}; border: 1px solid ${statusBorderColor}; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
+          .greeting { font-size: 21px; font-weight: 700; color: #181F18; margin-bottom: 10px; line-height: 1.3; }
+          .message { font-size: 14px; line-height: 1.6; color: #425042; margin-bottom: 16px; }
+          .notes-box { background: #FAF9F5; border-left: 4px solid ${statusBorderColor}; border: 1px solid #E5E1D8; border-radius: 10px; padding: 14px 18px; margin: 20px 0; font-size: 13px; color: #181F18; }
           .summary-card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 16px; padding: 18px; margin: 20px 0; font-size: 13px; }
-          .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #EAE5DB; }
+          .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EAE5DB; }
           .row:last-child { border-bottom: none; }
           .footer { background: #F7F5F0; padding: 24px 32px; text-align: center; font-size: 12px; color: #6A806A; border-top: 1px solid #EAE5DB; line-height: 1.6; }
         </style>
@@ -475,28 +537,32 @@ export async function sendStatusUpdateEmail(
             <div class="sub-logo">Handcrafted Workspaces & Botanical Sanctuaries</div>
           </div>
           <div class="content">
-            <div class="status-badge">Status Updated: ${booking.status}</div>
-            <div class="greeting">Hello, ${booking.fullName}!</div>
+            <div class="status-badge">${statusBadge}</div>
+            <div class="greeting">${headline}</div>
             <p class="message">
-              The status of your reservation <strong>${booking.id}</strong> for <strong>${booking.workspaceTitle}</strong> has been updated by the EnCourtyard team to <strong>${booking.status}</strong>.
+              ${statusMessage}
             </p>
 
             ${booking.adminNotes ? `
             <div class="notes-box">
-              <strong style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; margin-bottom: 4px;">Update Notes from Sanctuary Concierge:</strong>
-              ${booking.adminNotes}
+              <strong style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; margin-bottom: 6px;">
+                📝 Concierge & Admin Notes:
+              </strong>
+              <div style="line-height: 1.6; white-space: pre-wrap; color: #181F18;">${booking.adminNotes}</div>
             </div>` : ''}
 
+            ${nextStepsBox}
+
             <div class="summary-card">
-              <div class="row"><span><strong>Booking ID:</strong></span><span>${booking.id}</span></div>
+              <div class="row"><span><strong>Booking Reference:</strong></span><span>${booking.id}</span></div>
               <div class="row"><span><strong>Workspace:</strong></span><span>${booking.workspaceTitle}</span></div>
-              <div class="row"><span><strong>Duration:</strong></span><span>${booking.startDate} (${booking.startTime}) → ${booking.endDate} (${booking.endTime})</span></div>
-              <div class="row"><span><strong>Seats / Pax:</strong></span><span>${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</span></div>
-              <div class="row"><span><strong>Status:</strong></span><span style="color: ${statusTextColor}; font-weight: bold;">${booking.status}</span></div>
+              <div class="row"><span><strong>Schedule:</strong></span><span>${booking.startDate} (${booking.startTime}) → ${booking.endDate} (${booking.endTime})</span></div>
+              <div class="row"><span><strong>Capacity / Guests:</strong></span><span>${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</span></div>
+              <div class="row"><span><strong>Current Status:</strong></span><span style="color: ${statusTextColor}; font-weight: bold; text-transform: uppercase;">${booking.status}</span></div>
             </div>
 
-            <p style="font-size: 13px; color: #5C665C; line-height: 1.6;">
-              If you have any questions regarding this status change or need immediate onboarding assistance, please reach out to our team at support@encourtyard.com.
+            <p style="font-size: 13px; color: #5C665C; line-height: 1.6; margin-top: 24px;">
+              For any questions regarding your booking, please reach out to our concierge team at <a href="mailto:support@encourtyard.com" style="color: #2E7D32; font-weight: 600;">support@encourtyard.com</a> or WhatsApp <a href="https://wa.me/919908209993" style="color: #2E7D32; font-weight: 600;">+91 99082 09993</a>.
             </p>
           </div>
           <div class="footer">
@@ -508,11 +574,13 @@ export async function sendStatusUpdateEmail(
       </html>
     `;
 
+    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking ID: ${booking.id}\nWorkspace: ${booking.workspaceTitle}\nSchedule: ${booking.startDate} (${booking.startTime}) → ${booking.endDate} (${booking.endTime})\nSeats: ${booking.guests}\n\n${booking.adminNotes ? `Admin Notes: ${booking.adminNotes}\n\n` : ''}Contact Concierge: support@encourtyard.com | +91 99082 09993`;
+
     const info = await transporter.sendMail({
       from: cfg.from,
       to: toEmail,
-      subject: `EnCourtyard Booking Status Updated: ${booking.id} is now ${booking.status}`,
-      text: `Your EnCourtyard booking (${booking.id}) status has been updated to "${booking.status}". Notes: ${booking.adminNotes || 'None'}.`,
+      subject: emailSubject,
+      text: plainText,
       html: htmlContent,
     });
 

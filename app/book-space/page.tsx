@@ -23,7 +23,7 @@ import {
   Users,
   ShieldCheck,
   Zap,
-  DollarSign,
+  IndianRupee,
   Compass,
   Coffee,
   Wifi,
@@ -68,6 +68,7 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  showInDayPass?: boolean;
   bookings?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
   maintenanceBlocks?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
 }
@@ -214,6 +215,7 @@ export default function BookSpacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isDayPass, setIsDayPass] = useState<boolean>(false);
   const [startDate, setStartDate] = useState<string>('');
   const [startTime, setStartTime] = useState<string>('09:00 AM');
   const [endDate, setEndDate] = useState<string>('');
@@ -255,10 +257,17 @@ export default function BookSpacePage() {
 
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
+      const planParam = urlParams.get('plan');
       const catParam = urlParams.get('category');
       const capParam = urlParams.get('capacity');
       
       let shouldScroll = false;
+
+      if (planParam === 'day-pass' || planParam === 'daily') {
+        setIsDayPass(true);
+        setEndDate(todayStr);
+        shouldScroll = true;
+      }
 
       if (catParam) {
         setSelectedCategory(catParam);
@@ -341,6 +350,11 @@ export default function BookSpacePage() {
   // Filter & Sort Logic
   const filteredWorkspaces = useMemo(() => {
     return workspaces.filter((ws) => {
+      // Day Pass filter: when user is on Day Pass page (?plan=day-pass), show only offices enabled for Day Pass
+      if (isDayPass && !ws.showInDayPass) {
+        return false;
+      }
+
       // Category filter (match by ID, slug, or name)
       if (selectedCategory !== 'all') {
         const matchesCat =
@@ -459,70 +473,124 @@ export default function BookSpacePage() {
   // Reusable Filter Sections Component for Desktop Sidebar & Mobile Right Drawer
   const renderFilterSections = () => (
     <>
-      {/* SECTION 1: RENTAL PERIOD (Pickup & Drop-off Date Time Box) */}
-      <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-4">
-        <span className="text-[11px] font-mono uppercase tracking-widest text-[#E65100] font-bold block">
-          RENTAL PERIOD
-        </span>
-
-        {/* Pickup / Start Date & Time */}
-        <div className="space-y-1.5 text-left relative z-30">
-          <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-            START DATE & TIME
-          </label>
-          <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-            {/* Start Date (Material Design Calendar Picker) */}
-            <div className="w-full">
-              <MaterialDatePicker
-                value={startDate}
-                minDate={todayDate}
-                onChange={(newStart) => {
-                  setStartDate(newStart);
-                  if (endDate && newStart > endDate) {
-                    setEndDate(newStart);
-                  }
-                }}
-                align="left"
-              />
-            </div>
-
-            {/* Start Time (Material Design Analog Clock Picker) */}
-            <div className="w-full">
-              <MaterialTimePicker
-                value={startTime}
-                onChange={(newTime) => setStartTime(newTime)}
-                align="right"
-              />
-            </div>
-          </div>
+      {/* SECTION 1: RENTAL PERIOD (Day Pass or Multi-Day depending on active page mode) */}
+      <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-3.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-mono uppercase tracking-widest text-[#E65100] font-bold block">
+            {isDayPass ? 'DAY PASS RENTAL PERIOD' : 'RENTAL PERIOD'}
+          </span>
+          {isDayPass && (
+            <span className="px-2.5 py-0.5 rounded-full bg-[#185ADB] text-white text-[10px] font-bold font-mono">
+              Single Day Access
+            </span>
+          )}
         </div>
 
-        {/* Drop Off / End Date & Time */}
-        <div className="space-y-1.5 text-left relative z-20">
-          <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-            END DATE & TIME
-          </label>
-          <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-            {/* End Date (Material Design Calendar Picker) */}
-            <div className="w-full">
-              <MaterialDatePicker
-                value={endDate}
-                minDate={startDate || todayDate}
-                onChange={(newEnd) => setEndDate(newEnd)}
-                align="left"
-              />
+        {isDayPass ? (
+          /* Single Day Pass Mode: Only choose Date & Time (Future Dates Only, Single Day) */
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1.5 text-left relative z-30">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                  DATE (FUTURE DATES ONLY)
+                </label>
+                <span className="text-[10px] text-[#2E7D32] font-semibold">1 Day Only</span>
+              </div>
+              <div className="w-full">
+                <MaterialDatePicker
+                  value={startDate}
+                  minDate={todayDate}
+                  onChange={(newDate) => {
+                    setStartDate(newDate);
+                    setEndDate(newDate); // Strictly same day only, cannot book multiple days
+                  }}
+                  align="left"
+                />
+              </div>
             </div>
 
-            {/* End Time (Material Design Analog Clock Picker) */}
-            <div className="w-full">
-              <MaterialTimePicker
-                value={endTime}
-                onChange={(newTime) => setEndTime(newTime)}
-                align="right"
-              />
+            {/* Time Slots for Day Pass */}
+            <div className="space-y-1.5 text-left relative z-20">
+              <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                TIME SLOT
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] text-[#738273] font-semibold block mb-1">Check-in</span>
+                  <MaterialTimePicker
+                    value={startTime}
+                    onChange={(newTime) => setStartTime(newTime)}
+                    align="left"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#738273] font-semibold block mb-1">Check-out</span>
+                  <MaterialTimePicker
+                    value={endTime}
+                    onChange={(newTime) => setEndTime(newTime)}
+                    align="right"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          /* Multi-Day Mode: Start Date & Time and End Date & Time */
+          <div className="space-y-3 pt-1">
+            {/* Pickup / Start Date & Time */}
+            <div className="space-y-1.5 text-left relative z-30">
+              <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                START DATE & TIME
+              </label>
+              <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                <div className="w-full">
+                  <MaterialDatePicker
+                    value={startDate}
+                    minDate={todayDate}
+                    onChange={(newStart) => {
+                      setStartDate(newStart);
+                      if (endDate && newStart > endDate) {
+                        setEndDate(newStart);
+                      }
+                    }}
+                    align="left"
+                  />
+                </div>
+                <div className="w-full">
+                  <MaterialTimePicker
+                    value={startTime}
+                    onChange={(newTime) => setStartTime(newTime)}
+                    align="right"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Drop Off / End Date & Time */}
+            <div className="space-y-1.5 text-left relative z-20">
+              <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                END DATE & TIME
+              </label>
+              <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                <div className="w-full">
+                  <MaterialDatePicker
+                    value={endDate}
+                    minDate={startDate || todayDate}
+                    onChange={(newEnd) => setEndDate(newEnd)}
+                    align="left"
+                  />
+                </div>
+                <div className="w-full">
+                  <MaterialTimePicker
+                    value={endTime}
+                    onChange={(newTime) => setEndTime(newTime)}
+                    align="right"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SECTION 2: CATEGORY */}
@@ -597,7 +665,7 @@ export default function BookSpacePage() {
       </div>
 
       {/* SECTION 3: MAX BUDGET / PRICE SLIDER */}
-      <div className="space-y-2.5 text-left">
+      {/* <div className="space-y-2.5 text-left">
         <div className="flex items-center justify-between">
           <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
             MAX BUDGET / MONTH
@@ -623,7 +691,7 @@ export default function BookSpacePage() {
           <span>₹1,00,000</span>
           <span>₹2,00,000+</span>
         </div>
-      </div>
+      </div> */}
 
       {/* SECTION 4: TEAM CAPACITY */}
       <div className="space-y-2.5 text-left">
@@ -1170,7 +1238,7 @@ export default function BookSpacePage() {
                           onClick={(e) => {
                             e.preventDefault();
                             if (!isAvailable) return;
-                            const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`;
+                            const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&plan=${isDayPass ? 'daily' : 'monthly'}&startDate=${startDate}&endDate=${isDayPass ? startDate : endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`;
                             if (user || isAuthenticated) {
                               router.push(targetUrl);
                             } else {

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Check, X, Sparkles, HelpCircle, ArrowRight, ShieldCheck, DollarSign } from 'lucide-react';
+import { Check, X, Sparkles, HelpCircle, ArrowRight, ShieldCheck, IndianRupee } from 'lucide-react';
 import { PRICING_PLANS, FAQS } from '@/lib/data';
 import { PricingCard } from '@/components/pricing/PricingCard';
 import { Accordion } from '@/components/ui/Accordion';
@@ -43,7 +43,7 @@ export default function PricingPage() {
     {
       name: 'Business Address & Mail Handling',
       dayPass: false,
-      hotDesk: 'Optional ($40/mo)',
+      hotDesk: 'Optional (₹1,500/mo)',
       dedicated: true,
       privateOffice: true
     },
@@ -89,15 +89,15 @@ export default function PricingPage() {
   );
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white min-h-screen font-['Tahoma',Arial,sans-serif]">
       {/* Page Hero with Clean White Architectural Canvas */}
       <section className="bg-white text-[#181F18] pt-32 pb-16 border-b border-[#E5E1D8] relative overflow-hidden text-center">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-semibold text-[#2E7D32] mb-4">
-            <DollarSign className="w-3.5 h-3.5" />
+            <IndianRupee className="w-3.5 h-3.5" />
             <span>Clear & Transparent Plans</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#181F18] leading-[1.12] max-w-3xl mx-auto">
+          <h1 className="font-['Tahoma',Arial,sans-serif] text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#181F18] leading-[1.12] max-w-3xl mx-auto">
             Memberships built with clarity and flexibility.
           </h1>
           <p className="text-base sm:text-lg text-[#5C665C] max-w-2xl mx-auto mt-4 leading-relaxed font-sans">
@@ -153,7 +153,7 @@ export default function PricingPage() {
             <span className="text-xs uppercase font-mono tracking-widest text-[#263626] block mb-2 font-semibold">
               Deep Feature Comparison
             </span>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#181F18]">
+            <h2 className="font-['Tahoma',Arial,sans-serif] text-3xl sm:text-4xl font-bold text-[#181F18]">
               Compare plan inclusions side by side
             </h2>
             <p className="text-sm text-[#5C665C] mt-2">
@@ -166,7 +166,7 @@ export default function PricingPage() {
             <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
                 <tr className="bg-[#FAF9F5] border-b border-[#E5E1D8]">
-                  <th className="p-5 font-serif text-base font-bold text-[#181F18] w-1/3">
+                  <th className="p-5 font-['Tahoma',Arial,sans-serif] text-base font-bold text-[#181F18] w-1/3">
                     Features & Services
                   </th>
                   <th className="p-5 font-semibold text-[#181F18] text-center">
@@ -255,7 +255,7 @@ export default function PricingPage() {
           <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
             Membership Questions
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#181F18]">
+          <h2 className="font-['Tahoma',Arial,sans-serif] text-3xl sm:text-4xl font-bold text-[#181F18]">
             Frequently Asked Billing & Membership Questions
           </h2>
         </div>
@@ -267,7 +267,7 @@ export default function PricingPage() {
         {/* Action Banner */}
         <div className="mt-14 p-8 sm:p-10 bg-[#263626] text-white rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl border border-[#3A4D3A]">
           <div>
-            <h4 className="font-serif text-2xl font-bold text-white">
+            <h4 className="font-['Tahoma',Arial,sans-serif] text-2xl font-bold text-white">
               Want to see our workspaces before deciding?
             </h4>
             <p className="text-xs sm:text-sm text-[#C5D5C5] mt-1">

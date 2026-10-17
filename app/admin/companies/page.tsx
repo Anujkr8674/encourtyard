@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Building2, Plus, Search, Filter, Check, X, MoreVertical, MapPin, Users, DollarSign, Download } from 'lucide-react';
+import { Building2, Plus, Search, Filter, Check, X, MoreVertical, MapPin, Users, IndianRupee, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export default function AdminCompaniesPage() {

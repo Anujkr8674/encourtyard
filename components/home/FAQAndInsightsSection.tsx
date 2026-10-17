@@ -12,28 +12,48 @@ interface FAQ {
 
 const FAQS_DATA: FAQ[] = [
   {
-    q: 'What are your working and access hours?',
-    a: 'Dedicated Desk and Private Suite members enjoy 24/7 unmetered biometric access 365 days a year. Hot desk access and front desk concierge services are active Monday through Saturday, 8:00 AM – 8:00 PM.'
+    q: 'Is Encourtyard open 24/7?',
+    a: 'Yes. Encourtyard Workspaces is open 24/7, including nights and weekends. You can work according to your schedule, including night shifts.'
   },
   {
-    q: 'Do you offer flexible day passes and trial visits?',
-    a: 'Yes! We offer single-day passes starting at ₹499/day with high-speed fiber internet, unlimited artisanal coffee, and phone booth access. We also provide complimentary 30-minute workspace tours.'
+    q: 'Can I book a workspace for just one day?',
+    a: 'Yes. Day Passes are available for professionals who need a workspace without a long-term commitment.'
   },
   {
-    q: 'Can I schedule a private tour before booking?',
-    a: 'Absolutely. You can schedule a complimentary walkthrough anytime to test our high-speed internet, explore the ergonomic setups, and experience the courtyard atmosphere firsthand.'
+    q: 'Can I book a meeting room by the hour?',
+    a: 'Yes. Our meeting rooms are available for hourly bookings.'
   },
   {
-    q: 'Are meeting room credits included in membership plans?',
-    a: 'Yes. Dedicated Desks include 8 hours of monthly meeting room credits, while Private Office suites include 20 to 40 hours per month. Additional hours can be booked on-demand through our member portal.'
+    q: 'Can I book the conference hall by the hour?',
+    a: 'Yes. Our 20-seater conference hall can be booked on an hourly basis.'
   },
   {
-    q: 'Can I register EnCourtyard as my official business address?',
-    a: 'Yes! Dedicated Desk and Private Office plans include official commercial business registration, mail handling, and secure courier receipt with instant notifications.'
+    q: 'Do you have private cabins?',
+    a: 'Yes. Encourtyard has 8 private cabins suitable for individuals, startups, and teams.'
   },
   {
-    q: 'Is parking and EV charging available at the locations?',
-    a: 'Yes, all our prime locations provide secure multi-level underground car and two-wheeler parking with dedicated EV charging stations available for members and visitors.'
+    q: 'How many open desks do you have?',
+    a: 'We have 110 open desks available for professionals, freelancers, entrepreneurs, and teams.'
+  },
+  {
+    q: 'Do you have a podcast studio?',
+    a: 'Yes. Our Studio Room has a podcast setup already installed and is designed for podcasts, interviews, and content creation.'
+  },
+  {
+    q: 'Is tea and coffee available?',
+    a: 'Yes. Members can enjoy unlimited tea and coffee.'
+  },
+  {
+    q: 'Do you have a cafeteria?',
+    a: 'Yes. We have a dedicated cafeteria for members and visitors.'
+  },
+  {
+    q: 'Do you offer flexible rental plans?',
+    a: 'Yes. We offer flexible rental plans and payment structures depending on your workspace requirements.'
+  },
+  {
+    q: 'Can I work at night?',
+    a: 'Absolutely. We\'re open 24/7, so you can work late into the night or start your workday whenever it suits you.'
   }
 ];
 

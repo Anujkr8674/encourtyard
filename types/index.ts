@@ -72,7 +72,7 @@ export interface FAQItem {
   id: string;
   question: string;
   answer: string;
-  category?: 'general' | 'membership' | 'meeting-rooms' | 'billing';
+  category?: 'general' | 'membership' | 'meeting-rooms' | 'billing' | 'amenities';
 }
 
 export interface Amenity {
