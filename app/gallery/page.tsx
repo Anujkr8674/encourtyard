@@ -121,7 +121,7 @@ export default function GalleryPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col">
       {/* 1. Hero Section (90vh) */}
-      <section className="relative h-[80vh] min-h-[600px] w-full flex flex-col justify-center overflow-hidden pt-20">
+      <section className="relative h-[80vh] min-h-[600px] w-full flex flex-col justify-center overflow-hidden pt-20 hidden">
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10" />
           <img 
@@ -169,7 +169,7 @@ export default function GalleryPage() {
       </section>
 
       {/* Gallery Section */}
-      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-24 sm:pt-28 lg:pt-36 pb-12">
         <div className="text-center mb-16 space-y-4">
           <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
             Our Spaces

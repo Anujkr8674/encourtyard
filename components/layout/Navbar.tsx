@@ -170,17 +170,17 @@ export const Navbar: React.FC = () => {
   }, [mobileMenuOpen]);
 
   const isHome = pathname === '/';
-  const hasHeroCover = pathname === '/' || pathname === '/book-space' || pathname.startsWith('/book-space') || pathname === '/conference-hall' || pathname.startsWith('/conference-hall') || pathname === '/hyderabad' || pathname === '/about' || pathname === '/contact' || pathname === '/gallery';
-  const isWhiteNav = scrolled || !hasHeroCover;
+  const isWhiteNav = true;
 
-  const navLinks = [
+  const firstNavLinks = [
     { name: 'Home', href: '/' },
     { name: 'Book Space', href: '/book-space' },
-    { name: 'Conference Hall', href: '/conference-hall' },
+  ];
+
+  const secondNavLinks = [
     { name: 'Hyderabad', href: '/hyderabad' },
     { name: 'Gallery', href: '/gallery' },
-    { name: 'About ', href: '/about' },
-    // { name: 'Contact', href: '/contact' },
+    { name: 'About', href: '/about' },
   ];
 
   const portalLinks = [
@@ -196,19 +196,11 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          isWhiteNav
-            ? 'bg-white/95 backdrop-blur-xl border-b border-[#EAE5DB] shadow-[0_4px_25px_rgba(0,0,0,0.06)]'
-            : 'bg-transparent border-b border-transparent shadow-none'
-        }`}
+        className="fixed top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-b border-[#EAE5DB] shadow-[0_4px_25px_rgba(0,0,0,0.06)] transition-all duration-300"
       >
-        {/* Top Utility Contact & Hours Bar - Smoothly Reveals on Scroll (Enhanced Luxury Midnight Navy) */}
+        {/* Top Utility Contact & Hours Bar - Always Visible on Laptop/Desktop (hidden on mobile) */}
         <div
-          className={`hidden md:block w-full transition-all duration-300 ease-in-out overflow-hidden ${
-            scrolled
-              ? 'max-h-12 opacity-100 border-b border-[#1E3A6E]/50 shadow-md'
-              : 'max-h-0 opacity-0 pointer-events-none'
-          } bg-gradient-to-r from-[#0B1528] via-[#0E2246] to-[#0A162B] text-white select-none`}
+          className="hidden md:block w-full border-b border-[#1E3A6E]/50 shadow-md bg-gradient-to-r from-[#0B1528] via-[#0E2246] to-[#0A162B] text-white select-none transition-all duration-300 ease-in-out"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-9 sm:h-10 flex items-center justify-between text-xs">
             {/* Left Side: Contact Number & Email Only (Labels removed as requested) */}
@@ -309,11 +301,9 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Main Navigation Bar */}
-        <nav className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-all duration-300 ${
-          scrolled ? 'h-20 sm:h-22 lg:h-22' : 'h-24 sm:h-28 lg:h-28'
-        }`}>
+        <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-all duration-300 h-20 sm:h-22 lg:h-22">
 
-          {/* Brand Logo: Clean on transparent or white background */}
+          {/* Brand Logo: Clean on white background */}
           <Link
             href="/"
             className="group flex items-center focus:outline-none py-1 transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 shrink-0"
@@ -323,20 +313,14 @@ export const Navbar: React.FC = () => {
               <img
                 src="/images/logo.png"
                 alt="EnCourtyard"
-                className={`w-auto object-contain transition-all duration-300 group-hover:scale-105 ${
-                  scrolled ? 'h-14 sm:h-16 lg:h-16' : 'h-16 sm:h-18 lg:h-20'
-                } ${
-                  isWhiteNav
-                    ? 'filter-none drop-shadow-none'
-                    : 'drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] filter brightness-110'
-                }`}
+                className="w-auto object-contain transition-all duration-300 group-hover:scale-105 h-14 sm:h-16 lg:h-16 filter-none drop-shadow-none"
               />
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
           <div className="hidden lg:flex items-center gap-1.5 transition-all duration-300">
-            {navLinks.map((link) => {
+            {firstNavLinks.map((link) => {
               const isActive =
                 link.href === '/book-space'
                   ? pathname === '/book-space' && !isDayPassPage
@@ -348,9 +332,185 @@ export const Navbar: React.FC = () => {
                   className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 relative flex items-center ${
                     isActive
                       ? 'bg-[#2E7D32] text-white shadow-md font-bold border border-[#4ADE80]/40'
-                      : isWhiteNav
-                      ? 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0ECE1]'
-                      : 'text-white/90 hover:text-white hover:bg-white/10 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]'
+                      : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0ECE1]'
+                  }`}
+                >
+                  <span>{link.name}</span>
+                </Link>
+              );
+            })}
+
+            {/* Quick Booking Dropdown Menu (Directly after Book Space, matching other nav menu styling) */}
+            <div
+              className="relative"
+              ref={quickDropdownRef}
+              onMouseEnter={handleQuickMouseEnter}
+              onMouseLeave={handleQuickMouseLeave}
+            >
+              <button
+                type="button"
+                onClick={() => setQuickDropdownOpen(!quickDropdownOpen)}
+                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 relative flex items-center gap-1.5 cursor-pointer select-none ${
+                  quickDropdownOpen || isDayPassPage || pathname === '/conference-hall'
+                    ? 'bg-[#2E7D32] text-white shadow-md font-bold border border-[#4ADE80]/40'
+                    : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0ECE1]'
+                }`}
+                aria-expanded={quickDropdownOpen}
+                aria-haspopup="true"
+              >
+                <span>Quick Booking</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                    quickDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Quick Book Services Dropdown Card */}
+              {quickDropdownOpen && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 top-full pt-2.5 w-[340px] sm:w-[390px] z-50"
+                  onMouseEnter={handleQuickMouseEnter}
+                  onMouseLeave={handleQuickMouseLeave}
+                >
+                  <div className="rounded-3xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] p-4 sm:p-5 animate-fadeIn font-sans">
+                    
+                    {/* Dropdown Header */}
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#EAE5DB]">
+                      <span className="text-xs sm:text-sm font-bold text-[#181F18] tracking-tight">
+                        Quick book services :
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
+                        aria-label="Close quick book menu"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Services Cards */}
+                    <div className="space-y-2.5 max-h-[75vh] overflow-y-auto pr-1">
+                      
+                      {/* Item 1: Day Pass -> /book-space?plan=day-pass */}
+                      <Link
+                        href="/book-space?plan=day-pass"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        {/* Left Thumbnail */}
+                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=400&q=80"
+                            alt="Day Pass"
+                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-1 text-left">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
+                            On Demand
+                          </span>
+                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                            Day Pass
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
+                            Get access to premium workspace for a day
+                          </p>
+                        </div>
+
+                        {/* Arrow Button */}
+                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+
+                      {/* Item 2: Conference Hall -> /conference-hall */}
+                      <Link
+                        href="/conference-hall"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        {/* Left Thumbnail */}
+                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=400&q=80"
+                            alt="Conference Hall"
+                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-1 text-left">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#C29B38] font-semibold block mb-0.5">
+                            Featured
+                          </span>
+                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                            Conference Hall
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
+                            Grand presentation suites & executive auditoriums.
+                          </p>
+                        </div>
+
+                        {/* Arrow Button */}
+                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+
+                      {/* Item 3: Book a Tour -> /contact */}
+                      <Link
+                        href="/contact"
+                        onClick={() => setQuickDropdownOpen(false)}
+                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
+                      >
+                        {/* Left Thumbnail */}
+                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80"
+                            alt="Book a Tour"
+                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-1 text-left">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
+                            Introducing
+                          </span>
+                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                            Book a Tour
+                          </h4>
+                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
+                            Visit any EnCourtyard and check out the space in person.
+                          </p>
+                        </div>
+
+                        {/* Arrow Button */}
+                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
+                        </div>
+                      </Link>
+
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {secondNavLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 relative flex items-center ${
+                    isActive
+                      ? 'bg-[#2E7D32] text-white shadow-md font-bold border border-[#4ADE80]/40'
+                      : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0ECE1]'
                   }`}
                 >
                   <span>{link.name}</span>
@@ -365,13 +525,9 @@ export const Navbar: React.FC = () => {
             {!isAuthenticated ? (
               <Link
                 href="/login"
-                className={`hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all shadow-md hover:scale-105 ${
-                  isWhiteNav
-                    ? 'bg-[#FAF9F5] hover:bg-[#F0ECE1] text-[#181F18] border border-[#DDD7CA] hover:border-[#185ADB]'
-                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/25 hover:border-[#60A5FA]/60 backdrop-blur-md'
-                }`}
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all shadow-md hover:scale-105 bg-[#FAF9F5] hover:bg-[#F0ECE1] text-[#181F18] border border-[#DDD7CA] hover:border-[#185ADB]"
               >
-                <User className={`w-3.5 h-3.5 ${isWhiteNav ? 'text-[#185ADB]' : 'text-[#60A5FA]'}`} />
+                <User className="w-3.5 h-3.5 text-[#185ADB]" />
                 <span>Sign In</span>
               </Link>
             ) : (
@@ -380,11 +536,7 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-lg group select-none ${
-                    isWhiteNav
-                      ? 'bg-white hover:bg-[#FAF9F5] border border-[#DDD7CA] hover:border-[#185ADB] text-[#181F18]'
-                      : 'bg-black/40 hover:bg-black/60 border border-white/25 hover:border-[#60A5FA] text-white backdrop-blur-md'
-                  }`}
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-lg group select-none bg-white hover:bg-[#FAF9F5] border border-[#DDD7CA] hover:border-[#185ADB] text-[#181F18]"
                   aria-expanded={profileDropdownOpen}
                 >
                   <div className="relative">
@@ -395,14 +547,10 @@ export const Navbar: React.FC = () => {
                     />
                     <span className="w-2.5 h-2.5 rounded-full bg-[#60A5FA] ring-2 ring-[#181F18] absolute bottom-0 right-0" />
                   </div>
-                  <span className={`text-xs sm:text-sm font-bold max-w-[110px] truncate hidden md:inline-block ${
-                    isWhiteNav ? 'text-[#181F18]' : 'text-white'
-                  }`}>
+                  <span className="text-xs sm:text-sm font-bold max-w-[110px] truncate hidden md:inline-block text-[#181F18]">
                     {displayName.split(' ')[0]}
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                    isWhiteNav ? 'text-[#5C665C] group-hover:text-[#181F18]' : 'text-[#93C5FD] group-hover:text-white'
-                  } ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-[#5C665C] group-hover:text-[#181F18] ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Profile Floating Dropdown Menu */}
@@ -467,186 +615,28 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* Quick Button with Dropdown Trigger (Opens on Hover or Click) */}
-            <div
-              className="relative"
-              ref={quickDropdownRef}
-              onMouseEnter={handleQuickMouseEnter}
-              onMouseLeave={handleQuickMouseLeave}
-            >
-              <button
-                type="button"
-                onClick={() => setQuickDropdownOpen(!quickDropdownOpen)}
-                onMouseEnter={handleQuickMouseEnter}
-                onMouseLeave={handleQuickMouseLeave}
-                className="hidden md:inline-flex items-center gap-2 bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-semibold text-xs sm:text-sm rounded-full px-4 sm:px-5 py-2.5 shadow-lg border border-[#4ADE80]/40 transition-all hover:scale-105 cursor-pointer select-none group"
-                aria-expanded={quickDropdownOpen}
-                aria-haspopup="true"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#86EFAC] group-hover:rotate-12 transition-transform" />
-                <span>Quick Book</span>
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-white/90 transition-transform duration-300 ${
-                    quickDropdownOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {/* Quick Book Services Dropdown Card (Matches User's Mockup) */}
-              {quickDropdownOpen && (
-                <div
-                  className="absolute right-0 top-full pt-2.5 w-[340px] sm:w-[390px] z-50"
-                  onMouseEnter={handleQuickMouseEnter}
-                  onMouseLeave={handleQuickMouseLeave}
-                >
-                  <div className="rounded-3xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] p-4 sm:p-5 animate-fadeIn font-sans">
-                    
-                    {/* Dropdown Header */}
-                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#EAE5DB]">
-                      <span className="text-xs sm:text-sm font-bold text-[#181F18] tracking-tight">
-                        Quick book services :
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setQuickDropdownOpen(false)}
-                        className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
-                        aria-label="Close quick book menu"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* 4 Services Cards */}
-                    <div className="space-y-2.5 max-h-[75vh] overflow-y-auto pr-1">
-                      
-                      {/* Item 1: Day Pass -> /book-space?plan=day-pass */}
-                      <Link
-                        href="/book-space?plan=day-pass"
-                        onClick={() => setQuickDropdownOpen(false)}
-                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
-                      >
-                        {/* Left Thumbnail */}
-                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
-                          <img
-                            src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=400&q=80"
-                            alt="Day Pass"
-                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
-                          />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pr-1 text-left">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
-                            On Demand
-                          </span>
-                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
-                            Day Pass
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
-                            Get access to premium workspace for a day
-                          </p>
-                        </div>
-
-                        {/* Arrow Button */}
-                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
-                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
-                        </div>
-                      </Link>
-
-                      {/* Item 2: Book Meeting Rooms -> /meeting-rooms */}
-                     
-
-                      {/* Item 3: Conference Hall -> /conference-hall */}
-                      <Link
-                        href="/conference-hall"
-                        onClick={() => setQuickDropdownOpen(false)}
-                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
-                      >
-                        {/* Left Thumbnail */}
-                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
-                          <img
-                            src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=400&q=80"
-                            alt="Conference Hall"
-                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
-                          />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pr-1 text-left">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#C29B38] font-semibold block mb-0.5">
-                            Featured
-                          </span>
-                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
-                            Conference Hall
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
-                            Grand presentation suites & executive auditoriums.
-                          </p>
-                        </div>
-
-                        {/* Arrow Button */}
-                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
-                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
-                        </div>
-                      </Link>
-
-                      {/* Item 4: Schedule a Visit / Book a Tour -> /contact */}
-                      <Link
-                        href="/contact"
-                        onClick={() => setQuickDropdownOpen(false)}
-                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
-                      >
-                        {/* Left Thumbnail */}
-                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
-                          <img
-                            src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80"
-                            alt="Book a Tour"
-                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
-                          />
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pr-1 text-left">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
-                            Introducing
-                          </span>
-                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
-                            Book a Tour
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
-                            Visit any EnCourtyard and check out the space in person.
-                          </p>
-                        </div>
-
-                        {/* Arrow Button */}
-                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
-                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
-                        </div>
-                      </Link>
-
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Responsive "Book Space" CTA Button (ONLY visible in mobile responsive view) */}
+            {/* "Book a Tour" Action Button (Redirects to Contact Us / Schedule Visit) */}
             <Link
-              href="/book-space"
+              href="/contact"
+              className="hidden md:inline-flex items-center gap-2 bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-semibold text-xs sm:text-sm rounded-full px-4 sm:px-5 py-2.5 shadow-lg border border-[#4ADE80]/40 transition-all hover:scale-105 cursor-pointer select-none group"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#86EFAC] group-hover:rotate-12 transition-transform" />
+              <span>Book a Tour</span>
+            </Link>
+
+            {/* Mobile Responsive "Book a Tour" CTA Button */}
+            <Link
+              href="/contact"
               className="md:hidden inline-flex items-center gap-1.5 bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-semibold text-xs sm:text-sm rounded-full px-3.5 py-2 shadow-sm border border-[#4ADE80]/30 transition-all active:scale-95 shrink-0"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#86EFAC]" />
-              <span>Book Space</span>
+              <Calendar className="w-3.5 h-3.5 text-[#86EFAC]" />
+              <span>Book a Tour</span>
             </Link>
 
             {/* Mobile Drawer Trigger (ONLY visible in mobile/tablet, hidden on desktop lg:hidden) */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className={`lg:hidden p-2.5 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-105 ${
-                isWhiteNav
-                  ? 'text-[#181F18] bg-[#FAF9F5] hover:bg-[#EAE5DB] border border-[#DDD7CA]'
-                  : 'text-white bg-black/25 hover:bg-black/40 backdrop-blur-md border border-white/20'
-              }`}
+              className="lg:hidden p-2.5 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-105 text-[#181F18] bg-[#FAF9F5] hover:bg-[#EAE5DB] border border-[#DDD7CA]"
               aria-label="Open side drawer"
             >
               <Menu className="w-5 h-5" />
@@ -693,7 +683,7 @@ export const Navbar: React.FC = () => {
 
           {/* Navigation Links with Active State & Right Chevrons */}
           <div className="py-6 space-y-1.5">
-            {navLinks.map((link) => {
+            {firstNavLinks.map((link) => {
               const isActive =
                 link.href === '/book-space'
                   ? pathname === '/book-space' && !isDayPassPage
@@ -717,13 +707,13 @@ export const Navbar: React.FC = () => {
               );
             })}
 
-            {/* Quick Book Dropdown Accordion in Mobile Drawer (Directly after About menu button) */}
-            <div className="pt-1">
+            {/* Quick Booking Dropdown Accordion in Mobile Drawer (Directly after Book Space) */}
+            <div className="pt-0.5">
               <button
                 type="button"
                 onClick={() => setMobileQuickBookOpen(!mobileQuickBookOpen)}
                 className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all group cursor-pointer ${
-                  mobileQuickBookOpen
+                  mobileQuickBookOpen || isDayPassPage || pathname === '/conference-hall'
                     ? 'bg-[#2E7D32]/10 text-[#1E5C23] border border-[#2E7D32]/30 font-bold'
                     : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F3EFE6] border border-transparent'
                 }`}
@@ -732,7 +722,7 @@ export const Navbar: React.FC = () => {
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="w-4 h-4 text-[#2E7D32]" />
                   <span className="group-hover:translate-x-1 transition-transform duration-200">
-                    Quick Book
+                    Quick Booking
                   </span>
                 </div>
                 <ChevronDown
@@ -753,18 +743,6 @@ export const Navbar: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-3.5 h-3.5 text-[#2E7D32]" />
                       <span>Day Pass (1-Day Access)</span>
-                    </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#738273]" />
-                  </Link>
-
-                  <Link
-                    href="/meeting-rooms"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between text-[#181F18] bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] transition-all"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-[#2E7D32]" />
-                      <span>Meeting Rooms</span>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-[#738273]" />
                   </Link>
@@ -795,6 +773,27 @@ export const Navbar: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {secondNavLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all group ${
+                    isActive
+                      ? 'bg-[#2E7D32] text-white shadow-sm font-bold border border-[#2E7D32]'
+                      : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F3EFE6]'
+                  }`}
+                >
+                  <span className="group-hover:translate-x-1 transition-transform duration-200">
+                    {link.name}
+                  </span>
+                  <ChevronRight className={`w-4 h-4 transition-transform ${isActive ? 'text-white' : 'text-[#738273] group-hover:text-[#181F18]'}`} />
+                </Link>
+              );
+            })}
 
             {/* Account & Portal Section in Drawer */}
             <div className="pt-3 border-t border-[#EAE5DB] mt-3 space-y-2">

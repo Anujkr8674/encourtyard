@@ -1,20 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Wifi,
   Coffee,
   Monitor,
-  Car,
+  Zap,
   ShieldCheck,
   Sparkles,
-  Users,
-  Headphones
+  ArrowRight
 } from 'lucide-react';
 import { CIRCULAR_AMENITIES_DATA } from '@/lib/data';
 
 export const AmenitiesSection: React.FC = () => {
-  const [selectedId, setSelectedId] = useState('coffee');
+  const [selectedId, setSelectedId] = useState('rental-computer');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const activeId = hoveredId || selectedId;
@@ -23,21 +23,19 @@ export const AmenitiesSection: React.FC = () => {
     Wifi,
     Coffee,
     Monitor,
-    Car,
+    Zap,
     ShieldCheck,
-    Sparkles,
-    Users,
-    Headphones
+    Sparkles
   };
 
   const currentItem =
-    CIRCULAR_AMENITIES_DATA.find((item) => item.id === activeId) ||
-    CIRCULAR_AMENITIES_DATA[1];
+    CIRCULAR_AMENITIES_DATA.find((item) => item.id === activeId || item.slug === activeId) ||
+    CIRCULAR_AMENITIES_DATA[0];
 
   const ActiveIconComp = iconComponents[currentItem.iconName] || Sparkles;
 
   return (
-    <section className="py-16 sm:py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
+    <section id="amenities" className="py-16 sm:py-20 lg:py-24 bg-white border-b border-[#E5E1D8] relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Elevated Architectural Alabaster Canvas */}
@@ -49,12 +47,11 @@ export const AmenitiesSection: React.FC = () => {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold mb-3">
                 WORLD-CLASS AMENITIES
               </span>
-              <h2 className="font-serif text-3xl sm:text-4xl lg:text-[42px] font-bold text-[#181F18] tracking-tight leading-tight">
-                Everything You Need, <br className="hidden sm:inline" />
-                All in One Place
+              <h2 className="font-serif text-3xl sm:text-3xl lg:text-[40px] font-bold text-[#181F18] tracking-tight leading-tight">
+                Best Co Working Space In Hyderabad
               </h2>
               <p className="text-sm sm:text-base text-[#5C665C] mt-2.5 font-sans leading-relaxed">
-                Curated amenities designed to keep your workday effortless, productive, and comfortable.
+                Thoughtfully designed for creators, teams, and growing enterprises in Hyderabad. Enjoy uninterrupted high-speed connectivity, premium computer rentals, 100% power backup, and rejuvenating spaces built around your workday.
               </p>
             </div>
 
@@ -68,19 +65,20 @@ export const AmenitiesSection: React.FC = () => {
           {/* 2-Column Content: Amenities List (Left) + Interactive Image Showcase (Right) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-center relative z-10">
 
-            {/* Left: 8 Circular Icon Items in 4x2 Grid */}
-            <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+            {/* Left: 6 Requested Amenities in 3x2 Grid */}
+            <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-4">
               {CIRCULAR_AMENITIES_DATA.map((item) => {
                 const IconComp = iconComponents[item.iconName] || Sparkles;
-                const isActive = item.id === activeId;
+                const isActive = item.id === activeId || item.slug === activeId;
 
                 return (
-                  <div
+                  <Link
                     key={item.id}
+                    href={`/amenities/${item.slug || item.id}`}
                     onMouseEnter={() => setHoveredId(item.id)}
                     onMouseLeave={() => setHoveredId(null)}
                     onClick={() => setSelectedId(item.id)}
-                    className={`p-4 sm:p-5 rounded-2xl border transition-all duration-300 transform flex flex-col items-center text-center cursor-pointer select-none group ${
+                    className={`p-4 sm:p-5 rounded-2xl border transition-all duration-300 transform flex flex-col items-center text-center cursor-pointer select-none group relative ${
                       isActive
                         ? 'bg-[#263626] text-white border-2 border-[#3D523D] shadow-2xl ring-4 ring-[#263626]/10 -translate-y-2 scale-[1.03]'
                         : 'bg-white hover:bg-white border-[#DDD7CA] hover:border-[#263626] shadow-[0_4px_16px_-4px_rgba(24,31,24,0.06)] hover:shadow-xl hover:-translate-y-1.5'
@@ -105,13 +103,18 @@ export const AmenitiesSection: React.FC = () => {
                     </h4>
 
                     <p
-                      className={`text-[11px] font-sans leading-snug transition-colors duration-300 ${
+                      className={`text-[11px] font-sans leading-snug transition-colors duration-300 line-clamp-2 ${
                         isActive ? 'text-[#D5E2D5] font-medium' : 'text-[#5C665C]'
                       }`}
                     >
                       {item.subtitle}
                     </p>
-                  </div>
+
+                    {/* <div className="mt-2.5 pt-1.5 border-t border-current/10 w-full flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wider opacity-80 group-hover:opacity-100 transition-opacity">
+                      <span>View Details</span>
+                      <ArrowRight className="w-2.5 h-2.5" />
+                    </div> */}
+                  </Link>
                 );
               })}
             </div>
@@ -122,7 +125,7 @@ export const AmenitiesSection: React.FC = () => {
                 
                 {/* Stacked Images for Smooth Zero-Latency Cross-Fade */}
                 {CIRCULAR_AMENITIES_DATA.map((item) => {
-                  const isCurrent = item.id === activeId;
+                  const isCurrent = item.id === activeId || item.slug === activeId;
                   return (
                     <div
                       key={item.id}
@@ -143,21 +146,29 @@ export const AmenitiesSection: React.FC = () => {
                   );
                 })}
 
-                {/* Floating Active Info Overlay */}
+                {/* Floating Active Info Overlay with Link to Separate Page */}
                 <div className="absolute bottom-4 left-4 right-4 z-20 bg-white/95 backdrop-blur-md px-4.5 py-3.5 rounded-2xl border border-[#DDD7CA] shadow-xl flex items-center justify-between transition-all duration-500 transform">
-                  <div className="flex items-center gap-3.5">
+                  <div className="flex items-center gap-3.5 min-w-0 pr-2">
                     <div className="w-10 h-10 rounded-xl bg-[#263626] text-[#4ADE80] flex items-center justify-center shrink-0 shadow-sm">
                       <ActiveIconComp className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h4 className="font-serif font-bold text-sm text-[#181F18] leading-tight">
+                    <div className="min-w-0">
+                      <h4 className="font-serif font-bold text-sm text-[#181F18] leading-tight truncate">
                         {currentItem.title}
                       </h4>
-                      <p className="text-[11px] text-[#5C665C] font-sans mt-0.5">
+                      <p className="text-[11px] text-[#5C665C] font-sans mt-0.5 truncate max-w-[180px] sm:max-w-[220px]">
                         {currentItem.description || currentItem.subtitle}
                       </p>
                     </div>
                   </div>
+
+                  <Link
+                    href={`/amenities/${currentItem.slug || currentItem.id}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#2E7D32] hover:bg-[#256829] text-white text-xs font-bold transition-colors shrink-0 shadow-sm cursor-pointer"
+                  >
+                    <span>Full Details</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
 
               </div>

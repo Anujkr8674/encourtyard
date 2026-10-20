@@ -4,6 +4,7 @@ import { FeaturesTickerMarquee } from '@/components/home/FeaturesTickerMarquee';
 import { PopularPicksSection } from '@/components/home/PopularPicksSection';
 import { PresenceCitySection } from '@/components/home/PresenceCitySection';
 import { WorkspaceCategoriesSection } from '@/components/home/WorkspaceCategoriesSection';
+import { OfficeTypesSection } from '@/components/home/OfficeTypesSection';
 
 import { WhyEnCourtyard } from '@/components/home/WhyEnCourtyard';
 import { AmenitiesSection } from '@/components/home/AmenitiesSection';
@@ -44,6 +45,11 @@ export default function HomePage() {
       {/* 5. Workspace Categories Section - Unique 3D Depth Scale-Up */}
       <ScrollReveal animation="scale-up" duration={1250} threshold={0.06}>
         <WorkspaceCategoriesSection />
+      </ScrollReveal>
+
+      {/* 6. Handcrafted Types of Office Section (Single Row of 4 Offices) */}
+      <ScrollReveal animation="fade-up" duration={1200} threshold={0.06}>
+        <OfficeTypesSection />
       </ScrollReveal>
 
 

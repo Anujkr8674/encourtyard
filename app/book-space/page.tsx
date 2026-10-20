@@ -265,11 +265,10 @@ export default function BookSpacePage() {
 
       if (planParam === 'day-pass' || planParam === 'daily') {
         setIsDayPass(true);
+        setSelectedCategory('all');
         setEndDate(todayStr);
         shouldScroll = true;
-      }
-
-      if (catParam) {
+      } else if (catParam) {
         setSelectedCategory(catParam);
         shouldScroll = true;
       }
@@ -355,8 +354,8 @@ export default function BookSpacePage() {
         return false;
       }
 
-      // Category filter (match by ID, slug, or name)
-      if (selectedCategory !== 'all') {
+      // Category filter (match by ID, slug, or name) - not applied on Day Pass page
+      if (!isDayPass && selectedCategory !== 'all') {
         const matchesCat =
           ws.categoryId === selectedCategory ||
           ws.categoryName?.toLowerCase().trim() === selectedCategory.toLowerCase().trim() ||
@@ -452,7 +451,7 @@ export default function BookSpacePage() {
 
   // Active filter count
   const activeFiltersCount =
-    (selectedCategory !== 'all' ? 1 : 0) +
+    (!isDayPass && selectedCategory !== 'all' ? 1 : 0) +
     (searchQuery ? 1 : 0) +
     (maxPrice < 200000 ? 1 : 0) +
     (selectedCapacity !== 'all' ? 1 : 0) +
@@ -593,76 +592,78 @@ export default function BookSpacePage() {
         )}
       </div>
 
-      {/* SECTION 2: CATEGORY */}
-      <div className="space-y-2.5 text-left">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
-            CATEGORY
-          </label>
-          {categories.length > 5 && (
-            <button
-              type="button"
-              onClick={() => setShowAllCategories(!showAllCategories)}
-              className="text-[11px] font-bold text-[#2E7D32] hover:text-[#1B5E20] hover:underline flex items-center gap-0.5 cursor-pointer"
-            >
-              <span>{showAllCategories ? 'Show Less' : `+ See More (${categories.length - 5})`}</span>
-              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Item 1: All */}
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCategory('all');
-              setCurrentPage(1);
-            }}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
-              selectedCategory === 'all'
-                ? 'bg-[#263626] text-white font-bold shadow-sm border border-[#263626]'
-                : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
-            }`}
-          >
-            All
-          </button>
-
-          {/* Items 2..6: Categories */}
-          {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => {
-            const isSelected = selectedCategory === cat.id || selectedCategory === cat.slug || selectedCategory === cat.name;
-            return (
+      {/* SECTION 2: CATEGORY (Hidden on Day Pass page as requested) */}
+      {!isDayPass && (
+        <div className="space-y-2.5 text-left">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
+              CATEGORY
+            </label>
+            {categories.length > 5 && (
               <button
-                key={cat.id}
                 type="button"
-                onClick={() => {
-                  setSelectedCategory(cat.id);
-                  setCurrentPage(1);
-                }}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#263626] text-white font-bold shadow-sm border border-[#263626]'
-                    : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
-                }`}
+                onClick={() => setShowAllCategories(!showAllCategories)}
+                className="text-[11px] font-bold text-[#2E7D32] hover:text-[#1B5E20] hover:underline flex items-center gap-0.5 cursor-pointer"
               >
-                {cat.name}
+                <span>{showAllCategories ? 'Show Less' : `+ See More (${categories.length - 5})`}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
               </button>
-            );
-          })}
+            )}
+          </div>
 
-          {/* Expand / Collapse Button Pill */}
-          {categories.length > 5 && (
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Item 1: All */}
             <button
               type="button"
-              onClick={() => setShowAllCategories(!showAllCategories)}
-              className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#2E7D32] hover:text-[#1B5E20] bg-[#E8F5E9]/60 hover:bg-[#E8F5E9] border border-[#2E7D32]/30 transition-all cursor-pointer inline-flex items-center gap-1"
+              onClick={() => {
+                setSelectedCategory('all');
+                setCurrentPage(1);
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+                selectedCategory === 'all'
+                  ? 'bg-[#263626] text-white font-bold shadow-sm border border-[#263626]'
+                  : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+              }`}
             >
-              <span>{showAllCategories ? 'Show Less' : '+ See More'}</span>
-              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
+              All
             </button>
-          )}
+
+            {/* Items 2..6: Categories */}
+            {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => {
+              const isSelected = selectedCategory === cat.id || selectedCategory === cat.slug || selectedCategory === cat.name;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#263626] text-white font-bold shadow-sm border border-[#263626]'
+                      : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+
+            {/* Expand / Collapse Button Pill */}
+            {categories.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCategories(!showAllCategories)}
+                className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#2E7D32] hover:text-[#1B5E20] bg-[#E8F5E9]/60 hover:bg-[#E8F5E9] border border-[#2E7D32]/30 transition-all cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>{showAllCategories ? 'Show Less' : '+ See More'}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* SECTION 3: MAX BUDGET / PRICE SLIDER */}
       {/* <div className="space-y-2.5 text-left">
@@ -734,7 +735,7 @@ export default function BookSpacePage() {
       </div>
 
       {/* SECTION 5: FEATURES & AMENITIES */}
-      <div className="space-y-2.5 text-left">
+      <div className="space-y-2.5 text-left hidden">
         <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
           DESIRED AMENITIES
         </label>
@@ -795,9 +796,9 @@ export default function BookSpacePage() {
       {/* ========================================================================= */}
       {/* 1. HERO SECTION (80vh) WITH FULL-BLEED book.png, MOVING ZOOM & CENTERED FROSTED TEXT */}
       {/* ========================================================================= */}
-      <section className="relative w-full h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 flex flex-col justify-center overflow-hidden">
+      {/* <section className="relative w-full h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 flex flex-col justify-center overflow-hidden">
 
-        {/* Full-Bleed Background Cover Image with Slow Moving Animation (book.png) */}
+       
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <img
             src="/images/book.png"
@@ -806,10 +807,10 @@ export default function BookSpacePage() {
           />
         </div>
 
-        {/* Foreground Content with Typewriter and Centered Frosted Glass Blur text boxes */}
+       
         <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full my-auto text-center flex flex-col items-center justify-center">
 
-          {/* Tagline Eyebrow in Frosted Glass Pill */}
+         
           <div className="flex items-center justify-center mb-3.5">
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-[11px] sm:text-xs font-mono uppercase tracking-widest text-[#141F14] font-bold shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
               <Sparkles className="w-3.5 h-3.5 text-[#2E7D32]" />
@@ -817,7 +818,7 @@ export default function BookSpacePage() {
             </span>
           </div>
 
-          {/* Animated Main Hero Headline with Each Line in Its Own Frosted Glass Blur Pill */}
+
           <div className="relative mb-4 flex flex-col items-center justify-center">
             <h1 className="flex flex-col items-center justify-center gap-2.5 min-h-[135px] sm:min-h-[165px]">
               {typedLines.map((line, idx) => {
@@ -839,7 +840,7 @@ export default function BookSpacePage() {
             </h1>
           </div>
 
-          {/* Subheading in Pill: Work • Connect • Grow ↳ */}
+         
           <div className="flex justify-center mb-3">
             <div className="inline-block px-4 sm:px-6 py-1.5 sm:py-2 rounded-full bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
               <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-serif font-bold text-[#141F14] tracking-wide">
@@ -857,7 +858,7 @@ export default function BookSpacePage() {
             </div>
           </div>
 
-          {/* Description Subtext in Centered Frosted Glass Blur Pill */}
+ 
           <div className="flex justify-center">
             <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-xs sm:text-sm text-[#181F18] font-sans font-medium shadow-[0_8px_25px_rgba(0,0,0,0.1)] leading-relaxed max-w-xl text-center">
               Flexible spaces. Meaningful connections. Real opportunities. Welcome to EnCourtyard.
@@ -866,7 +867,7 @@ export default function BookSpacePage() {
 
         </div>
 
-      </section>
+      </section> */}
 
       {/* ========================================================================= */}
       {/* 2. MAIN CONTENT LAYOUT: Sidebar Filter (Left) + Workspaces Grid (Right)    */}
@@ -874,7 +875,7 @@ export default function BookSpacePage() {
       <main
         id="workspaces-section"
         ref={workspacesSectionRef}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-14 scroll-mt-24"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-36 pb-12 scroll-mt-24"
       >
 
         {/* Mobile Slide-Over Right Sidebar Drawer */}
@@ -958,7 +959,7 @@ export default function BookSpacePage() {
           <aside
             style={{
               position: 'sticky',
-              top: '128px',
+              top: '136px',
               alignSelf: 'flex-start',
               zIndex: 20,
             }}
@@ -966,7 +967,7 @@ export default function BookSpacePage() {
           >
             <div
               style={{
-                maxHeight: 'calc(100vh - 148px)',
+                maxHeight: 'calc(100vh - 156px)',
               }}
               className="bg-white border border-[#E5E1D8] rounded-3xl p-6 space-y-6 shadow-[0_4px_24px_rgba(0,0,0,0.04)] overflow-y-auto overscroll-contain pr-3 custom-sidebar-scroll text-[#181F18]"
             >
@@ -999,14 +1000,14 @@ export default function BookSpacePage() {
           {/* ========================================================================= */}
           {/* RIGHT SIDE: WORKSPACES LISTING CARDS (8 Rows = 16 Cards) & PAGINATION     */}
           {/* ========================================================================= */}
-          <section className="lg:col-span-8 space-y-6">
+          <section className="lg:col-span-8 space-y-6 pb-8">
 
             {/* Top Toolbar: Search Bar + Live Count + Sort */}
-            <div className="bg-white border border-[#E5E1D8] rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shadow-sm">
+            <div className="bg-white border border-[#E5E1D8] rounded-2xl p-2.5 sm:p-4 flex flex-row items-center justify-between gap-2 sm:gap-4 shadow-sm">
 
               {/* Search Bar Input */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#5C665C]" />
+              <div className="relative flex-1 min-w-0">
+                <Search className="w-4 h-4 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-[#5C665C]" />
                 <input
                   type="text"
                   value={searchQuery}
@@ -1015,17 +1016,17 @@ export default function BookSpacePage() {
                     setCurrentPage(1);
                   }}
                   placeholder="Search by space name, category, or amenities..."
-                  className="w-full pl-9.5 pr-4 py-2 bg-[#FAF9F5] border border-[#E5E1D8] rounded-xl text-xs sm:text-sm text-[#181F18] focus:outline-none focus:border-[#2E7D32] transition-colors placeholder:text-[#8C968C]"
+                  className="w-full pl-8.5 sm:pl-9.5 pr-2.5 sm:pr-4 py-2 bg-[#FAF9F5] border border-[#E5E1D8] rounded-xl text-xs sm:text-sm text-[#181F18] focus:outline-none focus:border-[#2E7D32] transition-colors placeholder:text-[#8C968C] truncate"
                 />
               </div>
 
               {/* Sort Dropdown */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-[#5C665C] font-mono hidden sm:inline">Sort:</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <span className="text-xs text-[#5C665C] font-mono hidden md:inline">Sort:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-xl px-3 py-2 text-xs font-sans text-[#181F18] focus:outline-none focus:border-[#2E7D32] cursor-pointer"
+                  className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-xl px-2 sm:px-3 py-2 text-xs font-sans text-[#181F18] focus:outline-none focus:border-[#2E7D32] cursor-pointer max-w-[125px] sm:max-w-none truncate"
                 >
                   <option value="recommended">Recommended</option>
                   <option value="price-asc">Price: Low to High</option>

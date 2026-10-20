@@ -288,7 +288,7 @@ export default function ConferenceHallPage() {
       {/* ========================================================================= */}
       {/* 1. HERO SECTION: 100vh on Web, 75vh on Mobile + Typewriter Frosted Pills  */}
       {/* ========================================================================= */}
-      <section className="relative w-full h-[75vh] min-h-[75vh] sm:h-screen sm:min-h-[100vh] bg-white pt-20 sm:pt-32 lg:pt-36 pb-6 sm:pb-8 flex flex-col justify-center overflow-hidden">
+      <section className="relative w-full h-[75vh] min-h-[75vh] sm:h-screen sm:min-h-[100vh] bg-white pt-20 sm:pt-32 lg:pt-36 pb-6 sm:pb-8 flex flex-col justify-center overflow-hidden hidden">
         
         {/* Full-Bleed Background Image with Subtle Parallax Zoom */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -351,7 +351,7 @@ export default function ConferenceHallPage() {
       {/* ========================================================================= */}
       {/* 2. CONFERENCE HALLS CATALOG (Left Filter Skipped - Confrence Hall Only)   */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-36 pb-12">
         
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-8 border-b border-[#E5E1D8] gap-4">
@@ -533,7 +533,7 @@ export default function ConferenceHallPage() {
       {/* ========================================================================= */}
       {/* 3. AV TECHNOLOGY HIGHLIGHTS                                               */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-[#FAF9F5] border-y border-[#E5E1D8]">
+      <section className="py-20 bg-[#FAF9F5] border-y border-[#E5E1D8] hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
@@ -573,11 +573,8 @@ export default function ConferenceHallPage() {
       {/* ========================================================================= */}
       <section className="py-20 lg:py-28 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14 space-y-2">
-          <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
-            Hall Inquiries & Specs
-          </span>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#181F18]">
-            Conference Hall FAQs
+           Frequently Asked Questions
           </h2>
         </div>
 

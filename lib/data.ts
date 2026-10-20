@@ -586,72 +586,8 @@ export const WORKSPACE_CATEGORIES_DATA = [
   }
 ];
 
-export const CIRCULAR_AMENITIES_DATA = [
-  {
-    id: 'wifi',
-    title: 'High-Speed WiFi',
-    subtitle: 'Stay connected always',
-    iconName: 'Wifi',
-    image: 'https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=1200&q=85',
-    description: 'Blazing-fast enterprise grade WiFi 6 network with redundant backup connections.'
-  },
-  {
-    id: 'coffee',
-    title: 'Free Coffee & Tea',
-    subtitle: 'Fuel your creativity',
-    iconName: 'Coffee',
-    image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=85',
-    description: 'Unlimited artisanal espresso, roasted single-origin coffees, and herbal tea selection.'
-  },
-  {
-    id: 'meetings',
-    title: 'Modern Meeting Rooms',
-    subtitle: 'Book on demand',
-    iconName: 'Monitor',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=85',
-    description: 'Acoustically treated conference suites equipped with 4K displays and video conferencing.'
-  },
-  {
-    id: 'parking',
-    title: 'Parking Facility',
-    subtitle: 'Hassle-free parking',
-    iconName: 'Car',
-    image: 'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=85',
-    description: 'Reserved multi-level vehicle and two-wheeler parking with EV charging stations.'
-  },
-  {
-    id: 'security',
-    title: '24/7 Security',
-    subtitle: 'Work with peace of mind',
-    iconName: 'ShieldCheck',
-    image: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=85',
-    description: 'CCTV surveillance, biometric access control, and round-the-clock trained security staff.'
-  },
-  {
-    id: 'relaxation',
-    title: 'Relaxation Zones',
-    subtitle: 'Recharge & unwind',
-    iconName: 'Sparkles',
-    image: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=85',
-    description: 'Calm botanical lounges, acoustic nap pods, and green terrace areas to decompress.'
-  },
-  {
-    id: 'events',
-    title: 'Events & Networking',
-    subtitle: 'Learn, connect, grow',
-    iconName: 'Users',
-    image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=85',
-    description: 'Curated weekly founder mixers, investor pitch nights, and industry workshops.'
-  },
-  {
-    id: 'support',
-    title: 'On-site Support',
-    subtitle: 'Here to help',
-    iconName: 'Headphones',
-    image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=85',
-    description: 'Dedicated community managers and technical support team on-site 6 days a week.'
-  }
-];
+import { AMENITIES_DATA } from './amenitiesData';
+export const CIRCULAR_AMENITIES_DATA = AMENITIES_DATA;
 
 export const INR_PRICING_DATA = [
   {

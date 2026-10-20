@@ -260,7 +260,49 @@
   background: #D5CEC2;
   border-radius: 9999px;
 }
-.custom-sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: #A89F93;
+
+/* Social Icon Dedicated Brand Hover Utilities */
+.social-hover-linkedin {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.social-hover-linkedin:hover {
+  background-color: #0A66C2 !important;
+  border-color: #0A66C2 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(10, 102, 194, 0.4) !important;
+  transform: translateY(-3px) scale(1.05);
+}
+
+.social-hover-twitter {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.social-hover-twitter:hover {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+  transform: translateY(-3px) scale(1.05);
+}
+
+.social-hover-instagram {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.social-hover-instagram:hover {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(220, 39, 67, 0.4) !important;
+  transform: translateY(-3px) scale(1.05);
+}
+
+.social-hover-youtube {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.social-hover-youtube:hover {
+  background-color: #FF0000 !important;
+  border-color: #FF0000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(255, 0, 0, 0.4) !important;
+  transform: translateY(-3px) scale(1.05);
 }
 
