@@ -8,7 +8,10 @@ export const metadata: Metadata = {
 
 export default function AdminLoginPage() {
   return (
-    <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#0E150F] flex items-center justify-center relative overflow-hidden">
+    <div
+      style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+      className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-[#0E150F] flex items-center justify-center relative overflow-hidden admin-panel-root"
+    >
       {/* Background Ambience */}
       <div
         className="absolute inset-0 opacity-15 pointer-events-none"

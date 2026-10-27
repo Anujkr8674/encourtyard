@@ -142,3 +142,68 @@ export function formatTimestampToDateAndTimeString(timestamp: number) {
   
   return { dateStr, timeStr };
 }
+
+export function hasValidPrice(price: string | null | undefined): boolean {
+  if (!price) return false;
+  const trimmed = String(price).trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.includes('quote') ||
+    lower.includes('flexible') ||
+    lower.includes('optional') ||
+    lower === 'free'
+  ) {
+    return false;
+  }
+  const clean = trimmed.replace(/[^0-9.]/g, '');
+  const num = parseFloat(clean);
+  return !isNaN(num) && num > 0;
+}
+
+export function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const match = timeStr.trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3] ? match[3].toUpperCase() : null;
+
+  if (period === 'PM' && hours < 12) {
+    hours += 12;
+  } else if (period === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  return hours * 60 + minutes;
+}
+
+export function calculateHourlyDuration(startTime: string, endTime: string) {
+  const startMins = parseTimeToMinutes(startTime);
+  const endMins = parseTimeToMinutes(endTime);
+  let totalMinutes = endMins - startMins;
+
+  // Fallback to minimum 1 hour (60 mins) if invalid or <= 0
+  if (totalMinutes <= 0) {
+    totalMinutes = 60;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  let formatted = '';
+  if (hours > 0 && minutes > 0) {
+    formatted = `${hours} hr${hours > 1 ? 's' : ''} ${minutes} min${minutes > 1 ? 's' : ''}`;
+  } else if (hours > 0) {
+    formatted = `${hours} hr${hours > 1 ? 's' : ''}`;
+  } else {
+    formatted = `${minutes} min${minutes > 1 ? 's' : ''}`;
+  }
+
+  return {
+    totalMinutes,
+    hours,
+    minutes,
+    durationInHours: totalMinutes / 60,
+    formatted,
+  };
+}

@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { dispatchBookingCreatedEmails, BookingEmailData } from '@/lib/email';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { assembleBookingNotes } from '@/lib/bookingNotes';
 
 export async function POST(req: Request) {
   try {
@@ -34,6 +35,9 @@ export async function POST(req: Request) {
       endTime = '06:00 PM',
       guests = 1,
       totalAmount,
+      utrNumber,
+      paymentProofUrl,
+      specialRequests,
     } = body;
 
     if (!fullName || !email || !phone) {
@@ -42,6 +46,19 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const initialAdminNotes = assembleBookingNotes({
+      utr: utrNumber ? utrNumber.trim() : null,
+      proofUrl: paymentProofUrl ? paymentProofUrl.trim() : null,
+      userNotes: specialRequests ? specialRequests.trim() : null,
+      timeline: [
+        {
+          status: 'PENDING',
+          timestamp: new Date().toISOString(),
+          note: specialRequests?.trim() ? `User Request: ${specialRequests.trim()}` : 'Reservation submitted by member',
+        },
+      ],
+    });
 
     const newBooking = await prisma.booking.create({
       data: {
@@ -64,8 +81,8 @@ export async function POST(req: Request) {
         guests: Number(guests) || 1,
         totalAmount: typeof totalAmount === 'number' ? totalAmount : (totalAmount ? parseFloat(String(totalAmount).replace(/[^0-9.-]+/g, "")) : null),
         status: 'PENDING' as BookingStatus,
-        paymentStatus: 'PENDING' as PaymentStatus,
-        adminNotes: null,
+        paymentStatus: utrNumber ? ('PAID' as PaymentStatus) : ('PENDING' as PaymentStatus),
+        adminNotes: initialAdminNotes,
         statusUpdatedAt: new Date(),
         notesUpdatedAt: new Date(),
       }

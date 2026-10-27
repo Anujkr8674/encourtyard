@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { dispatchStatusUpdatedEmails, BookingEmailData } from '@/lib/email';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { parseBookingDateTime, formatTimestampToDateAndTimeString } from '@/lib/availability';
+import { parseBookingNotes, assembleBookingNotes } from '@/lib/bookingNotes';
 
 export async function PATCH(
   req: NextRequest,
@@ -22,17 +23,57 @@ export async function PATCH(
     }
 
     const previousStatus = existing.status;
-    const isStatusChanging = status && status !== previousStatus;
-    const isNotesChanging = adminNotes !== undefined && adminNotes !== existing.adminNotes;
-
+    const newStatus = status ? (status as BookingStatus) : existing.status;
+    const isStatusChanging = newStatus !== previousStatus;
     const now = new Date();
+
+    // Parse existing technical payment info, User Notes, and Admin Notes
+    const parsedExisting = parseBookingNotes(existing.adminNotes);
+    let timelineHistory: Array<{ status: string; timestamp: string; note?: string | null }> = parsedExisting.timeline || [];
+
+    if (timelineHistory.length === 0) {
+      timelineHistory.push({
+        status: 'PENDING',
+        timestamp: (existing.createdAt || now).toISOString(),
+        note: parsedExisting.userNotes ? `User Request: ${parsedExisting.userNotes}` : 'Reservation submitted by member',
+      });
+    }
+
+    const cleanNewNote =
+      adminNotes !== undefined && adminNotes !== null
+        ? adminNotes
+            .replace(/Timeline:\s*(\[[^\]]*\])\s*\|?\s*/gi, '')
+            .replace(/UTR:\s*([^|\n]+)\s*\|?\s*/gi, '')
+            .replace(/Proof:\s*(https?:\/\/[^\s|\n]+)\s*\|?\s*/gi, '')
+            .replace(/^(AdminNotes|UserNotes|Notes):\s*/gi, '')
+            .trim()
+        : null;
+
+    if (isStatusChanging || (cleanNewNote && cleanNewNote.length > 0)) {
+      timelineHistory.push({
+        status: newStatus,
+        timestamp: now.toISOString(),
+        note: cleanNewNote || (isStatusChanging ? `Status updated to ${newStatus}` : null),
+      });
+    }
+
+    // Assemble parts preserving User Notes from booking time and setting Admin Notes from update
+    const finalAdminNotes = assembleBookingNotes({
+      utr: parsedExisting.utr,
+      proofUrl: parsedExisting.proofUrl,
+      userNotes: parsedExisting.userNotes, // Keep original member booking request intact!
+      adminNotes: cleanNewNote !== null ? cleanNewNote : parsedExisting.adminNotes, // Set or preserve admin note
+      timeline: timelineHistory,
+    });
+
+    const isNotesChanging = finalAdminNotes !== existing.adminNotes;
 
     const updated = await prisma.booking.update({
       where: { id },
       data: {
-        status: status ? (status as BookingStatus) : existing.status,
+        status: newStatus,
         paymentStatus: paymentStatus ? (paymentStatus as PaymentStatus) : existing.paymentStatus,
-        adminNotes: adminNotes !== undefined ? adminNotes : existing.adminNotes,
+        adminNotes: finalAdminNotes,
         statusUpdatedAt: isStatusChanging ? now : existing.statusUpdatedAt,
         notesUpdatedAt: isNotesChanging ? now : existing.notesUpdatedAt,
       }
@@ -42,8 +83,21 @@ export async function PATCH(
     if (updated.status === 'COMPLETED' && completionType === 'maintenance' && updated.workspaceId && updated.endDate && updated.endTime) {
       const endTimestamp = parseBookingDateTime(updated.endDate, updated.endTime);
       if (endTimestamp > 0) {
-        // Add 1 hr buffer
-        const bufferEndTimestamp = endTimestamp + 60 * 60 * 1000;
+        const cat = (updated.categoryName || '').toLowerCase();
+        const title = (updated.workspaceTitle || '').toLowerCase();
+        const space = (updated.spaceType || '').toLowerCase();
+        const isMeetingOrConference =
+          cat.includes('meeting') ||
+          title.includes('meeting') ||
+          space.includes('meeting') ||
+          cat.includes('confr') ||
+          title.includes('confr') ||
+          title.includes('boardroom') ||
+          space.includes('confr');
+
+        // Buffer duration: 15 minutes for Meeting Hall and Conference Hall; 1 hour (60 min) for Day Pass
+        const bufferMinutes = isMeetingOrConference ? 15 : 60;
+        const bufferEndTimestamp = endTimestamp + bufferMinutes * 60 * 1000;
         const { dateStr, timeStr } = formatTimestampToDateAndTimeString(bufferEndTimestamp);
 
         await prisma.maintenanceBlock.create({
@@ -53,7 +107,7 @@ export async function PATCH(
             startTime: updated.endTime,
             endDate: dateStr,
             endTime: timeStr,
-            reason: 'Booking Auto-Maintenance Buffer',
+            reason: `Booking Auto-Maintenance Buffer (${bufferMinutes} Min)`,
           }
         });
       }

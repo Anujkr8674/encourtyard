@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import {
   Menu,
   X,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   MapPin,
   Phone,
@@ -21,11 +22,14 @@ import {
   Users,
   LogOut,
   ChevronDown,
-  Clock
+  Clock,
+  Monitor,
+  CalendarCheck2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/context/AuthContext';
 import { useFeedbackModal } from '@/context/FeedbackModalContext';
+import { DayPassCalendar } from '@/components/ui/DayPassCalendar';
 
 // Clean SVG Brand Icons for Drawer Social Links
 const LinkedInIcon = () => (
@@ -67,14 +71,21 @@ const YouTubeIcon = () => (
 );
 
 export const Navbar: React.FC = () => {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileQuickBookOpen, setMobileQuickBookOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [quickDropdownOpen, setQuickDropdownOpen] = useState(false);
+  const [quickDayPassOpen, setQuickDayPassOpen] = useState(false);
+  const [mobileDayPassCalendarOpen, setMobileDayPassCalendarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isDayPassPage = pathname === '/book-space' && searchParams.get('plan') === 'day-pass';
+  const isDayPassActive = isDayPassPage;
+  const isConferenceActive = pathname === '/conference-hall';
+  const isContactActive = pathname === '/contact';
+  const isQuickActive = isDayPassActive || isConferenceActive || isContactActive;
   const dropdownRef = useRef<HTMLDivElement>(null);
   const quickDropdownRef = useRef<HTMLDivElement>(null);
   const quickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -91,11 +102,13 @@ export const Navbar: React.FC = () => {
   };
 
   const handleQuickMouseLeave = () => {
+    if (quickDayPassOpen) return; // Keep open while picking date
     if (quickTimeoutRef.current) {
       clearTimeout(quickTimeoutRef.current);
     }
     quickTimeoutRef.current = setTimeout(() => {
       setQuickDropdownOpen(false);
+      setQuickDayPassOpen(false);
     }, 300);
   };
 
@@ -126,6 +139,7 @@ export const Navbar: React.FC = () => {
       }
       if (quickDropdownRef.current && !quickDropdownRef.current.contains(event.target as Node)) {
         setQuickDropdownOpen(false);
+        setQuickDayPassOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -155,6 +169,8 @@ export const Navbar: React.FC = () => {
     setMobileQuickBookOpen(false);
     setProfileDropdownOpen(false);
     setQuickDropdownOpen(false);
+    setQuickDayPassOpen(false);
+    setMobileDayPassCalendarOpen(false);
   }, [pathname]);
 
   // Prevent background scrolling when drawer is open
@@ -188,8 +204,11 @@ export const Navbar: React.FC = () => {
     { name: 'Admin Insights', href: '/admin', icon: <LayoutDashboard className="w-3.5 h-3.5 text-[#4ADE80]" /> }
   ];
 
-  // Do not render main website Navbar inside Admin portal pages
-  if (pathname.startsWith('/admin')) {
+  // Do not render main website Navbar inside Admin or User Portal pages (except auth /user/login and /user/signup)
+  if (
+    pathname.startsWith('/admin') ||
+    (pathname.startsWith('/user') && pathname !== '/user/login' && pathname !== '/user/signup')
+  ) {
     return null;
   }
 
@@ -351,7 +370,7 @@ export const Navbar: React.FC = () => {
                 type="button"
                 onClick={() => setQuickDropdownOpen(!quickDropdownOpen)}
                 className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 relative flex items-center gap-1.5 cursor-pointer select-none ${
-                  quickDropdownOpen || isDayPassPage || pathname === '/conference-hall'
+                  quickDropdownOpen || isDayPassActive || isConferenceActive
                     ? 'bg-[#2E7D32] text-white shadow-md font-bold border border-[#4ADE80]/40'
                     : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0ECE1]'
                 }`}
@@ -374,58 +393,109 @@ export const Navbar: React.FC = () => {
                   onMouseLeave={handleQuickMouseLeave}
                 >
                   <div className="rounded-3xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] p-4 sm:p-5 animate-fadeIn font-sans">
-                    
-                    {/* Dropdown Header */}
-                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#EAE5DB]">
-                      <span className="text-xs sm:text-sm font-bold text-[#181F18] tracking-tight">
-                        Quick book services :
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setQuickDropdownOpen(false)}
-                        className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
-                        aria-label="Close quick book menu"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Services Cards */}
-                    <div className="space-y-2.5 max-h-[75vh] overflow-y-auto pr-1">
-                      
-                      {/* Item 1: Day Pass -> /book-space?plan=day-pass */}
-                      <Link
-                        href="/book-space?plan=day-pass"
-                        onClick={() => setQuickDropdownOpen(false)}
-                        className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
-                      >
-                        {/* Left Thumbnail */}
-                        <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
-                          <img
-                            src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=400&q=80"
-                            alt="Day Pass"
-                            className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
-                          />
+                    {quickDayPassOpen ? (
+                      /* Day Pass Calendar View inside the dropdown */
+                      <div className="animate-fadeIn">
+                        <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#EAE5DB]">
+                          <button
+                            type="button"
+                            onClick={() => setQuickDayPassOpen(false)}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#2E7D32] hover:text-[#1E5C23] transition-colors cursor-pointer group"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                            <span>Back to Services</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuickDropdownOpen(false);
+                              setQuickDayPassOpen(false);
+                            }}
+                            className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
+                            aria-label="Close menu"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 pr-1 text-left">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
-                            On Demand
+                        <DayPassCalendar
+                          onSelectDate={(ymd) => {
+                            setQuickDropdownOpen(false);
+                            setQuickDayPassOpen(false);
+                            router.push(
+                              `/book-space?plan=day-pass&date=${encodeURIComponent(ymd)}&startTime=${encodeURIComponent('09:00 AM')}&endTime=${encodeURIComponent('06:00 PM')}`
+                            );
+                          }}
+                          onCancel={() => setQuickDayPassOpen(false)}
+                          showTitle={true}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        {/* Dropdown Header */}
+                        <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#EAE5DB]">
+                          <span className="text-xs sm:text-sm font-bold text-[#181F18] tracking-tight">
+                            Quick book services :
                           </span>
-                          <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
-                            Day Pass
-                          </h4>
-                          <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
-                            Get access to premium workspace for a day
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setQuickDropdownOpen(false)}
+                            className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
+                            aria-label="Close quick book menu"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
                         </div>
 
-                        {/* Arrow Button */}
-                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
-                          <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
-                        </div>
-                      </Link>
+                        {/* Services Cards */}
+                        <div className="space-y-2.5 max-h-[75vh] overflow-y-auto pr-1">
+                          
+                          {/* Item 1: Day Pass -> Navigate directly or pick date via calendar button */}
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setQuickDropdownOpen(false);
+                              setQuickDayPassOpen(false);
+                              router.push('/book-space?plan=day-pass');
+                            }}
+                            className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
+                          >
+                            {/* Left Thumbnail */}
+                            <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
+                              <img
+                                src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=400&q=80"
+                                alt="Day Pass"
+                                className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
+                              />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0 pr-1 text-left">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
+                                On Demand • 9 AM – 6 PM
+                              </span>
+                              <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
+                                Day Pass
+                              </h4>
+                              <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
+                                Full-day workspace access with drop-in flexibility
+                              </p>
+                            </div>
+
+                            {/* Calendar Icon Button: Click to pick date */}
+                            <button
+                              type="button"
+                              title="Pick a Date for Day Pass"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickDayPassOpen(true);
+                              }}
+                              className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#2E7D32] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm cursor-pointer hover:scale-110 active:scale-95"
+                            >
+                              <Calendar className="w-4 h-4" />
+                            </button>
+                          </div>
 
                       {/* Item 2: Conference Hall -> /conference-hall */}
                       <Link
@@ -461,9 +531,9 @@ export const Navbar: React.FC = () => {
                         </div>
                       </Link>
 
-                      {/* Item 3: Book a Tour -> /contact */}
+                      {/* Item 3: Meeting Rooms -> /meeting-rooms */}
                       <Link
-                        href="/contact"
+                        href="/meeting-rooms"
                         onClick={() => setQuickDropdownOpen(false)}
                         className="group/card flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-0.5"
                       >
@@ -471,7 +541,7 @@ export const Navbar: React.FC = () => {
                         <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden shrink-0 bg-[#1A261A] relative">
                           <img
                             src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80"
-                            alt="Book a Tour"
+                            alt="Meeting Rooms"
                             className="w-full h-full object-cover group-hover/card:scale-108 transition-transform duration-500"
                           />
                         </div>
@@ -479,25 +549,27 @@ export const Navbar: React.FC = () => {
                         {/* Content */}
                         <div className="flex-1 min-w-0 pr-1 text-left">
                           <span className="text-[10px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block mb-0.5">
-                            Introducing
+                            Audio-Visual Spaces
                           </span>
                           <h4 className="font-serif font-bold text-sm sm:text-base text-white leading-tight mb-1">
-                            Book a Tour
+                            Meeting Rooms
                           </h4>
                           <p className="text-[11px] sm:text-xs text-[#D1E0D1] font-sans leading-tight line-clamp-2">
-                            Visit any EnCourtyard and check out the space in person.
+                            Executive presentation suites & team collaboration pods.
                           </p>
                         </div>
 
                         {/* Arrow Button */}
-                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#2E7D32] group-hover/card:text-white flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm">
                           <ArrowRight className="w-4 h-4 group-hover/card:translate-x-0.5 transition-transform" />
                         </div>
                       </Link>
 
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
+              </div>
+            </div>
               )}
             </div>
 
@@ -536,19 +608,14 @@ export const Navbar: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all cursor-pointer shadow-lg group select-none bg-white hover:bg-[#FAF9F5] border border-[#DDD7CA] hover:border-[#185ADB] text-[#181F18]"
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full transition-all cursor-pointer shadow-sm group select-none bg-white hover:bg-[#FAF9F5] border border-[#DDD7CA] hover:border-[#2E7D32] text-[#181F18]"
                   aria-expanded={profileDropdownOpen}
                 >
-                  <div className="relative">
-                    <img
-                      src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(avatarSeed)}`}
-                      alt={displayName}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#0E2A5E] border border-[#60A5FA]/50 object-cover"
-                    />
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#60A5FA] ring-2 ring-[#181F18] absolute bottom-0 right-0" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold max-w-[110px] truncate hidden md:inline-block text-[#181F18]">
-                    {displayName.split(' ')[0]}
+                  <span className="text-xs sm:text-sm font-bold text-[#181F18]">
+                    {(() => {
+                      const first = (displayName || '').trim().split(/\s+/)[0] || 'Member';
+                      return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+                    })()}
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-[#5C665C] group-hover:text-[#181F18] ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -560,7 +627,7 @@ export const Navbar: React.FC = () => {
                     <div className="px-3 py-2.5 border-b border-[#EAE5DB] mb-1">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#181F18] truncate block">{displayName}</span>
-                        <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full ${admin ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#EBF2FF] text-[#185ADB] border border-[#C7DCFF]'}`}>
+                        <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full ${admin ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-[#E8F5E9] text-[#1B5E20] border border-[#A5D6A7]'}`}>
                           {displayRole}
                         </span>
                       </div>
@@ -570,21 +637,21 @@ export const Navbar: React.FC = () => {
                     {/* Navigation Items */}
                     <div className="space-y-0.5 text-xs">
                       <Link
-                        href="/dashboard"
+                        href="/user/dashboard"
                         onClick={() => setProfileDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0F5FF] transition-colors font-medium"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#FAF9F5] transition-colors font-medium"
                       >
-                        <UserCheck className="w-4 h-4 text-[#185ADB]" />
+                        <UserCheck className="w-4 h-4 text-[#2E7D32]" />
                         <span>Member Dashboard</span>
                       </Link>
 
                       <Link
-                        href="/book"
+                        href="/user/bookings"
                         onClick={() => setProfileDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F0F5FF] transition-colors font-medium"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#E8F5E9] transition-colors font-medium"
                       >
-                        <Calendar className="w-4 h-4 text-[#185ADB]" />
-                        <span>Book a Workspace</span>
+                        <CalendarCheck2 className="w-4 h-4 text-[#2E7D32]" />
+                        <span>My Bookings</span>
                       </Link>
 
                       {isAdmin && (
@@ -713,62 +780,108 @@ export const Navbar: React.FC = () => {
                 type="button"
                 onClick={() => setMobileQuickBookOpen(!mobileQuickBookOpen)}
                 className={`w-full px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all group cursor-pointer ${
-                  mobileQuickBookOpen || isDayPassPage || pathname === '/conference-hall'
-                    ? 'bg-[#2E7D32]/10 text-[#1E5C23] border border-[#2E7D32]/30 font-bold'
+                  isQuickActive
+                    ? 'bg-[#2E7D32] text-white shadow-sm font-bold border border-[#2E7D32]'
+                    : mobileQuickBookOpen
+                    ? 'bg-[#FAF9F5] text-[#181F18] border border-[#DDD7CA]'
                     : 'text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#F3EFE6] border border-transparent'
                 }`}
                 aria-expanded={mobileQuickBookOpen}
               >
                 <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[#2E7D32]" />
+                  <Sparkles className={`w-4 h-4 ${isQuickActive ? 'text-white' : 'text-[#2E7D32]'}`} />
                   <span className="group-hover:translate-x-1 transition-transform duration-200">
                     Quick Booking
                   </span>
                 </div>
                 <ChevronDown
-                  className={`w-4 h-4 text-[#738273] transition-transform duration-300 ${
-                    mobileQuickBookOpen ? 'rotate-180 text-[#2E7D32]' : ''
-                  }`}
+                  className={`w-4 h-4 transition-transform duration-300 ${
+                    isQuickActive ? 'text-white' : 'text-[#738273]'
+                  } ${mobileQuickBookOpen ? 'rotate-180' : ''}`}
                 />
               </button>
 
               {/* Sub-menu options dropdown */}
               {mobileQuickBookOpen && (
                 <div className="mt-2 ml-2 pl-3 border-l-2 border-[#2E7D32]/30 space-y-1.5 animate-fadeIn">
-                  <Link
-                    href="/book-space?plan=day-pass"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between text-[#181F18] bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] transition-all"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-[#2E7D32]" />
-                      <span>Day Pass (1-Day Access)</span>
+                  {/* Item 1: Day Pass (1-Day Access) with Inline Calendar */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href="/book-space?plan=day-pass"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex-1 px-3 py-2.5 rounded-lg text-xs flex items-center justify-between transition-all ${
+                          isDayPassActive
+                            ? 'text-white bg-[#2E7D32] hover:bg-[#1E5C23] border border-[#2E7D32] shadow-sm font-semibold'
+                            : 'text-[#181F18] bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] font-medium'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className={`w-3.5 h-3.5 ${isDayPassActive ? 'text-white' : 'text-[#2E7D32]'}`} />
+                          <span>Day Pass (1-Day Access)</span>
+                        </div>
+                        <ArrowRight className={`w-3.5 h-3.5 ${isDayPassActive ? 'text-white' : 'text-[#738273]'}`} />
+                      </Link>
+                      <button
+                        type="button"
+                        title="Pick Date for Day Pass"
+                        onClick={() => setMobileDayPassCalendarOpen((prev) => !prev)}
+                        className="p-2.5 rounded-lg bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] text-[#738273] hover:text-[#181F18] transition-colors cursor-pointer"
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#738273]" />
-                  </Link>
 
+                    {/* Inline Calendar on Mobile */}
+                    {mobileDayPassCalendarOpen && (
+                      <div className="animate-fadeIn">
+                        <DayPassCalendar
+                          onSelectDate={(ymd) => {
+                            setMobileMenuOpen(false);
+                            setMobileDayPassCalendarOpen(false);
+                            router.push(
+                              `/book-space?plan=day-pass&date=${encodeURIComponent(ymd)}&startTime=${encodeURIComponent('09:00 AM')}&endTime=${encodeURIComponent('06:00 PM')}`
+                            );
+                          }}
+                          onCancel={() => setMobileDayPassCalendarOpen(false)}
+                          showTitle={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Item 2: Conference Hall */}
                   <Link
                     href="/conference-hall"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between text-[#181F18] bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] transition-all"
+                    className={`w-full px-3 py-2.5 rounded-lg text-xs flex items-center justify-between transition-all ${
+                      isConferenceActive
+                        ? 'text-white bg-[#2E7D32] hover:bg-[#1E5C23] border border-[#2E7D32] shadow-sm font-semibold'
+                        : 'text-[#181F18] bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] font-medium'
+                    }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5 text-[#C29B38]" />
+                      <Users className={`w-3.5 h-3.5 ${isConferenceActive ? 'text-white' : 'text-[#C29B38]'}`} />
                       <span>Conference Hall</span>
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#738273]" />
+                    <ArrowRight className={`w-3.5 h-3.5 ${isConferenceActive ? 'text-white' : 'text-[#738273]'}`} />
                   </Link>
 
+                  {/* Item 3: Meeting Rooms */}
                   <Link
-                    href="/contact"
+                    href="/meeting-rooms"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between text-white bg-[#2E7D32] hover:bg-[#1E5C23] border border-[#2E7D32] shadow-sm transition-all"
+                    className={`w-full px-3 py-2.5 rounded-lg text-xs flex items-center justify-between transition-all ${
+                      pathname === '/meeting-rooms'
+                        ? 'text-white bg-[#2E7D32] hover:bg-[#1E5C23] border border-[#2E7D32] shadow-sm font-semibold'
+                        : 'text-[#181F18] bg-[#FAF9F5] hover:bg-[#F0ECE1] border border-[#DDD7CA] font-medium'
+                    }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Calendar className="w-3.5 h-3.5 text-white" />
-                      <span>Book a Tour / Schedule a Visit</span>
+                      <Monitor className={`w-3.5 h-3.5 ${pathname === '/meeting-rooms' ? 'text-white' : 'text-[#2E7D32]'}`} />
+                      <span>Meeting Rooms</span>
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-white" />
+                    <ArrowRight className={`w-3.5 h-3.5 ${pathname === '/meeting-rooms' ? 'text-white' : 'text-[#738273]'}`} />
                   </Link>
                 </div>
               )}
@@ -826,11 +939,9 @@ export const Navbar: React.FC = () => {
               ) : (
                 <div className="space-y-2 bg-[#FAF9F5] p-3 rounded-2xl border border-[#DDD7CA]">
                   <div className="flex items-center gap-3 pb-2 border-b border-[#EAE5DB]">
-                    <img
-                      src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(avatarSeed)}`}
-                      alt={displayName}
-                      className="w-9 h-9 rounded-full bg-[#EBF2FF] border border-[#185ADB]/50 object-cover shrink-0"
-                    />
+                    <div className="w-8 h-8 rounded-full bg-[#2E7D32] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      {(displayName || 'M').charAt(0).toUpperCase()}
+                    </div>
                     <div className="truncate">
                       <span className="text-xs font-bold text-[#181F18] block truncate">{displayName}</span>
                       <span className="text-[10px] text-[#5C665C] block truncate">{displayEmail}</span>
@@ -838,7 +949,19 @@ export const Navbar: React.FC = () => {
                   </div>
 
                   <Link
-                    href="/dashboard"
+                    href="/user/bookings"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-[#2D3E2D] hover:bg-[#E8F5E9] transition-all"
+                  >
+                    <span className="flex items-center gap-2">
+                      <CalendarCheck2 className="w-4 h-4 text-[#2E7D32]" />
+                      My Bookings
+                    </span>
+                    <ChevronRight className="w-3.5 h-3.5 text-[#738273]" />
+                  </Link>
+
+                  <Link
+                    href="/user/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-[#2D3E2D] hover:bg-[#F0ECE1] transition-all"
                   >

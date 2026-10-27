@@ -36,8 +36,11 @@ export const Footer: React.FC = () => {
   const pathname = usePathname();
   const [hoveredSocial, setHoveredSocial] = useState<string | null>(null);
 
-  // Do not render main website footer on Admin portal pages
-  if (pathname.startsWith('/admin')) {
+  // Do not render main website footer on Admin or User portal pages (except auth /user/login and /user/signup)
+  if (
+    pathname.startsWith('/admin') ||
+    (pathname.startsWith('/user') && pathname !== '/user/login' && pathname !== '/user/signup')
+  ) {
     return null;
   }
 

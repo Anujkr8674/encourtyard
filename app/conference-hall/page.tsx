@@ -6,29 +6,16 @@ import { useRouter } from 'next/navigation';
 import {
   Users,
   Clock,
-  Monitor,
   Sparkles,
   Check,
   ArrowRight,
-  Calendar,
-  Coffee,
-  Tv,
-  Mic,
-  Video,
-  Cast,
   Building2,
   Lock,
   LogIn,
   UserPlus,
   X,
-  Volume2,
   Layers,
-  ChevronRight,
-  ShieldCheck,
-  CheckCircle2,
   MapPin,
-  Search,
-  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { CountdownBadge } from '@/components/ui/CountdownBadge';
@@ -65,44 +52,6 @@ interface Workspace {
   maintenanceBlocks?: { startDate: string; endDate: string; startTime: string; endTime: string }[];
 }
 
-// Line-by-line typewriter animation hook matching other hero sections
-function useLineTypewriter(lines: string[], speed: number = 32) {
-  const [typedLines, setTypedLines] = useState<string[]>(() => lines.map(() => ''));
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [isTyping, setIsTyping] = useState(true);
-
-  useEffect(() => {
-    setTypedLines(lines.map(() => ''));
-    setCurrentLineIndex(0);
-    setIsTyping(true);
-
-    let lineIdx = 0;
-    let charIdx = 0;
-    const current = lines.map(() => '');
-
-    const timer = setInterval(() => {
-      if (lineIdx < lines.length) {
-        const targetLine = lines[lineIdx];
-        if (charIdx <= targetLine.length) {
-          current[lineIdx] = targetLine.slice(0, charIdx);
-          setTypedLines([...current]);
-          setCurrentLineIndex(lineIdx);
-          charIdx++;
-        } else {
-          lineIdx++;
-          charIdx = 0;
-        }
-      } else {
-        setIsTyping(false);
-        clearInterval(timer);
-      }
-    }, speed);
-
-    return () => clearInterval(timer);
-  }, [lines, speed]);
-
-  return { typedLines, currentLineIndex, isTyping };
-}
 
 function parseBookingDateTime(dateStr: string, timeStr: string): number {
   if (!dateStr || !timeStr) return 0;
@@ -163,7 +112,6 @@ export default function ConferenceHallPage() {
   const [loading, setLoading] = useState(true);
   const [selectedWorkspaceForAuth, setSelectedWorkspaceForAuth] = useState<Workspace | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   // Today's date (YYYY-MM-DD)
   const todayDate = useMemo(() => {
@@ -176,10 +124,6 @@ export default function ConferenceHallPage() {
 
   const defaultStartTime = '09:00 AM';
   const defaultEndTime = '06:00 PM';
-
-  useEffect(() => {
-    setIsLoaded(true);
-  }, []);
 
   // Fetch workspaces from API and filter ONLY the "Confrence Hall" category offices
   useEffect(() => {
@@ -194,16 +138,10 @@ export default function ConferenceHallPage() {
             const conferenceOnly = data.workspaces.filter((ws: any) => {
               const catName = (ws.categoryName || '').toLowerCase().trim();
               const catId = (ws.categoryId || '').toLowerCase().trim();
-              const slug = (ws.slug || '').toLowerCase().trim();
-              const title = (ws.title || '').toLowerCase().trim();
 
               return (
                 catName.includes('conf') ||
-                catId === '1ac79bff-71f9-4924-8091-f07c9ae1ec06' ||
-                slug.includes('corporate-conference-hall') ||
-                slug.includes('boardroom') ||
-                title.includes('conference') ||
-                title.includes('boardroom')
+                catId === '1ac79bff-71f9-4924-8091-f07c9ae1ec06'
               );
             });
             setWorkspaces(conferenceOnly);
@@ -219,15 +157,13 @@ export default function ConferenceHallPage() {
     fetchConferenceWorkspaces();
   }, []);
 
-  // Hero Headline Typewriter Lines
-  const typewriterLines = useMemo(
-    () => ['Grand Conference Halls &', 'Keynote Auditoriums'],
-    []
-  );
-  const { typedLines, currentLineIndex, isTyping } = useLineTypewriter(typewriterLines, 30);
+
 
   const handleBookNow = (ws: Workspace) => {
-    const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&plan=daily&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`;
+    try {
+      sessionStorage.setItem(`ws_cache_${ws.id}`, JSON.stringify(ws));
+    } catch (_) {}
+    const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&plan=hourly&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`;
     if (user || isAuthenticated) {
       router.push(targetUrl);
     } else {
@@ -259,115 +195,13 @@ export default function ConferenceHallPage() {
     }
   ];
 
-  const avHighlights = [
-    {
-      icon: <Video className="w-6 h-6 text-[#2E7D32]" />,
-      title: 'Broadcast 4K LED & Laser Optics',
-      description: 'Massive high-lumen displays engineered for ambient daylight clarity without washed-out projections.'
-    },
-    {
-      icon: <Mic className="w-6 h-6 text-[#263626]" />,
-      title: 'Ceiling Shure Beamforming Audio',
-      description: 'Crystal-clear acoustic pickup from every seat with zero handheld mic pass-around needed for Q&A.'
-    },
-    {
-      icon: <Cast className="w-6 h-6 text-[#C29B38]" />,
-      title: 'Instant Wireless Multi-Casting',
-      description: 'Seamless wireless sharing from any laptop or mobile device with zero software installation or dongles.'
-    },
-    {
-      icon: <Coffee className="w-6 h-6 text-[#C05621]" />,
-      title: 'Dedicated Event Concierge & Barista',
-      description: 'Full-time technical coordinator and artisanal barista team dedicated to your corporate summit.'
-    }
-  ];
-
   return (
     <div className="bg-white min-h-screen text-[#181F18] font-sans">
       
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION: 100vh on Web, 75vh on Mobile + Typewriter Frosted Pills  */}
+      {/* CONFERENCE HALLS CATALOG (Direct load of office cards)                    */}
       {/* ========================================================================= */}
-      <section className="relative w-full h-[75vh] min-h-[75vh] sm:h-screen sm:min-h-[100vh] bg-white pt-20 sm:pt-32 lg:pt-36 pb-6 sm:pb-8 flex flex-col justify-center overflow-hidden hidden">
-        
-        {/* Full-Bleed Background Image with Subtle Parallax Zoom */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/50 via-[#0E170E]/25 to-[#0E170E]/60 z-10" />
-          <img
-            src="https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=2000&q=80"
-            alt="EnCourtyard Conference Hall"
-            className={`w-full h-full object-cover object-center filter brightness-100 contrast-105 transition-transform duration-[7000ms] ease-out ${
-              isLoaded ? 'scale-105' : 'scale-100'
-            }`}
-          />
-        </div>
-
-        {/* Foreground Content with Centered Frosted Glass Pills & Typewriter Effect */}
-        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full my-auto text-center flex flex-col items-center justify-center">
-          
-          {/* Eyebrow Tagline Badge */}
-          <div className="mb-3 sm:mb-4">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/40 hover:bg-white/55 backdrop-blur-md border border-white/60 text-[10px] sm:text-xs font-mono uppercase tracking-widest text-[#141F14] font-bold shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
-              <Monitor className="w-3.5 h-3.5 text-[#2E7D32]" />
-              <span>EXECUTIVE PRESENTATION SUITES</span>
-            </span>
-          </div>
-
-          {/* Headline Pills (Tag Line 1 & Tag Line 2) with Typewriter Animation */}
-          <div className="flex flex-col items-center gap-2.5 sm:gap-3.5 mb-4 sm:mb-6 min-h-[90px] sm:min-h-[140px] justify-center">
-            {/* Tag Line 1 */}
-            <div className="inline-block px-5 sm:px-8 py-2 sm:py-3.5 rounded-2xl sm:rounded-3xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-colors">
-              <h1 className="font-serif text-xl sm:text-3xl lg:text-5xl font-bold tracking-tight text-[#141F14] leading-[1.15] text-center">
-                {typedLines[0] || '\u00A0'}
-                {isTyping && currentLineIndex === 0 && (
-                  <span className="inline-block w-1 sm:w-1.5 h-5 sm:h-8 bg-[#2E7D32] ml-1.5 align-middle animate-pulse" />
-                )}
-              </h1>
-            </div>
-
-            {/* Tag Line 2 */}
-            {(typedLines[1] || currentLineIndex >= 1) && (
-              <div className="inline-block px-5 sm:px-8 py-2 sm:py-3.5 rounded-2xl sm:rounded-3xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-colors">
-                <h2 className="font-serif text-xl sm:text-3xl lg:text-5xl font-bold tracking-tight text-[#1B3B22] italic font-normal leading-[1.15] text-center">
-                  {typedLines[1] || '\u00A0'}
-                  {isTyping && currentLineIndex === 1 && (
-                    <span className="inline-block w-1 sm:w-1.5 h-5 sm:h-8 bg-[#2E7D32] ml-1.5 align-middle animate-pulse" />
-                  )}
-                </h2>
-              </div>
-            )}
-          </div>
-
-          {/* Description Pill */}
-          <div className="flex justify-center max-w-2xl px-2">
-            <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-xs sm:text-sm md:text-base text-[#181F18] font-sans font-medium shadow-[0_8px_25px_rgba(0,0,0,0.1)] leading-relaxed text-center">
-              Architectural venues engineered for board summits, shareholder assemblies, keynote lectures, and high-stakes corporate productions across India.
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 2. CONFERENCE HALLS CATALOG (Left Filter Skipped - Confrence Hall Only)   */}
-      {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-36 pb-12">
-        
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-8 border-b border-[#E5E1D8] gap-4">
-          <div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
-              Available Conference & Event Halls
-            </h2>
-            <p className="text-xs sm:text-sm text-[#5C665C] mt-1">
-              Filter applied: Showing exclusively "Confrence Hall" category offices from inventory.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 text-xs font-mono text-[#2E7D32] bg-[#E8F5E9] px-3.5 py-1.5 rounded-full border border-[#C8E6C9] font-bold self-start sm:self-auto">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{workspaces.length} Conference Spaces Available</span>
-          </div>
-        </div>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 lg:pt-36 pb-16">
 
         {/* Loading State */}
         {loading ? (
@@ -496,9 +330,14 @@ export default function ConferenceHallPage() {
 
                   {/* Card Action Buttons (Identical Booking Features as /book-space) */}
                   <div className="p-6 pt-0 flex items-center gap-3 border-t border-[#E5E1D8]/60 group-hover:border-white/15 pt-4 mt-2 transition-colors">
-                    {/* 1. Details Button -> navigates to /book-space/[id] */}
+                    {/* 1. Details Button -> navigates to /book-space/[id] with hourly plan */}
                     <Link
-                      href={`/book-space/${ws.id}`}
+                      href={`/book-space/${ws.id}?plan=hourly&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`}
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem(`ws_cache_${ws.id}`, JSON.stringify(ws));
+                        } catch (_) {}
+                      }}
                       className="flex-1 py-3 px-4 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] group-hover:bg-white/10 group-hover:hover:bg-white/20 text-[#181F18] group-hover:text-white border border-[#D5D0C5] group-hover:border-white/30 text-xs font-bold text-center transition-all duration-200 active:scale-95 shadow-2xs"
                     >
                       Details
@@ -530,43 +369,6 @@ export default function ConferenceHallPage() {
         )}
       </section>
 
-      {/* ========================================================================= */}
-      {/* 3. AV TECHNOLOGY HIGHLIGHTS                                               */}
-      {/* ========================================================================= */}
-      <section className="py-20 bg-[#FAF9F5] border-y border-[#E5E1D8] hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
-              Broadcast Grade Production Suite
-            </span>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#181F18]">
-              Engineered for seamless corporate execution
-            </h2>
-            <p className="text-base sm:text-lg text-[#5C665C]">
-              Zero technical friction. Instant multi-screen presentation sharing and studio sound ensure your leadership is heard with absolute fidelity.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {avHighlights.map((item, idx) => (
-              <div
-                key={idx}
-                className="bg-white p-7 rounded-2xl border border-[#E5E1D8] shadow-sm hover:shadow-md hover:border-[#185ADB]/40 transition-all transform hover:-translate-y-1"
-              >
-                <div className="w-12 h-12 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] flex items-center justify-center mb-4">
-                  {item.icon}
-                </div>
-                <h3 className="font-serif text-lg font-bold text-[#181F18] mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-[#5C665C] leading-relaxed">
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ========================================================================= */}
       {/* 4. CONFERENCE FAQS                                                        */}

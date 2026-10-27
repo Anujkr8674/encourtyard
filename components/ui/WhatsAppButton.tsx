@@ -9,7 +9,11 @@ export const WhatsAppButton: React.FC = () => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Do not render on Admin portal or User dashboard pages
-  if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/dashboard') ||
+    (pathname.startsWith('/user') && pathname !== '/user/login' && pathname !== '/user/signup')
+  ) {
     return null;
   }
 

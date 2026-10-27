@@ -115,3 +115,68 @@ export async function uploadGalleryImage(file: Buffer | Blob | File, fileName: s
     return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
   }
 }
+
+export const QR_CODE_STORAGE_FOLDER = 'qr-code';
+
+/**
+ * Uploads a QR code image to Supabase Storage in bucket 'encourtyard-upload' under 'qr-code/'
+ */
+export async function uploadQrCodeImage(file: Buffer | Blob | File, fileName: string, contentType?: string): Promise<string> {
+  const cleanFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const filePath = `${QR_CODE_STORAGE_FOLDER}/${cleanFileName}`;
+
+  try {
+    const { error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, file, {
+        contentType: contentType || 'image/png',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('Supabase storage qr-code upload warning:', error.message);
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl || `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+  } catch (err: any) {
+    console.error('Failed to upload QR code image to Supabase:', err);
+    return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+  }
+}
+
+export const PAYMENT_PROOF_STORAGE_FOLDER = 'payment-proof';
+
+/**
+ * Uploads a payment proof screenshot to Supabase Storage in bucket 'encourtyard-upload' under 'payment-proof/'
+ */
+export async function uploadPaymentProof(file: Buffer | Blob | File, fileName: string, contentType?: string): Promise<string> {
+  const cleanFileName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const filePath = `${PAYMENT_PROOF_STORAGE_FOLDER}/${cleanFileName}`;
+
+  try {
+    const { error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, file, {
+        contentType: contentType || 'image/jpeg',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('Supabase storage payment-proof upload warning:', error.message);
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+    return publicUrlData.publicUrl || `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+  } catch (err: any) {
+    console.error('Failed to upload payment proof to Supabase:', err);
+    return `${supabaseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${filePath}`;
+  }
+}
+

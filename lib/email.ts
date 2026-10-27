@@ -179,6 +179,176 @@ export interface BookingEmailData {
 }
 
 // ============================================================================
+// 2.5 Dynamic Formatters for Booking Categories & Rental Plans
+// ============================================================================
+export interface FormattedBookingDetails {
+  isDayPass: boolean;
+  isMeetingRoom: boolean;
+  isConferenceHall: boolean;
+  isHourly: boolean;
+  displayPlan: string;
+  badgePlan: string;
+  userScheduleHtml: string;
+  adminScheduleHtml: string;
+  scheduleSummary: string;
+  plainTextSchedule: string;
+}
+
+export function formatBookingDetailsForEmail(booking: BookingEmailData): FormattedBookingDetails {
+  const planLower = (booking.plan || '').toLowerCase();
+  const titleLower = (booking.workspaceTitle || '').toLowerCase();
+  const catLower = (booking.categoryName || '').toLowerCase();
+
+  const isDayPass =
+    planLower === 'daily' ||
+    planLower.includes('day') ||
+    titleLower.includes('day pass') ||
+    catLower.includes('day pass') ||
+    titleLower.includes('hot desk') ||
+    catLower.includes('hot desk');
+
+  const isConferenceHall =
+    titleLower.includes('conference') ||
+    catLower.includes('conference') ||
+    planLower.includes('conference');
+
+  const isMeetingRoom =
+    !isConferenceHall &&
+    (titleLower.includes('meeting') ||
+      catLower.includes('meeting') ||
+      planLower.includes('meeting') ||
+      planLower.includes('hour'));
+
+  const isHourly = isMeetingRoom || isConferenceHall;
+
+  let displayPlan = 'General Office';
+  let badgePlan = 'OFFICE RESERVATION';
+  let userScheduleHtml = '';
+  let adminScheduleHtml = '';
+  let scheduleSummary = '';
+  let plainTextSchedule = '';
+
+  if (isDayPass) {
+    displayPlan = 'Day Pass';
+    badgePlan = 'DAY PASS RESERVATION';
+    userScheduleHtml = `
+      <div class="row">
+        <span class="row-label">Booking Date:</span>
+        <span class="row-val">${booking.startDate}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Access Timing:</span>
+        <span class="row-val">${booking.startTime} to ${booking.endTime}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Rental Plan:</span>
+        <span class="row-val" style="color: #2E7D32; font-weight: bold;">Day Pass</span>
+      </div>
+    `;
+    adminScheduleHtml = `
+      <div class="row"><span><strong>Rental Plan:</strong></span><span style="color: #2E7D32; font-weight: bold;">Day Pass • ${booking.guests} Pax</span></div>
+      <div class="row"><span><strong>Booking Date:</strong></span><span>${booking.startDate}</span></div>
+      <div class="row"><span><strong>Access Timing:</strong></span><span>${booking.startTime} to ${booking.endTime}</span></div>
+    `;
+    scheduleSummary = `${booking.startDate} • ${booking.startTime} to ${booking.endTime} (Day Pass)`;
+    plainTextSchedule = `Date: ${booking.startDate} | Access Time: ${booking.startTime} to ${booking.endTime} | Rental Plan: Day Pass`;
+  } else if (isConferenceHall) {
+    displayPlan = 'Conference Hall (Hourly)';
+    badgePlan = 'CONFERENCE HALL RESERVATION';
+    userScheduleHtml = `
+      <div class="row">
+        <span class="row-label">Booking Date:</span>
+        <span class="row-val">${booking.startDate}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Time (From – To):</span>
+        <span class="row-val">${booking.startTime} to ${booking.endTime}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Rental Plan:</span>
+        <span class="row-val" style="color: #6A1B9A; font-weight: bold;">Conference Hall (Hourly)</span>
+      </div>
+    `;
+    adminScheduleHtml = `
+      <div class="row"><span><strong>Rental Plan:</strong></span><span style="color: #6A1B9A; font-weight: bold;">Conference Hall (Hourly) • ${booking.guests} Pax</span></div>
+      <div class="row"><span><strong>Booking Date:</strong></span><span>${booking.startDate}</span></div>
+      <div class="row"><span><strong>Time (From – To):</strong></span><span>${booking.startTime} to ${booking.endTime}</span></div>
+    `;
+    scheduleSummary = `${booking.startDate} • ${booking.startTime} to ${booking.endTime} (Conference Hall - Hourly)`;
+    plainTextSchedule = `Booking Date: ${booking.startDate} | Time (From - To): ${booking.startTime} to ${booking.endTime} | Rental Plan: Conference Hall (Hourly)`;
+  } else if (isMeetingRoom) {
+    displayPlan = 'Meeting Room (Hourly)';
+    badgePlan = 'MEETING ROOM RESERVATION';
+    userScheduleHtml = `
+      <div class="row">
+        <span class="row-label">Booking Date:</span>
+        <span class="row-val">${booking.startDate}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Time (From – To):</span>
+        <span class="row-val">${booking.startTime} to ${booking.endTime}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Rental Plan:</span>
+        <span class="row-val" style="color: #1565C0; font-weight: bold;">Meeting Room (Hourly)</span>
+      </div>
+    `;
+    adminScheduleHtml = `
+      <div class="row"><span><strong>Rental Plan:</strong></span><span style="color: #1565C0; font-weight: bold;">Meeting Room (Hourly) • ${booking.guests} Pax</span></div>
+      <div class="row"><span><strong>Booking Date:</strong></span><span>${booking.startDate}</span></div>
+      <div class="row"><span><strong>Time (From – To):</strong></span><span>${booking.startTime} to ${booking.endTime}</span></div>
+    `;
+    scheduleSummary = `${booking.startDate} • ${booking.startTime} to ${booking.endTime} (Meeting Room - Hourly)`;
+    plainTextSchedule = `Booking Date: ${booking.startDate} | Time (From - To): ${booking.startTime} to ${booking.endTime} | Rental Plan: Meeting Room (Hourly)`;
+  } else {
+    // General Office / Monthly / Multi-day
+    if (planLower.includes('month')) {
+      displayPlan = 'Monthly Private Office';
+    } else if (booking.plan) {
+      displayPlan = booking.plan.charAt(0).toUpperCase() + booking.plan.slice(1);
+    } else {
+      displayPlan = 'General Office Workspace';
+    }
+    badgePlan = 'OFFICE RESERVATION';
+
+    userScheduleHtml = `
+      <div class="row">
+        <span class="row-label">From:</span>
+        <span class="row-val">${booking.startDate} at ${booking.startTime}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">To:</span>
+        <span class="row-val">${booking.endDate} at ${booking.endTime}</span>
+      </div>
+      <div class="row">
+        <span class="row-label">Rental Plan:</span>
+        <span class="row-val" style="text-transform: capitalize;">${displayPlan}</span>
+      </div>
+    `;
+    adminScheduleHtml = `
+      <div class="row"><span><strong>Rental Plan:</strong></span><span>${displayPlan} • ${booking.guests} Pax</span></div>
+      <div class="row"><span><strong>From:</strong></span><span>${booking.startDate} (${booking.startTime})</span></div>
+      <div class="row"><span><strong>To:</strong></span><span>${booking.endDate} (${booking.endTime})</span></div>
+    `;
+    scheduleSummary = `${booking.startDate} (${booking.startTime}) → ${booking.endDate} (${booking.endTime})`;
+    plainTextSchedule = `From: ${booking.startDate} (${booking.startTime}) to ${booking.endDate} (${booking.endTime}) | Rental Plan: ${displayPlan}`;
+  }
+
+  return {
+    isDayPass,
+    isMeetingRoom,
+    isConferenceHall,
+    isHourly,
+    displayPlan,
+    badgePlan,
+    userScheduleHtml,
+    adminScheduleHtml,
+    scheduleSummary,
+    plainTextSchedule,
+  };
+}
+
+// ============================================================================
 // 3. User Booking Confirmation Email
 // ============================================================================
 export async function sendBookingConfirmationEmail(
@@ -187,11 +357,12 @@ export async function sendBookingConfirmationEmail(
   recipientLabel?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
+  const details = formatBookingDetailsForEmail(booking);
 
   console.log('\n======================================================');
   console.log(`🌿 [EnCourtyard Booking] CONFIRMATION DISPATCH TO: ${toEmail} (${recipientLabel || 'User'})`);
   console.log(`📋 BOOKING REF: ${booking.id} | SPACE: ${booking.workspaceTitle}`);
-  console.log(`📅 DATES: ${booking.startDate} (${booking.startTime}) -> ${booking.endDate} (${booking.endTime})`);
+  console.log(`📅 PLAN: ${details.displayPlan} | SCHEDULE: ${details.scheduleSummary}`);
   console.log('======================================================\n');
 
   if (!cfg.isConfigured) {
@@ -200,13 +371,77 @@ export async function sendBookingConfirmationEmail(
 
   try {
     const transporter = createTransporter();
+
+    const normalizedStatus = (booking.status || 'PENDING').toUpperCase().trim();
+
+    // Status-specific template configuration for booking creation email
+    let emailSubject = `EnCourtyard Booking Created: ${booking.workspaceTitle} (Status: Pending) - ${booking.id}`;
+    let statusBadge = `BOOKING CREATED • PENDING`;
+    let badgeBg = '#FFF8E1';
+    let badgeTextColor = '#B78103';
+    let badgeBorderColor = '#F59E0B';
+    let headlineGreeting = `Hello, ${booking.fullName}!`;
+    let introMessage = `Thank you for choosing EnCourtyard. We have registered your reservation request for <strong>${booking.workspaceTitle}</strong>. Your booking status is currently <strong>Pending Confirmation</strong> while our concierge team verifies scheduling and seat allocation.`;
+    let nextStepsHtml = `
+      <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
+        <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 6px;">🌿 What happens next:</strong>
+        • Your booking has been registered with status <strong>Pending</strong>.<br>
+        • Our concierge team is verifying availability and allocating your workspace.<br>
+        • You will receive an email confirmation as soon as your booking is verified.<br>
+        • For urgent queries or assistance, WhatsApp our concierge at +91 99082 09993.
+      </div>
+    `;
+
+    if (normalizedStatus === 'CONFIRMED') {
+      emailSubject = `✅ EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${booking.id})`;
+      statusBadge = `BOOKING CONFIRMED`;
+      badgeBg = '#E8F5E9';
+      badgeTextColor = '#1B5E20';
+      badgeBorderColor = '#2E7D32';
+      introMessage = `Thank you for reserving your workspace sanctuary at <strong>EnCourtyard</strong>. Your reservation for <strong>${booking.workspaceTitle}</strong> is officially <strong>Confirmed</strong> and your workspace has been reserved.`;
+      nextStepsHtml = `
+        <div style="background: #F1F8E9; border: 1px solid #C5E1A5; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #2E7D32; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #1B5E20; margin-bottom: 6px;">🌿 Check-In & Arrival Guidelines:</strong>
+          • Present this confirmation email or booking ID at the EnCourtyard reception on arrival.<br>
+          • Unlimited artisan tea, coffee, and high-speed Wi-Fi access will be ready.<br>
+          • Reserved duration: <strong>${booking.startDate} (${booking.startTime})</strong> to <strong>${booking.endDate} (${booking.endTime})</strong>.
+        </div>
+      `;
+    } else if (normalizedStatus === 'COMPLETED' || normalizedStatus === 'COMPLETE') {
+      emailSubject = `✨ EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${booking.id})`;
+      statusBadge = `BOOKING COMPLETED`;
+      badgeBg = '#EFF6FF';
+      badgeTextColor = '#1E40AF';
+      badgeBorderColor = '#3B82F6';
+      introMessage = `Your reservation for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) is marked as <strong>Completed</strong>. Thank you for choosing EnCourtyard.`;
+      nextStepsHtml = `
+        <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #0369A1; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0C4A6E; margin-bottom: 6px;">✨ Thank You for Working at EnCourtyard:</strong>
+          • We hope you had a productive and inspiring session. Feel free to book again anytime!
+        </div>
+      `;
+    } else if (normalizedStatus === 'CANCELLED' || normalizedStatus === 'CANCELED') {
+      emailSubject = `⚠️ EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${booking.id})`;
+      statusBadge = `BOOKING CANCELLED`;
+      badgeBg = '#FEF2F2';
+      badgeTextColor = '#B91C1C';
+      badgeBorderColor = '#EF4444';
+      introMessage = `This is to inform you that your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) has been <strong>Cancelled</strong>.`;
+      nextStepsHtml = `
+        <div style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 6px;">⚠️ Important Notice:</strong>
+          • If you need assistance or wish to reschedule, reach out to us at <a href="mailto:support@encourtyard.com" style="color: #DC2626; font-weight: bold;">support@encourtyard.com</a> or WhatsApp +91 99082 09993.
+        </div>
+      `;
+    }
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>EnCourtyard Reservation Confirmation</title>
+        <title>${emailSubject}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F5; margin: 0; padding: 24px; color: #181F18; }
           .container { max-width: 580px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E1D8; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
@@ -214,7 +449,7 @@ export async function sendBookingConfirmationEmail(
           .logo-text { font-size: 24px; font-weight: 700; letter-spacing: 2px; color: #FFFFFF; margin: 0; }
           .sub-logo { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #4ADE80; margin-top: 6px; }
           .content { padding: 36px 32px; }
-          .badge { display: inline-block; padding: 6px 14px; border-radius: 9999px; background: #E8F5E9; color: #2E7D32; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+          .badge { display: inline-block; padding: 8px 18px; border-radius: 9999px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
           .greeting { font-size: 22px; font-weight: 700; color: #181F18; margin-bottom: 8px; }
           .message { font-size: 14px; line-height: 1.6; color: #5C665C; margin-bottom: 24px; }
           .summary-card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 16px; padding: 20px; margin: 20px 0; }
@@ -234,10 +469,10 @@ export async function sendBookingConfirmationEmail(
             <div class="sub-logo">Handcrafted Workspaces & Botanical Sanctuaries</div>
           </div>
           <div class="content">
-            <div class="badge">Booking Confirmed • ${booking.status}</div>
-            <div class="greeting">Hello, ${booking.fullName}!</div>
+            <div class="badge" style="background: ${badgeBg}; color: ${badgeTextColor}; border: 1px solid ${badgeBorderColor};">${statusBadge}</div>
+            <div class="greeting">${headlineGreeting}</div>
             <p class="message">
-              Thank you for reserving your workspace sanctuary at <strong>EnCourtyard</strong>. We have registered your reservation and reserved your seats.
+              ${introMessage}
             </p>
 
             <div style="text-align: center; margin: 20px 0;">
@@ -251,21 +486,14 @@ export async function sendBookingConfirmationEmail(
                 <span class="row-val">${booking.workspaceTitle} (${booking.categoryName || 'Sanctuary'})</span>
               </div>
               <div class="row">
+                <span class="row-label">Current Status:</span>
+                <span class="row-val" style="color: ${badgeTextColor}; font-weight: 700; text-transform: uppercase;">${booking.status || 'PENDING'}</span>
+              </div>
+              <div class="row">
                 <span class="row-label">Location:</span>
                 <span class="row-val">${booking.locationName || 'Maruthi Plaza, Khairtabad, Hyderabad'}</span>
               </div>
-              <div class="row">
-                <span class="row-label">From:</span>
-                <span class="row-val">${booking.startDate} at ${booking.startTime}</span>
-              </div>
-              <div class="row">
-                <span class="row-label">To:</span>
-                <span class="row-val">${booking.endDate} at ${booking.endTime}</span>
-              </div>
-              <div class="row">
-                <span class="row-label">Rental Plan:</span>
-                <span class="row-val" style="text-transform: capitalize;">${booking.plan}</span>
-              </div>
+              ${details.userScheduleHtml}
               <div class="row">
                 <span class="row-label">Seats / Pax:</span>
                 <span class="row-val">${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</span>
@@ -281,9 +509,7 @@ export async function sendBookingConfirmationEmail(
               </div>
             </div>
 
-            <p style="font-size: 13px; color: #5C665C; line-height: 1.6;">
-              🌿 <strong>What happens next:</strong> Our executive hospitality concierge will verify your team details, configure your high-speed WiFi VLAN subnet, and prepare your arrival credentials.
-            </p>
+            ${nextStepsHtml}
           </div>
           <div class="footer">
             © ${new Date().getFullYear()} EnCourtyard Workspaces Ltd. All rights reserved.<br>
@@ -297,15 +523,15 @@ export async function sendBookingConfirmationEmail(
     const info = await transporter.sendMail({
       from: cfg.from,
       to: toEmail,
-      subject: `EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${booking.id})`,
-      text: `Your EnCourtyard booking (${booking.id}) for "${booking.workspaceTitle}" has been received for ${booking.startDate} (${booking.startTime}) to ${booking.endDate} (${booking.endTime}). Total: ${booking.totalAmount || 'Flexible'}.`,
+      subject: emailSubject,
+      text: `Your EnCourtyard booking (${booking.id}) for "${booking.workspaceTitle}" has been received. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}. Total: ${booking.totalAmount || 'Flexible'}.`,
       html: htmlContent,
     });
 
     return { success: true, messageId: info.messageId };
   } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : 'Failed to dispatch booking confirmation';
-    console.error('❌ [Nodemailer SMTP Error - User Confirmation]:', errMessage);
+    const errMessage = error instanceof Error ? error.message : 'Failed to dispatch booking notification';
+    console.error('❌ [Nodemailer SMTP Error - User Notification]:', errMessage);
     return { success: true, error: errMessage };
   }
 }
@@ -317,13 +543,15 @@ export async function sendAdminNewBookingNotification(
   booking: BookingEmailData
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
+  const details = formatBookingDetailsForEmail(booking);
 
   console.log('\n======================================================');
   console.log(`🚨 [EnCourtyard Admin Alert] NEW BOOKING CREATED`);
   console.log(`📬 SENDING ADMIN NOTIFICATION TO: ${cfg.adminEmail}`);
   console.log(`👤 HOST: ${booking.fullName} | COMPANY: ${booking.companyName || 'N/A'}`);
   console.log(`📞 PHONE: ${booking.phone} | EMAIL: ${booking.email}`);
-  console.log(`🏢 WORKSPACE: ${booking.workspaceTitle} (${booking.plan})`);
+  console.log(`🏢 WORKSPACE: ${booking.workspaceTitle} (${details.displayPlan})`);
+  console.log(`📅 DETAILS: ${details.plainTextSchedule}`);
   console.log('======================================================\n');
 
   if (!cfg.isConfigured) {
@@ -370,9 +598,7 @@ export async function sendAdminNewBookingNotification(
               <div class="row"><span><strong>Email:</strong></span><span>${booking.email}</span></div>
               <div class="row"><span><strong>Phone:</strong></span><span>${booking.phone}</span></div>
               <div class="row"><span><strong>Workspace:</strong></span><span>${booking.workspaceTitle}</span></div>
-              <div class="row"><span><strong>Plan & Seats:</strong></span><span>${booking.plan} • ${booking.guests} Pax</span></div>
-              <div class="row"><span><strong>From:</strong></span><span>${booking.startDate} (${booking.startTime})</span></div>
-              <div class="row"><span><strong>To:</strong></span><span>${booking.endDate} (${booking.endTime})</span></div>
+              ${details.adminScheduleHtml}
               <div class="row"><span><strong>Status:</strong></span><span style="color: #E65100; font-weight: bold;">${booking.status}</span></div>
               <div class="row"><span><strong>Estimated Amount:</strong></span><span style="color: #2E7D32; font-weight: bold;">${booking.totalAmount || 'Custom'}</span></div>
             </div>
@@ -394,8 +620,8 @@ export async function sendAdminNewBookingNotification(
     const info = await transporter.sendMail({
       from: cfg.from,
       to: cfg.adminEmail,
-      subject: `🚨 [New Booking] ${booking.workspaceTitle} - ${booking.fullName} (${booking.id})`,
-      text: `New reservation placed: ${booking.id} by ${booking.fullName} (${booking.email}, ${booking.phone}) for ${booking.workspaceTitle}.`,
+      subject: `🚨 [New Booking - ${booking.status || 'PENDING'}] ${booking.workspaceTitle} - ${booking.fullName} (${booking.id})`,
+      text: `New reservation placed: ${booking.id} by ${booking.fullName} (${booking.email}, ${booking.phone}) for ${booking.workspaceTitle}. Plan: ${details.displayPlan}. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}.`,
       html: htmlContent,
     });
 
@@ -416,6 +642,7 @@ export async function sendStatusUpdateEmail(
   recipientLabel?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
+  const details = formatBookingDetailsForEmail(booking);
 
   console.log('\n======================================================');
   console.log(`🌿 [EnCourtyard Status Update] DISPATCH TO: ${toEmail} (${recipientLabel || 'User'})`);
@@ -447,7 +674,7 @@ export async function sendStatusUpdateEmail(
       statusBg = '#E8F5E9';
       statusTextColor = '#1B5E20';
       statusBorderColor = '#2E7D32';
-      emailSubject = `✅ Reservation Confirmed: Your workspace at EnCourtyard is ready (${booking.id})`;
+      emailSubject = `EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${booking.id})`;
       headline = 'Your Workspace Reservation is Officially Confirmed!';
       statusMessage = `Great news! Your booking for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) has been approved and confirmed by the EnCourtyard team. Your workspace will be fully prepared for your arrival.`;
       nextStepsBox = `
@@ -459,11 +686,11 @@ export async function sendStatusUpdateEmail(
         </div>
       `;
     } else if (normalizedStatus === 'PENDING') {
-      statusBadge = 'RESERVATION PENDING REVIEW';
+      statusBadge = 'BOOKING STATUS: PENDING';
       statusBg = '#FFF8E1';
       statusTextColor = '#B78103';
       statusBorderColor = '#F59E0B';
-      emailSubject = `⏳ Booking Received: Reservation ${booking.id} is Pending Review`;
+      emailSubject = `EnCourtyard Booking Pending: ${booking.workspaceTitle} (${booking.id})`;
       headline = 'Your Reservation Request is Under Review';
       statusMessage = `Thank you for choosing EnCourtyard. Your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) is currently in <strong>Pending</strong> status while our concierge team verifies scheduling and seat allocation.`;
       nextStepsBox = `
@@ -475,11 +702,11 @@ export async function sendStatusUpdateEmail(
         </div>
       `;
     } else if (normalizedStatus === 'COMPLETED' || normalizedStatus === 'COMPLETE') {
-      statusBadge = 'SESSION COMPLETED';
+      statusBadge = 'BOOKING COMPLETED';
       statusBg = '#EFF6FF';
       statusTextColor = '#1E40AF';
       statusBorderColor = '#3B82F6';
-      emailSubject = `✨ Booking Completed: Thank you for working with EnCourtyard (${booking.id})`;
+      emailSubject = `EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${booking.id})`;
       headline = 'Thank You for Working at EnCourtyard!';
       statusMessage = `Your workspace session for booking <strong>${booking.id}</strong> (<strong>${booking.workspaceTitle}</strong>) has been marked as <strong>Completed</strong>. We truly hope you had a productive, inspiring, and comfortable work session.`;
       nextStepsBox = `
@@ -494,7 +721,7 @@ export async function sendStatusUpdateEmail(
       statusBg = '#FEF2F2';
       statusTextColor = '#B91C1C';
       statusBorderColor = '#EF4444';
-      emailSubject = `⚠️ Reservation Cancellation: Booking ${booking.id}`;
+      emailSubject = `EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${booking.id})`;
       headline = 'Your Workspace Reservation Has Been Cancelled';
       statusMessage = `This is to notify you that your booking <strong>${booking.id}</strong> for <strong>${booking.workspaceTitle}</strong> scheduled for <strong>${booking.startDate}</strong> has been <strong>Cancelled</strong>.`;
       nextStepsBox = `
@@ -556,7 +783,8 @@ export async function sendStatusUpdateEmail(
             <div class="summary-card">
               <div class="row"><span><strong>Booking Reference:</strong></span><span>${booking.id}</span></div>
               <div class="row"><span><strong>Workspace:</strong></span><span>${booking.workspaceTitle}</span></div>
-              <div class="row"><span><strong>Schedule:</strong></span><span>${booking.startDate} (${booking.startTime}) → ${booking.endDate} (${booking.endTime})</span></div>
+              <div class="row"><span><strong>Rental Plan:</strong></span><span style="font-weight: 600;">${details.displayPlan}</span></div>
+              <div class="row"><span><strong>Schedule:</strong></span><span>${details.scheduleSummary}</span></div>
               <div class="row"><span><strong>Capacity / Guests:</strong></span><span>${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</span></div>
               <div class="row"><span><strong>Current Status:</strong></span><span style="color: ${statusTextColor}; font-weight: bold; text-transform: uppercase;">${booking.status}</span></div>
             </div>
@@ -574,7 +802,7 @@ export async function sendStatusUpdateEmail(
       </html>
     `;
 
-    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking ID: ${booking.id}\nWorkspace: ${booking.workspaceTitle}\nSchedule: ${booking.startDate} (${booking.startTime}) → ${booking.endDate} (${booking.endTime})\nSeats: ${booking.guests}\n\n${booking.adminNotes ? `Admin Notes: ${booking.adminNotes}\n\n` : ''}Contact Concierge: support@encourtyard.com | +91 99082 09993`;
+    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking ID: ${booking.id}\nWorkspace: ${booking.workspaceTitle}\nRental Plan: ${details.displayPlan}\nSchedule: ${details.scheduleSummary}\nSeats: ${booking.guests}\n\n${booking.adminNotes ? `Admin Notes: ${booking.adminNotes}\n\n` : ''}Contact Concierge: support@encourtyard.com | +91 99082 09993`;
 
     const info = await transporter.sendMail({
       from: cfg.from,

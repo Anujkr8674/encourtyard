@@ -60,11 +60,14 @@ export async function GET(req: NextRequest) {
       // Extract showInDayPass setting
       const dayPassSpec = specs.find((s: any) => s.key === 'showInDayPass' || s.key === 'Show in Day Pass');
       const showInDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
+      const gstSpec = specs.find((s: any) => s.key === 'gstPercent' || s.key === 'GST %' || s.key === 'gstRate');
+      const gstPercent = gstSpec ? parseFloat(gstSpec.value) || 18 : 18;
       const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
 
       return {
         ...w,
         showInDayPass,
+        gstPercent,
         specifications: cleanSpecs,
         mediaUrls: media,
         bookings: wBookings,
@@ -98,6 +101,7 @@ export async function POST(req: NextRequest) {
       specifications,
       mediaUrls,
       price,
+      gstPercent,
       capacity,
       location,
       badge,
@@ -128,6 +132,11 @@ export async function POST(req: NextRequest) {
       parsedSpecs.push({ key: 'showInDayPass', value: 'true' });
     }
 
+    if (gstPercent !== undefined) {
+      parsedSpecs = parsedSpecs.filter((s: any) => s.key !== 'gstPercent' && s.key !== 'GST %' && s.key !== 'gstRate');
+      parsedSpecs.push({ key: 'gstPercent', value: String(gstPercent) });
+    }
+
     const specsJson = JSON.stringify(parsedSpecs);
     const mediaJson = typeof mediaUrls === 'string' ? mediaUrls : JSON.stringify(mediaUrls || []);
 
@@ -150,11 +159,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const savedGst = parsedSpecs.find((s: any) => s.key === 'gstPercent')?.value;
+
     return NextResponse.json({
       success: true,
       workspace: {
         ...createdWorkspace,
         showInDayPass: !!showInDayPass,
+        gstPercent: savedGst ? parseFloat(savedGst) || 18 : 18,
         specifications: parsedSpecs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass'),
         mediaUrls: JSON.parse(mediaJson),
       },

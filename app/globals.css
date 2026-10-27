@@ -306,3 +306,41 @@
   transform: translateY(-3px) scale(1.05);
 }
 
+/* ============================================================================
+   ADMIN PANEL TAHOMA FONT SYSTEM
+   ============================================================================ */
+.admin-panel-root,
+.admin-panel-root *,
+.admin-panel-root button,
+.admin-panel-root input,
+.admin-panel-root select,
+.admin-panel-root textarea,
+.admin-panel-root table,
+.admin-panel-root th,
+.admin-panel-root td,
+.admin-panel-root h1,
+.admin-panel-root h2,
+.admin-panel-root h3,
+.admin-panel-root h4,
+.admin-panel-root h5,
+.admin-panel-root h6,
+.admin-panel-root p,
+.admin-panel-root span,
+.admin-panel-root a,
+.admin-panel-root div {
+  font-family: Tahoma, Verdana, Segoe UI, sans-serif !important;
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slideLeft {
+  animation: slideLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

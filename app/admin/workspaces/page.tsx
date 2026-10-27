@@ -31,7 +31,8 @@ import {
   Maximize2,
   Sparkles,
   Calendar,
-  Hash
+  Hash,
+  Monitor
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useFeedbackModal } from '@/context/FeedbackModalContext';
@@ -142,9 +143,21 @@ export default function AdminWorkspacesPage() {
         setWorkspaces(dataWs.workspaces);
       }
       if (dataCat.success && Array.isArray(dataCat.categories)) {
-        setCategories(dataCat.categories);
-        if (dataCat.categories.length > 0 && !formCategoryId) {
-          setFormCategoryId(dataCat.categories[0].id);
+        const isExcludedCategory = (name: string, slug?: string) => {
+          const n = (name || '').toLowerCase();
+          const s = (slug || '').toLowerCase();
+          return (
+            n.includes('meeting') || s.includes('meeting') ||
+            n.includes('confr') || s.includes('confr') ||
+            n.includes('day pass') || s.includes('day-pass') || n.includes('daypass')
+          );
+        };
+        const standardCategories = dataCat.categories.filter(
+          (c: CategoryOption) => !isExcludedCategory(c.name, c.slug)
+        );
+        setCategories(standardCategories);
+        if (standardCategories.length > 0 && !formCategoryId) {
+          setFormCategoryId(standardCategories[0].id);
         }
       }
     } catch (err) {
@@ -581,8 +594,16 @@ export default function AdminWorkspacesPage() {
     }
   };
 
-  // Filter & Pagination Calculations
-  const sortedWorkspaces = [...workspaces].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  // Filter & Pagination Calculations (Exclude Meeting Rooms, Conference Hall, Day Pass from general view)
+  const isExcludedCategory = (name?: string) => {
+    const n = (name || '').toLowerCase();
+    return n.includes('meeting') || n.includes('confr') || n.includes('day pass') || n.includes('daypass');
+  };
+  const standardWorkspaces = workspaces.filter(
+    (w) => !isExcludedCategory(w.categoryName) && !w.showInDayPass
+  );
+
+  const sortedWorkspaces = [...standardWorkspaces].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
   const filteredWorkspaces = sortedWorkspaces.filter((w) => {
     const matchCat = filterCategory === 'ALL' || w.categoryId === filterCategory;
     const matchDayPass = !filterDayPass || !!w.showInDayPass;
@@ -613,7 +634,7 @@ export default function AdminWorkspacesPage() {
             </span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] tracking-tight">
-            Workspaces & Offices ({workspaces.length})
+            Workspaces & Offices ({standardWorkspaces.length})
           </h1>
           <p className="text-xs sm:text-sm text-[#5C665C] mt-0.5">
             Add offices and suites under your categories with rich descriptions, custom property specifications, and multi-media galleries.
@@ -641,6 +662,57 @@ export default function AdminWorkspacesPage() {
             <span>Add New Workspace</span>
           </button>
         </div>
+      </div>
+
+      {/* Dedicated Category Quick Navigation Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Link
+          href="/admin/day-passes"
+          className="p-3.5 bg-amber-50/70 hover:bg-amber-50 border border-amber-200/80 rounded-2xl flex items-center justify-between group transition-all shadow-xs"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-amber-950 block">Day Pass Inventory</span>
+              <span className="text-[10px] text-amber-700">Charged per day (₹/day)</span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+
+        <Link
+          href="/admin/meeting-rooms"
+          className="p-3.5 bg-blue-50/70 hover:bg-blue-50 border border-blue-200/80 rounded-2xl flex items-center justify-between group transition-all shadow-xs"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
+              <Monitor className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-blue-950 block">Meeting Rooms</span>
+              <span className="text-[10px] text-blue-700">Charged hourly (₹/hr)</span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+
+        <Link
+          href="/admin/conference-halls"
+          className="p-3.5 bg-purple-50/70 hover:bg-purple-50 border border-purple-200/80 rounded-2xl flex items-center justify-between group transition-all shadow-xs"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
+              <Building2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-purple-950 block">Conference Halls</span>
+              <span className="text-[10px] text-purple-700">Charged hourly (₹/hr)</span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-purple-600 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
       </div>
 
       {/* Filter and Search Toolbar */}
@@ -1539,7 +1611,7 @@ export default function AdminWorkspacesPage() {
 
               {/* 5. Pricing, Capacity & Location (PRICING IS OPTIONAL) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
+                {/* <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider">
                       Pricing <span className="text-[10px] font-normal text-[#5C665C] normal-case">(Optional)</span>
@@ -1558,7 +1630,7 @@ export default function AdminWorkspacesPage() {
                   <span className="text-[10px] text-[#6A806A] block mt-1">
                     Leave blank for &quot;Contact for Quote&quot;
                   </span>
-                </div>
+                </div> */}
 
                 <div>
                   <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
@@ -1604,28 +1676,12 @@ export default function AdminWorkspacesPage() {
                 </label>
               </div>
 
-              {/* 7. Show in Day Pass Toggle (Image 2) */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#FAF9F5] border border-[#E0DCD3]">
+              {/* Separate Categories Note */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-[#181F18] block">Show in Day Pass</span>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[#185ADB] text-[10px] font-mono font-bold">
-                      Day Pass
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-[#5C665C] block">
-                    Display this workspace office on the single-day Day Pass booking page
-                  </span>
+                  <span className="font-bold block">Looking to add Day Pass, Meeting Rooms, or Conference Halls?</span>
+                  <span className="text-[11px] text-amber-800">These spaces have separate dedicated CRUD sections with custom hourly & daily pricing in the admin sidebar.</span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formShowInDayPass}
-                    onChange={(e) => setFormShowInDayPass(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#185ADB]"></div>
-                </label>
               </div>
 
               {/* Modal Footer */}

@@ -45,8 +45,21 @@ export async function GET() {
           }
         });
 
-        // Add 1 hour maintenance buffer
-        const bufferEndTimestamp = endTimestamp + 60 * 60 * 1000;
+        const cat = (booking.categoryName || '').toLowerCase();
+        const title = (booking.workspaceTitle || '').toLowerCase();
+        const space = (booking.spaceType || '').toLowerCase();
+        const isMeetingOrConference =
+          cat.includes('meeting') ||
+          title.includes('meeting') ||
+          space.includes('meeting') ||
+          cat.includes('confr') ||
+          title.includes('confr') ||
+          title.includes('boardroom') ||
+          space.includes('confr');
+
+        // Add 15 min buffer for meeting/conference, 1 hour for day pass
+        const bufferMinutes = isMeetingOrConference ? 15 : 60;
+        const bufferEndTimestamp = endTimestamp + bufferMinutes * 60 * 1000;
         const { dateStr, timeStr } = formatTimestampToDateAndTimeString(bufferEndTimestamp);
 
         if (booking.workspaceId) {
@@ -57,7 +70,7 @@ export async function GET() {
               startTime: booking.endTime,
               endDate: dateStr,
               endTime: timeStr,
-              reason: 'Auto-Maintenance Buffer from Expired Booking',
+              reason: `Auto-Maintenance Buffer from Expired Booking (${bufferMinutes} Min)`,
             }
           });
         }

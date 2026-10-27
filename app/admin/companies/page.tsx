@@ -39,12 +39,12 @@ export default function AdminCompaniesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E1D8] text-xs font-semibold text-[#181F18] hover:bg-[#FAF9F5] transition-all shadow-sm">
+        <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap">
+          <button className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5E1D8] text-xs font-semibold text-[#181F18] hover:bg-[#FAF9F5] transition-all shadow-sm shrink-0 whitespace-nowrap cursor-pointer">
             <Download className="w-3.5 h-3.5 text-[#6A806A]" />
             <span>Export CSV</span>
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2E7D32] hover:bg-[#388E3C] text-white text-xs font-bold shadow-md transition-all">
+          <button className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2E7D32] hover:bg-[#388E3C] text-white text-xs font-bold shadow-md transition-all shrink-0 whitespace-nowrap cursor-pointer">
             <Plus className="w-4 h-4" />
             <span>Add New Company</span>
           </button>

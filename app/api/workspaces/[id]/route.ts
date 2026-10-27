@@ -63,6 +63,8 @@ export async function GET(
 
     const dayPassSpec = specs.find((s: any) => s.key === 'showInDayPass' || s.key === 'Show in Day Pass');
     const showInDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
+    const gstSpec = specs.find((s: any) => s.key === 'gstPercent' || s.key === 'GST %' || s.key === 'gstRate');
+    const gstPercent = gstSpec ? parseFloat(gstSpec.value) || 18 : 18;
     const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
 
     return NextResponse.json({
@@ -70,6 +72,7 @@ export async function GET(
       workspace: {
         ...workspace,
         showInDayPass,
+        gstPercent,
         specifications: cleanSpecs,
         mediaUrls: media,
         bookings: activeBookings,
@@ -101,6 +104,7 @@ export async function PUT(
       specifications,
       mediaUrls,
       price,
+      gstPercent,
       capacity,
       location,
       badge,
@@ -139,7 +143,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    if (specifications !== undefined || showInDayPass !== undefined) {
+    if (specifications !== undefined || showInDayPass !== undefined || gstPercent !== undefined) {
       let currentSpecs: any[] = [];
       if (specifications !== undefined) {
         currentSpecs = Array.isArray(specifications)
@@ -162,6 +166,12 @@ export async function PUT(
       if (targetDayPass) {
         currentSpecs.push({ key: 'showInDayPass', value: 'true' });
       }
+
+      if (gstPercent !== undefined) {
+        currentSpecs = currentSpecs.filter((s: any) => s.key !== 'gstPercent' && s.key !== 'GST %' && s.key !== 'gstRate');
+        currentSpecs.push({ key: 'gstPercent', value: String(gstPercent) });
+      }
+
       updatePayload.specifications = JSON.stringify(currentSpecs);
     }
 
@@ -185,6 +195,8 @@ export async function PUT(
 
     const dayPassSpec = specs.find((s: any) => s.key === 'showInDayPass' || s.key === 'Show in Day Pass');
     const isDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
+    const updatedGstSpec = specs.find((s: any) => s.key === 'gstPercent' || s.key === 'GST %' || s.key === 'gstRate');
+    const updatedGstPercent = updatedGstSpec ? parseFloat(updatedGstSpec.value) || 18 : 18;
     const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
 
     return NextResponse.json({
@@ -192,6 +204,7 @@ export async function PUT(
       workspace: {
         ...updatedWorkspace,
         showInDayPass: isDayPass,
+        gstPercent: updatedGstPercent,
         specifications: cleanSpecs,
         mediaUrls: media,
       },

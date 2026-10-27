@@ -14,6 +14,7 @@ import {
   Sparkles,
   ArrowRight
 } from 'lucide-react';
+import { DayPassDatePickerPopover } from '@/components/ui/DayPassDatePickerPopover';
 
 interface HeroSlide {
   id: number;
@@ -204,14 +205,16 @@ export const Hero: React.FC = () => {
 
           {/* 3 Action Buttons: In a single row on all screen sizes including mobile */}
           <div className="flex flex-row items-center justify-center gap-1.5 sm:gap-3 md:gap-4 mt-6 sm:mt-8 w-full max-w-xl mx-auto px-1 flex-nowrap">
-            {/* Button 1: Day Pass */}
-            <Link
-              href="/book-space?plan=day-pass"
-              className="inline-flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-full text-[11px] sm:text-xs md:text-sm font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/30 backdrop-blur-md shadow-md transition-all hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 group"
-            >
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#86EFAC] group-hover:rotate-12 transition-transform shrink-0" />
-              <span>Day Pass</span>
-            </Link>
+            {/* Button 1: Day Pass with Calendar Popover */}
+            <DayPassDatePickerPopover align="left">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-full text-[11px] sm:text-xs md:text-sm font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/30 backdrop-blur-md shadow-md transition-all hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 group cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#86EFAC] group-hover:rotate-12 transition-transform shrink-0" />
+                <span>Day Pass</span>
+              </button>
+            </DayPassDatePickerPopover>
 
             {/* Button 2: Conference Hall */}
             <Link

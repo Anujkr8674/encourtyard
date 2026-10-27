@@ -50,15 +50,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setMobileSidebarOpen(false);
   }, [pathname]);
 
-  // If on login page, render child without layout
+  // If on login page, render child with Tahoma font
   if (pathname === '/admin/login') {
-    return <>{children}</>;
+    return (
+      <div
+        style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+        className="admin-panel-root"
+      >
+        {children}
+      </div>
+    );
   }
 
   // If loading session
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0E150F] flex items-center justify-center text-white">
+      <div
+        style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+        className="min-h-screen bg-[#0E150F] flex items-center justify-center text-white admin-panel-root"
+      >
         <div className="flex flex-col items-center gap-3">
           <RefreshCw className="w-8 h-8 text-[#4ADE80] animate-spin" />
           <span className="text-xs font-mono tracking-widest uppercase text-[#4ADE80]">
@@ -72,7 +82,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // If NOT authenticated as admin, show Admin Login Portal
   if (!isAdmin || !admin) {
     return (
-      <div className="min-h-screen bg-[#0E150F] flex items-center justify-center p-4 relative overflow-hidden">
+      <div
+        style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+        className="min-h-screen bg-[#0E150F] flex items-center justify-center p-4 relative overflow-hidden admin-panel-root"
+      >
         <div
           className="absolute inset-0 opacity-15 pointer-events-none"
           style={{
@@ -88,7 +101,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] flex flex-col lg:flex-row">
+    <div
+      style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+      className="min-h-screen bg-[#FAF9F5] flex flex-col lg:flex-row admin-panel-root"
+    >
       {/* Desktop Persistent Fixed Sidebar */}
       <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-64 sm:w-72 h-screen z-30">
         <AdminSidebar />

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
@@ -35,13 +35,14 @@ import {
   X,
   LogIn,
   UserPlus,
-  User
+  User,
+  Images
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
-import { checkWorkspaceAvailabilityDetailed, BookingSlot } from '@/lib/availability';
+import { checkWorkspaceAvailabilityDetailed, BookingSlot, hasValidPrice, calculateHourlyDuration } from '@/lib/availability';
 import { CountdownBadge } from '@/components/ui/CountdownBadge';
 
 interface SpecItem {
@@ -163,15 +164,40 @@ const FAQAccordion = ({ workspace }: { workspace: Workspace }) => {
   );
 };
 
-export default function WorkspaceDetailsPage() {
+function WorkspaceDetailsContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
   const { user, isAuthenticated } = useAuth();
 
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const queryPlan = searchParams.get('plan');
+  const queryStartDate = searchParams.get('startDate');
+  const queryEndDate = searchParams.get('endDate');
+  const queryStartTime = searchParams.get('startTime');
+  const queryEndTime = searchParams.get('endTime');
+  const queryGuests = searchParams.get('guests');
+
+  // Load from sessionStorage if available for instant 0ms rendering
+  const [workspace, setWorkspace] = useState<Workspace | null>(() => {
+    if (typeof window !== 'undefined' && id) {
+      try {
+        const cached = sessionStorage.getItem(`ws_cache_${id}`);
+        if (cached) return JSON.parse(cached);
+      } catch (_) {}
+    }
+    return null;
+  });
   const [relatedWorkspaces, setRelatedWorkspaces] = useState<Workspace[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== 'undefined' && id) {
+      try {
+        const cached = sessionStorage.getItem(`ws_cache_${id}`);
+        if (cached) return false;
+      } catch (_) {}
+    }
+    return true;
+  });
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [isFullscreenGalleryOpen, setIsFullscreenGalleryOpen] = useState(false);
 
@@ -184,13 +210,53 @@ export default function WorkspaceDetailsPage() {
     return `${year}-${month}-${day}`;
   }, []);
 
+  // Classify Workspace (Day Pass vs Hourly vs Standard)
+  const isDayPassWorkspace = React.useMemo(() => {
+    if (queryPlan === 'daily') return true;
+    if (!workspace) return false;
+    const cat = (workspace.categoryName || '').toLowerCase();
+    const title = (workspace.title || '').toLowerCase();
+    return (
+      Boolean((workspace as any).showInDayPass) ||
+      workspace.categoryId === 'ee0ebc73-e2ba-4534-bccb-e228400bd967' ||
+      cat.includes('day pass') ||
+      title.includes('day pass') ||
+      title.includes('hot desk')
+    );
+  }, [queryPlan, workspace]);
+
+  const isHourlyWorkspace = React.useMemo(() => {
+    if (queryPlan === 'hourly') return true;
+    if (!workspace) return false;
+    if (isDayPassWorkspace) return false;
+    const cat = (workspace.categoryName || '').toLowerCase();
+    const title = (workspace.title || '').toLowerCase();
+    return (
+      workspace.categoryId === '1ac79bff-71f9-4924-8091-f07c9ae1ec06' ||
+      workspace.categoryId === 'cat-1789845784650' ||
+      cat.includes('confr') ||
+      cat.includes('conference') ||
+      title.includes('confr') ||
+      title.includes('conference') ||
+      cat.includes('meeting') ||
+      title.includes('meeting')
+    );
+  }, [queryPlan, isDayPassWorkspace, workspace]);
+
   // Booking Card State
-  const [rentalPlan, setRentalPlan] = useState<'monthly' | 'daily' | 'hourly'>('monthly');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [startTime, setStartTime] = useState('09:00 AM');
-  const [endTime, setEndTime] = useState('06:00 PM');
-  const [guestCount, setGuestCount] = useState(1);
+  const [rentalPlan, setRentalPlan] = useState<'monthly' | 'daily' | 'hourly'>(() => {
+    if (queryPlan === 'hourly') return 'hourly';
+    if (queryPlan === 'daily') return 'daily';
+    return 'monthly';
+  });
+  const [startDate, setStartDate] = useState(queryStartDate || '');
+  const [endDate, setEndDate] = useState(queryEndDate || queryStartDate || '');
+  const [startTime, setStartTime] = useState(queryStartTime || '09:00 AM');
+  const [endTime, setEndTime] = useState(queryEndTime || '06:00 PM');
+  const [guestCount, setGuestCount] = useState(() => {
+    const parsed = queryGuests ? parseInt(queryGuests, 10) : 1;
+    return isNaN(parsed) || parsed < 1 ? 1 : parsed;
+  });
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'checking' | 'available'>('idle');
@@ -198,10 +264,73 @@ export default function WorkspaceDetailsPage() {
 
   const bookingFormRef = React.useRef<HTMLElement>(null);
 
-  const bookingUrl = `/book?workspace=${encodeURIComponent(workspace?.id || id || '')}&plan=${rentalPlan}&startDate=${startDate}&endDate=${endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&guests=${guestCount}`;
+  // Dynamic duration calculation for hourly reservations
+  const hourlyDuration = React.useMemo(() => {
+    return calculateHourlyDuration(startTime, endTime);
+  }, [startTime, endTime]);
+
+  const numericPrice = React.useMemo(() => {
+    if (!workspace?.price) return 0;
+    const clean = String(workspace.price).replace(/[^0-9.]/g, '');
+    return parseFloat(clean) || 0;
+  }, [workspace?.price]);
+
+  const hourlyCalculatedTotal = React.useMemo(() => {
+    if (!numericPrice || !isHourlyWorkspace) return 0;
+    return Math.round((numericPrice * hourlyDuration.totalMinutes) / 60);
+  }, [numericPrice, isHourlyWorkspace, hourlyDuration.totalMinutes]);
+
+  // Sync rentalPlan and single-day constraints when workspace type or plan is detected
+  useEffect(() => {
+    if (isHourlyWorkspace) {
+      setRentalPlan('hourly');
+    } else if (isDayPassWorkspace) {
+      setRentalPlan('daily');
+    } else if (queryPlan === 'daily' || queryPlan === 'hourly' || queryPlan === 'monthly') {
+      setRentalPlan(queryPlan);
+    }
+  }, [isHourlyWorkspace, isDayPassWorkspace, queryPlan]);
+
+  useEffect(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const currentStart = queryStartDate || startDate || todayStr;
+    if (!startDate) setStartDate(currentStart);
+
+    if (isHourlyWorkspace || isDayPassWorkspace || rentalPlan === 'daily' || rentalPlan === 'hourly') {
+      // Day Pass and Hourly must strictly be a single date
+      setEndDate(currentStart);
+    } else {
+      if (queryEndDate) {
+        setEndDate(queryEndDate);
+      } else if (!endDate || endDate === currentStart) {
+        const nextDate = new Date(currentStart);
+        nextDate.setDate(nextDate.getDate() + 30);
+        const nYear = nextDate.getFullYear();
+        const nMonth = String(nextDate.getMonth() + 1).padStart(2, '0');
+        const nDay = String(nextDate.getDate()).padStart(2, '0');
+        setEndDate(`${nYear}-${nMonth}-${nDay}`);
+      }
+    }
+    setAvailabilityStatus('idle');
+  }, [rentalPlan, isHourlyWorkspace, isDayPassWorkspace]);
+
+  const effectivePlan = isHourlyWorkspace ? 'hourly' : isDayPassWorkspace ? 'daily' : rentalPlan;
+  const effectiveEndDate = (isHourlyWorkspace || isDayPassWorkspace) ? startDate : endDate;
+
+  const bookingUrl = `/book?workspace=${encodeURIComponent(workspace?.id || id || '')}&plan=${effectivePlan}&startDate=${startDate}&endDate=${effectiveEndDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}&guests=${guestCount}`;
 
   const handleBookNow = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    if (workspace) {
+      try {
+        sessionStorage.setItem(`ws_cache_${workspace.id}`, JSON.stringify(workspace));
+      } catch (_) {}
+    }
     if (user || isAuthenticated) {
       router.push(bookingUrl);
     } else {
@@ -230,7 +359,7 @@ export default function WorkspaceDetailsPage() {
         body: JSON.stringify({
           workspaceId: workspace?.id,
           startDate,
-          endDate,
+          endDate: (isHourlyWorkspace || isDayPassWorkspace) ? startDate : endDate,
           startTime,
           endTime,
           guests: guestCount,
@@ -248,24 +377,6 @@ export default function WorkspaceDetailsPage() {
     }
   };
 
-  useEffect(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
-    setStartDate(todayStr);
-
-    const nextDate = new Date();
-    const daysToAdd = rentalPlan === 'monthly' ? 30 : rentalPlan === 'daily' ? 1 : 0;
-    nextDate.setDate(today.getDate() + daysToAdd);
-    const nYear = nextDate.getFullYear();
-    const nMonth = String(nextDate.getMonth() + 1).padStart(2, '0');
-    const nDay = String(nextDate.getDate()).padStart(2, '0');
-    setEndDate(`${nYear}-${nMonth}-${nDay}`);
-    setAvailabilityStatus('idle');
-  }, [rentalPlan]);
-
   const { isAvailable, nextAvailableTimestamp } = React.useMemo(() => {
     if (!workspace) return { isAvailable: true };
     return checkWorkspaceAvailabilityDetailed(
@@ -273,10 +384,10 @@ export default function WorkspaceDetailsPage() {
       workspace.maintenanceBlocks,
       startDate,
       startTime,
-      endDate,
+      (isHourlyWorkspace || isDayPassWorkspace) ? startDate : endDate,
       endTime
     );
-  }, [workspace, startDate, startTime, endDate, endTime]);
+  }, [workspace, startDate, startTime, endDate, endTime, isHourlyWorkspace, isDayPassWorkspace]);
 
   useEffect(() => {
     if (!id) return;
@@ -284,11 +395,13 @@ export default function WorkspaceDetailsPage() {
     const fetchWorkspaceData = async () => {
       try {
         setLoading(true);
+        let currentWs: Workspace | null = null;
         const res = await fetch(`/api/workspaces/${id}`, { cache: 'no-store' });
         
         if (res.ok) {
           const data = await res.json();
           if (data && data.success && data.workspace) {
+            currentWs = data.workspace;
             setWorkspace(data.workspace);
           }
         } else {
@@ -299,22 +412,52 @@ export default function WorkspaceDetailsPage() {
             if (allData.success && Array.isArray(allData.workspaces)) {
               const found = allData.workspaces.find((w: Workspace) => w.id === id || w.slug === id);
               if (found) {
+                currentWs = found;
                 setWorkspace(found);
               }
             }
           }
         }
 
-        // Fetch related workspaces
-        const allRes = await fetch('/api/workspaces', { cache: 'no-store' });
-        if (allRes.ok) {
-          const allData = await allRes.json();
-          if (allData.success && Array.isArray(allData.workspaces)) {
-            setRelatedWorkspaces(allData.workspaces.filter((w: Workspace) => w.id !== id).slice(0, 3));
+        // Fetch related workspaces ONLY from the SAME category from database
+        if (currentWs) {
+          const allRes = await fetch('/api/workspaces', { cache: 'no-store' });
+          if (allRes.ok) {
+            const allData = await allRes.json();
+            if (allData.success && Array.isArray(allData.workspaces)) {
+              const targetCategoryId = currentWs.categoryId ? String(currentWs.categoryId).trim().toLowerCase() : '';
+              const targetCategoryName = currentWs.categoryName ? String(currentWs.categoryName).trim().toLowerCase() : '';
+
+              const sameCategoryWorkspaces = allData.workspaces.filter((w: Workspace) => {
+                // Exclude the current workspace itself
+                if (w.id === currentWs?.id || (w.slug && w.slug === currentWs?.slug)) {
+                  return false;
+                }
+                // Exclude inactive workspaces
+                if (w.isActive === false) {
+                  return false;
+                }
+                // Must have the exact same category
+                const matchesId = Boolean(targetCategoryId && w.categoryId && String(w.categoryId).trim().toLowerCase() === targetCategoryId);
+                const matchesName = Boolean(targetCategoryName && w.categoryName && String(w.categoryName).trim().toLowerCase() === targetCategoryName);
+
+                return matchesId || matchesName;
+              });
+
+              // If other offices exist in this same category, show up to 3. If none (single office in category), hide section with empty array.
+              setRelatedWorkspaces(sameCategoryWorkspaces.slice(0, 3));
+            } else {
+              setRelatedWorkspaces([]);
+            }
+          } else {
+            setRelatedWorkspaces([]);
           }
+        } else {
+          setRelatedWorkspaces([]);
         }
       } catch (err) {
         console.error('Error loading workspace detail:', err);
+        setRelatedWorkspaces([]);
       } finally {
         setLoading(false);
       }
@@ -383,213 +526,226 @@ export default function WorkspaceDetailsPage() {
     { icon: <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />, title: 'Concierge Housekeeping', desc: 'Dedicated daily sanitization and hospitality team support' },
   ];
 
+  const rawCategory = workspace.categoryName || 'Workspace';
+  const cleanCategoryName = rawCategory.replace(/confre?ence/gi, 'Conference');
+
   return (
     <div className="bg-white text-[#181F18] min-h-screen">
       
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION (80vh) WITH MOVING COVER IMAGE & FROSTED BLUR TEXT BADGES */}
+      {/* MAIN DETAILS & RESERVATION SECTION                                        */}
       {/* ========================================================================= */}
-      <section className="relative h-[80vh] min-h-[600px] max-h-[820px] w-full overflow-hidden flex flex-col justify-between">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 pt-24 sm:pt-28 lg:pt-36">
         
-        {/* Full-Bleed Moving Background Image (without heavy black overlay) */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <img
-            src={firstImage}
-            alt={workspace.title}
-            className="w-full h-full object-cover object-center animate-zoomSlow filter brightness-100 contrast-105"
-          />
-        </div>
-
-        {/* Top Floating Navigation Bar with Frosted Glass Badges */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 w-full flex items-center justify-between">
-          <Link
-            href="/book-space"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md text-[#181F18] border border-white/60 text-xs font-semibold transition-all shadow-[0_4px_20px_rgba(0,0,0,0.08)] hover:-translate-x-0.5"
-          >
-            <ArrowLeft className="w-4 h-4 text-[#2E7D32]" />
-            <span>Back to All Workspaces</span>
-          </Link>
-
-          {!isAvailable ? (
-            <CountdownBadge targetTimestamp={nextAvailableTimestamp} />
-          ) : workspace.badge ? (
-            <span className="px-4 py-1.5 rounded-full bg-[#E65100] text-white text-xs font-mono font-bold shadow-md">
-              {workspace.badge}
-            </span>
-          ) : null}
-        </div>
-
-        {/* Hero Bottom Information Content in Frosted Glass Blur Badges */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 sm:pb-12 w-full">
-          <div className="max-w-3xl space-y-3.5">
-            
-            {/* Category & Location Badges */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/45 hover:bg-white/60 backdrop-blur-md text-[#181F18] border border-white/60 text-xs font-bold shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
-                <Layers className="w-3.5 h-3.5 text-[#2E7D32]" />
-                <span>{workspace.categoryName}</span>
-              </span>
-
-              {workspace.location && (
-                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/45 hover:bg-white/60 backdrop-blur-md text-[#181F18] border border-white/60 text-xs font-bold shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
-                  <MapPin className="w-3.5 h-3.5 text-[#2E7D32]" />
-                  <span>{workspace.location}</span>
-                </span>
-              )}
-
-              {workspace.capacity && (
-                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/45 hover:bg-white/60 backdrop-blur-md text-[#181F18] border border-white/60 text-xs font-bold shadow-[0_4px_20px_rgba(0,0,0,0.08)] font-mono">
-                  <Users className="w-3.5 h-3.5 text-[#2E7D32]" />
-                  <span>{workspace.capacity}</span>
-                </span>
-              )}
-            </div>
-
-            {/* Title in Frosted Glass Blur Box */}
-            <div>
-              <div className="inline-flex items-center px-5 sm:px-7 py-2 sm:py-2.5 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-[#141F14] font-serif text-2xl sm:text-3xl lg:text-[40px] font-bold tracking-tight shadow-[0_8px_30px_rgba(0,0,0,0.12)] leading-tight">
-                <h1>{workspace.title}</h1>
-              </div>
-            </div>
-
-            {/* Price & Action Row in Frosted Glass Blur Box */}
-            <div>
-              <div className="inline-flex flex-wrap items-center gap-5 sm:gap-6 px-5 sm:px-7 py-3 rounded-2xl bg-white/45 hover:bg-white/60 backdrop-blur-md border border-white/60 text-[#181F18] shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-                <div>
-                  <span className="text-[10px] text-[#5C665C] block uppercase tracking-wider font-mono font-bold">
-                    Rental Starting At
-                  </span>
-                  <span className="text-xl sm:text-2xl font-bold text-[#181F18] font-serif">
-                    {workspace.price || 'Flexible Plan'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    disabled={!isAvailable}
-                    onClick={scrollToBookingForm}
-                    className={`px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all ${
-                      !isAvailable ? 'bg-gray-500 cursor-not-allowed' : 'bg-[#2E7D32] hover:bg-[#1B5E20] hover:shadow-lg cursor-pointer'
-                    }`}
-                  >
-                    {isAvailable ? 'Reserve Space' : 'Not Available'}
-                  </button>
-                  <a
-                    href="https://wa.me/919908209993"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2.5 rounded-xl bg-white hover:bg-neutral-100 text-[#181F18] border border-[#E5E1D8] text-xs sm:text-sm font-semibold shadow-xs transition-all flex items-center gap-2"
-                  >
-                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                    <span>WhatsApp Inquiry</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 2. MAIN DETAILS & RESERVATION SECTION                                     */}
-      {/* ========================================================================= */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        {/* ========================================================================= */}
+        {/* 2-COLUMN MAIN CONTENT & RESERVATION SECTION                               */}
+        {/* ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
           
-          {/* Left Column: Media Gallery, Overview, Specifications, Amenities, Location Map */}
-          <div className="lg:col-span-8 space-y-10">
+          {/* Left Column: Media Gallery, Title, Overview, Specifications, Amenities, Location Map */}
+          <div className="lg:col-span-8 space-y-8 sm:space-y-10">
             
-            {/* 2.1 Interactive Media Gallery Carousel */}
+            {/* 2.1 Interactive Media Gallery */}
             <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="font-serif text-2xl font-bold text-[#181F18]">
-                  Space Gallery & Tour
-                </h2>
-                <span className="text-xs font-mono text-[#5C665C]">
-                  {activeMediaIndex + 1} of {mediaList.length} media
-                </span>
-              </div>
-
-              {/* Main Media Viewer */}
-              <div className="relative h-[360px] sm:h-[460px] w-full rounded-3xl overflow-hidden bg-white border border-[#E5E1D8] shadow-sm group">
-                {activeMedia.type === 'video' ? (
-                  <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
-                    <Video className="w-16 h-16 text-[#2E7D32]" />
-                  </div>
-                ) : (
-                  <img
-                    src={activeMedia.url}
-                    alt={activeMedia.name || workspace.title}
-                    className="w-full h-full object-cover cursor-pointer transition-transform duration-500 group-hover:scale-105"
-                    onDoubleClick={() => setIsFullscreenGalleryOpen(true)}
-                  />
-                )}
-
-                {/* Left/Right Carousel Controls */}
-                {mediaList.length > 1 && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handlePrevMedia}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[#181F18] flex items-center justify-center shadow-lg transition-all cursor-pointer"
+              {mediaList.length > 1 ? (
+                <>
+                  {/* Desktop / Tablet: 3-Image Collage (1 Large on Left, 2 Stacked Up/Down on Right with View All Photos button) */}
+                  <div className="hidden md:grid md:grid-cols-12 gap-3 h-[380px] sm:h-[420px] lg:h-[460px] w-full">
+                    {/* Left Large Image */}
+                    <div
+                      onClick={() => {
+                        setActiveMediaIndex(0);
+                        setIsFullscreenGalleryOpen(true);
+                      }}
+                      className="md:col-span-8 relative rounded-2xl sm:rounded-3xl overflow-hidden bg-neutral-100 border border-[#E5E1D8] shadow-xs group cursor-pointer"
                     >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleNextMedia}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[#181F18] flex items-center justify-center shadow-lg transition-all cursor-pointer"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* Thumbnail Selector Strip */}
-              {mediaList.length > 1 && (
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-                  {mediaList.slice(0, 4).map((media, idx) => {
-                    const isLastVisible = idx === 3;
-                    const remainingCount = mediaList.length - 4;
-                    const showOverlay = isLastVisible && remainingCount > 0;
-                    const isActive = activeMediaIndex === idx || (showOverlay && activeMediaIndex >= 3);
-
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setActiveMediaIndex(idx)}
-                        className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                          isActive
-                            ? 'border-[#2E7D32] shadow-md scale-102 opacity-100'
-                            : 'border-[#E5E1D8] opacity-60 hover:opacity-100'
-                        }`}
-                      >
+                      {mediaList[0].type === 'video' ? (
+                        <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
+                          <Video className="w-16 h-16 text-[#2E7D32]" />
+                        </div>
+                      ) : (
                         <img
-                          src={media.url}
-                          alt={media.name}
-                          className="w-full h-full object-cover"
+                          src={mediaList[0].url}
+                          alt={mediaList[0].name || workspace.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
-                        {showOverlay && (
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
-                            <span className="text-white font-bold text-sm sm:text-base">
-                              +{remainingCount} more
-                            </span>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                    </div>
+
+                    {/* Right Stacked 2 Images */}
+                    <div className="md:col-span-4 grid grid-rows-2 gap-3 h-full">
+                      {/* Top Right Image */}
+                      <div
+                        onClick={() => {
+                          setActiveMediaIndex(1);
+                          setIsFullscreenGalleryOpen(true);
+                        }}
+                        className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-neutral-100 border border-[#E5E1D8] shadow-xs group cursor-pointer"
+                      >
+                        {mediaList[1]?.type === 'video' ? (
+                          <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
+                            <Video className="w-10 h-10 text-[#2E7D32]" />
                           </div>
+                        ) : (
+                          <img
+                            src={mediaList[1]?.url || mediaList[0].url}
+                            alt={mediaList[1]?.name || workspace.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
                         )}
-                      </button>
-                    );
-                  })}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                      </div>
+
+                      {/* Bottom Right Image with 'View all photos' button */}
+                      <div
+                        onClick={() => {
+                          setActiveMediaIndex(mediaList.length > 2 ? 2 : 1);
+                          setIsFullscreenGalleryOpen(true);
+                        }}
+                        className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-neutral-100 border border-[#E5E1D8] shadow-xs group cursor-pointer"
+                      >
+                        {mediaList[2]?.type === 'video' ? (
+                          <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
+                            <Video className="w-10 h-10 text-[#2E7D32]" />
+                          </div>
+                        ) : (
+                          <img
+                            src={mediaList[2]?.url || mediaList[1]?.url || mediaList[0].url}
+                            alt={mediaList[2]?.name || workspace.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+
+                        {/* Floating "View all photos" button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsFullscreenGalleryOpen(true);
+                          }}
+                          className="absolute bottom-3 right-3 sm:bottom-3.5 sm:right-3.5 z-10 inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-white/95 hover:bg-white text-[#181F18] border border-black/10 shadow-md text-xs sm:text-sm font-semibold backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                        >
+                          <Images className="w-4 h-4 text-[#181F18]" />
+                          <span>View all photos</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile Single Image Carousel with Prev/Next and View all button */}
+                  <div className="block md:hidden relative h-[300px] sm:h-[360px] w-full rounded-2xl overflow-hidden bg-white border border-[#E5E1D8] shadow-sm group">
+                    <img
+                      src={mediaList[activeMediaIndex]?.url || mediaList[0].url}
+                      alt={mediaList[activeMediaIndex]?.name || workspace.title}
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => setIsFullscreenGalleryOpen(true)}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePrevMedia();
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-[#181F18] flex items-center justify-center shadow-md cursor-pointer"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNextMedia();
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-[#181F18] flex items-center justify-center shadow-md cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsFullscreenGalleryOpen(true);
+                      }}
+                      className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/95 text-[#181F18] border border-black/10 shadow-sm text-xs font-semibold backdrop-blur-md cursor-pointer"
+                    >
+                      <Images className="w-3.5 h-3.5" />
+                      <span>View all</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Single Image View: Exactly matching current single image display with no counter/fullscreen bar above */
+                <div
+                  onClick={() => setIsFullscreenGalleryOpen(true)}
+                  className="relative h-[340px] sm:h-[420px] lg:h-[460px] w-full rounded-3xl overflow-hidden bg-white border border-[#E5E1D8] shadow-sm group cursor-pointer"
+                >
+                  {activeMedia.type === 'video' ? (
+                    <div className="w-full h-full bg-[#181F18] flex items-center justify-center text-white">
+                      <Video className="w-16 h-16 text-[#2E7D32]" />
+                    </div>
+                  ) : (
+                    <img
+                      src={activeMedia.url}
+                      alt={activeMedia.name || workspace.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
                 </div>
               )}
             </section>
 
+            {/* Workspace Title & Category below the Image (as requested in user diagram) */}
+            <div className="pt-1 pb-1 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Category Pill Tag */}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EBF3EB] text-[#1E5C23] border border-[#2E7D32]/30 text-xs font-bold font-mono">
+                  <Layers className="w-3.5 h-3.5 text-[#2E7D32]" />
+                  <span>{cleanCategoryName}</span>
+                </span>
+
+                {/* Location Badge */}
+                {workspace.location && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF9F5] text-[#3D473D] border border-[#DDD7CA] text-xs font-medium">
+                    <MapPin className="w-3.5 h-3.5 text-[#2E7D32]" />
+                    <span>{workspace.location}</span>
+                  </span>
+                )}
+
+                {/* Capacity Badge */}
+                {workspace.capacity && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF9F5] text-[#3D473D] border border-[#DDD7CA] text-xs font-medium font-mono">
+                    <Users className="w-3.5 h-3.5 text-[#2E7D32]" />
+                    <span>{workspace.capacity}</span>
+                  </span>
+                )}
+
+                {/* Availability / Status Indicator */}
+                {!isAvailable ? (
+                  <CountdownBadge targetTimestamp={nextAvailableTimestamp} />
+                ) : workspace.badge ? (
+                  <span className="px-3 py-1 rounded-full bg-[#E65100]/10 text-[#E65100] border border-[#E65100]/30 text-xs font-mono font-bold">
+                    {workspace.badge}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EBF3EB] text-[#2E7D32] border border-[#2E7D32]/25 text-xs font-bold font-mono">
+                    <span className="w-2 h-2 rounded-full bg-[#2E7D32] animate-pulse" />
+                    Available for Reservation
+                  </span>
+                )}
+              </div>
+
+              {/* Workspace Title */}
+              <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#181F18] tracking-tight leading-tight">
+                {workspace.title}
+              </h1>
+            </div>
+
             {/* Mobile Quick Action 'Book Now' Button to Scroll Directly to Booking Form */}
-            <div className="block lg:hidden -mt-4">
+            <div className="block lg:hidden pt-1">
               <button
                 type="button"
                 onClick={scrollToBookingForm}
@@ -764,17 +920,11 @@ export default function WorkspaceDetailsPage() {
 
           </div>
 
-          {/* Right Column: Sticky Instant Reservation Card */}
+          {/* Right Column: Instant Reservation Card (Sticky only on desktop lg+) */}
           <aside
             id="book-section"
             ref={bookingFormRef}
-            style={{
-              position: 'sticky',
-              top: '108px',
-              alignSelf: 'flex-start',
-              zIndex: 20,
-            }}
-            className="lg:col-span-4 scroll-mt-28"
+            className="lg:col-span-4 scroll-mt-36 lg:sticky lg:top-36 lg:self-start lg:z-20"
           >
             <div className="bg-white border border-[#E5E1D8] rounded-3xl p-6 sm:p-7 space-y-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] text-[#181F18]">
               
@@ -782,14 +932,16 @@ export default function WorkspaceDetailsPage() {
                 <span className="text-[11px] uppercase tracking-wider text-[#2E7D32] font-mono font-bold block">
                   INSTANT RESERVATION
                 </span>
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-serif text-2xl font-bold text-[#181F18]">
-                    {workspace.price || 'Contact for Quote'}
-                  </h3>
-                  <span className="text-xs text-[#5C665C] font-mono">
-                    All taxes incl.
-                  </span>
-                </div>
+                {hasValidPrice(workspace.price) && (
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="font-serif text-2xl font-bold text-[#181F18]">
+                      {workspace.price}
+                    </h3>
+                    <span className="text-xs text-[#5C665C] font-mono">
+                      All taxes incl.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Rental Duration Plan Toggle - COMMENTED OUT AS PER USER REQUEST
@@ -814,49 +966,23 @@ export default function WorkspaceDetailsPage() {
               {/* Booking Inputs */}
               <div className="space-y-3.5">
                 
-                {/* Row 1: Start Date & 12-Hour Time */}
-                <div className="space-y-1 text-left">
-                  <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-                    FROM DATE & TIME
-                  </label>
-                  <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-                    <div className="w-full">
+                {isDayPassWorkspace ? (
+                  /* Day Pass: Single Date Selection & Access Hours */
+                  <>
+                    <div className="space-y-1 text-left">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                          DATE (SINGLE DAY ACCESS)
+                        </label>
+                        <span className="text-[10px] font-mono text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded-full font-bold">
+                          1 Day Only
+                        </span>
+                      </div>
                       <MaterialDatePicker
                         value={startDate}
                         minDate={todayDate}
                         onChange={(newDate) => {
                           setStartDate(newDate);
-                          if (newDate > endDate) setEndDate(newDate);
-                          setAvailabilityStatus('idle');
-                        }}
-                        align="left"
-                      />
-                    </div>
-
-                    <div className="w-full">
-                      <MaterialTimePicker
-                        value={startTime}
-                        onChange={(newTime) => {
-                          setStartTime(newTime);
-                          setAvailabilityStatus('idle');
-                        }}
-                        align="right"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 2: End Date & 12-Hour Time */}
-                <div className="space-y-1 text-left">
-                  <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-                    TO DATE & TIME
-                  </label>
-                  <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-                    <div className="w-full">
-                      <MaterialDatePicker
-                        value={endDate}
-                        minDate={startDate || todayDate}
-                        onChange={(newDate) => {
                           setEndDate(newDate);
                           setAvailabilityStatus('idle');
                         }}
@@ -864,18 +990,168 @@ export default function WorkspaceDetailsPage() {
                       />
                     </div>
 
-                    <div className="w-full">
-                      <MaterialTimePicker
-                        value={endTime}
-                        onChange={(newTime) => {
-                          setEndTime(newTime);
+                    <div className="space-y-1 text-left">
+                      <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                        ACCESS HOURS
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[#5C665C] font-medium block">Check-in</span>
+                          <MaterialTimePicker
+                            value={startTime}
+                            onChange={(newTime) => {
+                              setStartTime(newTime);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="left"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[#5C665C] font-medium block">Check-out</span>
+                          <MaterialTimePicker
+                            value={endTime}
+                            onChange={(newTime) => {
+                              setEndTime(newTime);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="right"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : isHourlyWorkspace ? (
+                  /* Hourly: Conference Hall / Meeting Rooms Single Date & Event Hours */
+                  <>
+                    <div className="space-y-1 text-left">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                          EVENT / MEETING DATE
+                        </label>
+                        <span className="text-[10px] font-mono text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded-full font-bold">
+                          Hourly Slot
+                        </span>
+                      </div>
+                      <MaterialDatePicker
+                        value={startDate}
+                        minDate={todayDate}
+                        onChange={(newDate) => {
+                          setStartDate(newDate);
+                          setEndDate(newDate);
                           setAvailabilityStatus('idle');
                         }}
-                        align="right"
+                        align="left"
                       />
                     </div>
-                  </div>
-                </div>
+
+                    <div className="space-y-1 text-left">
+                      <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                        EVENT HOURS
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[#5C665C] font-medium block">Start Time</span>
+                          <MaterialTimePicker
+                            value={startTime}
+                            onChange={(newTime) => {
+                              setStartTime(newTime);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="left"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[#5C665C] font-medium block">End Time</span>
+                          <MaterialTimePicker
+                            value={endTime}
+                            onChange={(newTime) => {
+                              setEndTime(newTime);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="right"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Calculated Total Duration Display */}
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#E5E1D8] text-[11px] mt-1.5">
+                        <span className="text-[#5C665C] font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#2E7D32]" />
+                          <span>Calculated Duration:</span>
+                        </span>
+                        <span className="font-bold text-[#1B5E20] font-mono bg-[#E8F5E9] px-2 py-0.5 rounded-md border border-[#C8E6C9]">
+                          {hourlyDuration.formatted}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Standard Multi-Day Mode: From Date/Time & To Date/Time */
+                  <>
+                    {/* Row 1: Start Date & 12-Hour Time */}
+                    <div className="space-y-1 text-left">
+                      <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                        FROM DATE & TIME
+                      </label>
+                      <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                        <div className="w-full">
+                          <MaterialDatePicker
+                            value={startDate}
+                            minDate={todayDate}
+                            onChange={(newDate) => {
+                              setStartDate(newDate);
+                              if (newDate > endDate) setEndDate(newDate);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="left"
+                          />
+                        </div>
+
+                        <div className="w-full">
+                          <MaterialTimePicker
+                            value={startTime}
+                            onChange={(newTime) => {
+                              setStartTime(newTime);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="right"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 2: End Date & 12-Hour Time */}
+                    <div className="space-y-1 text-left">
+                      <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
+                        TO DATE & TIME
+                      </label>
+                      <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
+                        <div className="w-full">
+                          <MaterialDatePicker
+                            value={endDate}
+                            minDate={startDate || todayDate}
+                            onChange={(newDate) => {
+                              setEndDate(newDate);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="left"
+                          />
+                        </div>
+
+                        <div className="w-full">
+                          <MaterialTimePicker
+                            value={endTime}
+                            onChange={(newTime) => {
+                              setEndTime(newTime);
+                              setAvailabilityStatus('idle');
+                            }}
+                            align="right"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Check Availability Action Button */}
                 <div className="pt-0.5">
@@ -953,25 +1229,54 @@ export default function WorkspaceDetailsPage() {
 
               </div>
 
-              {/* Price Breakdown Preview */}
-              <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-2 text-xs text-[#5C665C]">
-                <div className="flex justify-between">
-                  <span>Base Workspace Rate</span>
-                  <span className="font-medium text-[#181F18]">{workspace.price || 'Custom Quote'}</span>
+              {/* Price Breakdown Preview - Completely hidden if workspace price is optional / not set */}
+              {hasValidPrice(workspace.price) && (
+                <div style={{ fontFamily: 'Tahoma, sans-serif' }} className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-2 text-xs text-[#5C665C]">
+                  {isHourlyWorkspace ? (
+                    <>
+                      <div className="flex justify-between items-center pb-1.5 border-b border-[#E5E1D8]">
+                        <span className="font-semibold text-[#181F18]">Hourly Rate (1 hr):</span>
+                        <span className="font-bold text-[#181F18]">₹ {numericPrice.toLocaleString('en-IN')} / hr</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-[#E8F5E9] px-2 py-1 rounded-lg border border-[#C8E6C9]">
+                        <span className="font-semibold text-[#1B5E20]">Selected Duration:</span>
+                        <span className="font-bold font-mono text-[#1B5E20]">{hourlyDuration.formatted}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Base Rate ({hourlyDuration.formatted}):</span>
+                        <span className="font-semibold text-[#181F18]">₹ {hourlyCalculatedTotal.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Botanical Concierge Service:</span>
+                        <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                      </div>
+                      <div style={{ fontFamily: 'Tahoma, sans-serif' }} className="pt-2 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]">
+                        <span>Total Estimated:</span>
+                        <span className="text-base text-[#2E7D32] font-bold">₹ {hourlyCalculatedTotal.toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span>Base Workspace Rate:</span>
+                        <span className="font-medium text-[#181F18]">{workspace.price}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Botanical Concierge Service:</span>
+                        <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>High-Speed Fiber & Power Backup:</span>
+                        <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                      </div>
+                      <div style={{ fontFamily: 'Tahoma, sans-serif' }} className="pt-2 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]">
+                        <span>Total Estimated:</span>
+                        <span className="text-base text-[#2E7D32] font-bold">{workspace.price}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span>Botanical Concierge Service</span>
-                  <span className="text-[#2E7D32] font-semibold">Included Free</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>High-Speed Fiber & Power Backup</span>
-                  <span className="text-[#2E7D32] font-semibold">Included Free</span>
-                </div>
-                <div className="pt-2 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]">
-                  <span>Total Estimated</span>
-                  <span>{workspace.price || 'Flexible'}</span>
-                </div>
-              </div>
+              )}
 
               {/* Direct Booking CTA */}
               <div className="space-y-3">
@@ -1052,6 +1357,11 @@ export default function WorkspaceDetailsPage() {
                   <Link
                     key={rel.id}
                     href={`/book-space/${rel.id}`}
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem(`ws_cache_${rel.id}`, JSON.stringify(rel));
+                      } catch (_) {}
+                    }}
                     className="bg-white rounded-3xl border border-[#E5E1D8] overflow-hidden shadow-sm hover:shadow-md hover:border-[#2E7D32]/40 transition-all group relative"
                   >
                     {!isRelAvailable ? (
@@ -1066,11 +1376,17 @@ export default function WorkspaceDetailsPage() {
                       </div>
                     ) : null}
                     <div className="h-44 overflow-hidden bg-[#FAF9F5] relative">
-                      <img
-                        src={rel.mediaUrls?.[0]?.url || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80'}
-                        alt={rel.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      {rel.mediaUrls?.[0]?.url ? (
+                        <img
+                          src={rel.mediaUrls[0].url}
+                          alt={rel.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#FAF9F5] text-[#2E7D32]/40">
+                          <Building2 className="w-10 h-10" />
+                        </div>
+                      )}
                     </div>
                     <div className="p-4 space-y-2">
                       <span className="text-[10px] font-bold text-[#2E7D32] uppercase tracking-wider font-mono">
@@ -1079,9 +1395,11 @@ export default function WorkspaceDetailsPage() {
                       <h4 className="font-serif font-bold text-base text-[#181F18] group-hover:text-[#2E7D32] transition-colors line-clamp-1">
                         {rel.title}
                       </h4>
-                      <span className="text-xs font-bold text-[#181F18] block">
-                        {rel.price || 'Flexible'}
-                      </span>
+                      {hasValidPrice(rel.price) && (
+                        <span className="text-xs font-bold text-[#181F18] block">
+                          {rel.price}
+                        </span>
+                      )}
                     </div>
                   </Link>
                 );
@@ -1244,5 +1562,22 @@ export default function WorkspaceDetailsPage() {
       )}
 
     </div>
+  );
+}
+
+export default function WorkspaceDetailsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="bg-white min-h-screen text-[#181F18] flex items-center justify-center pt-24">
+          <div className="text-center space-y-4">
+            <div className="w-12 h-12 border-3 border-[#2E7D32] border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="font-serif text-lg text-[#5C665C]">Loading workspace sanctuary...</p>
+          </div>
+        </div>
+      }
+    >
+      <WorkspaceDetailsContent />
+    </React.Suspense>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Play, Phone, MapPin, Users, Layers, Compass, Sparkles, Calendar, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { DayPassDatePickerPopover } from '@/components/ui/DayPassDatePickerPopover';
 
 const FEATURE_PILLS = [
   {
@@ -97,13 +98,15 @@ export const FinalCTA: React.FC = () => {
               </Link>
 
               {/* Button 2: Book a Day Pass */}
-              <Link
-                href="/book-space?plan=day-pass"
-                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] border border-[#4ADE80]/30 transition-all duration-200 active:scale-95 group"
-              >
-                <Calendar className="w-4 h-4 text-[#86EFAC] group-hover:scale-110 transition-transform" />
-                <span>Book a Day Pass</span>
-              </Link>
+              <DayPassDatePickerPopover align="center">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] border border-[#4ADE80]/30 transition-all duration-200 active:scale-95 group cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4 text-[#86EFAC] group-hover:scale-110 transition-transform" />
+                  <span>Book a Day Pass</span>
+                </button>
+              </DayPassDatePickerPopover>
 
               {/* Button 3: Book Conference Hall */}
               <Link

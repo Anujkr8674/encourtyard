@@ -1,147 +1,382 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Monitor, Users, Clock, Coffee, ShieldCheck, Sparkles, ArrowRight, Mic, Video, Cast } from 'lucide-react';
-import { MEETING_ROOMS, FAQS } from '@/lib/data';
-import { MeetingRoomCard } from '@/components/meeting-rooms/MeetingRoomCard';
+import { useRouter } from 'next/navigation';
+import {
+  Users,
+  Clock,
+  Sparkles,
+  Check,
+  ArrowRight,
+  Building2,
+  Lock,
+  LogIn,
+  UserPlus,
+  X,
+  Layers,
+  MapPin,
+} from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { CountdownBadge } from '@/components/ui/CountdownBadge';
 import { Accordion } from '@/components/ui/Accordion';
-import { Button } from '@/components/ui/Button';
+
+interface SpecItem {
+  key: string;
+  value: string;
+}
+
+interface MediaItem {
+  url: string;
+  type: 'image' | 'video';
+  name: string;
+}
+
+interface Workspace {
+  id: string;
+  title: string;
+  slug: string;
+  categoryId: string;
+  categoryName: string;
+  shortDescription: string;
+  longDescription?: string | null;
+  specifications: SpecItem[];
+  mediaUrls: MediaItem[];
+  price?: string | null;
+  capacity?: string | null;
+  location?: string | null;
+  badge?: string | null;
+  order: number;
+  isActive: boolean;
+  bookings?: { startDate: string; endDate: string; startTime: string; endTime: string }[];
+  maintenanceBlocks?: { startDate: string; endDate: string; startTime: string; endTime: string }[];
+}
+
+
+function parseBookingDateTime(dateStr: string, timeStr: string): number {
+  if (!dateStr || !timeStr) return 0;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const timeRegex = /(\d{1,2}):(\d{2})\s*(AM|PM)/i;
+  const match = timeStr.match(timeRegex);
+  if (!match) return 0;
+
+  let [_, hoursStr, minsStr, modifier] = match;
+  let hours = parseInt(hoursStr, 10);
+  const mins = parseInt(minsStr, 10);
+
+  if (modifier.toUpperCase() === 'PM' && hours < 12) hours += 12;
+  if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+  return new Date(year, month - 1, day, hours, mins).getTime();
+}
+
+function checkWorkspaceAvailability(
+  workspace: Workspace,
+  userStartDate: string,
+  userStartTime: string,
+  userEndDate: string,
+  userEndTime: string
+): { isAvailable: boolean; nextAvailableTimestamp?: number } {
+  const combinedBlocks = [...(workspace.bookings || []), ...(workspace.maintenanceBlocks || [])];
+  if (combinedBlocks.length === 0) return { isAvailable: true };
+
+  const userStart = parseBookingDateTime(userStartDate, userStartTime);
+  const userEnd = parseBookingDateTime(userEndDate, userEndTime);
+  if (!userStart || !userEnd) return { isAvailable: true };
+
+  let isAvail = true;
+  let maxEndTime = 0;
+
+  for (const b of combinedBlocks) {
+    const bStart = parseBookingDateTime(b.startDate, b.startTime);
+    const bEnd = parseBookingDateTime(b.endDate, b.endTime);
+    if (!bStart || !bEnd) continue;
+
+    if (userStart < bEnd && userEnd > bStart) {
+      isAvail = false;
+      if (bEnd > maxEndTime) maxEndTime = bEnd;
+    }
+  }
+
+  if (!isAvail) {
+    return { isAvailable: false, nextAvailableTimestamp: maxEndTime };
+  }
+  return { isAvailable: true };
+}
 
 export default function MeetingRoomsPage() {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedWorkspaceForAuth, setSelectedWorkspaceForAuth] = useState<Workspace | null>(null);
+  const defaultStartTime = '09:00 AM';
+  const defaultEndTime = '06:00 PM';
+
+  // Fetch workspaces from API and filter ONLY the "Meeting Rooms" category offices from live database
+  useEffect(() => {
+    const fetchMeetingRooms = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/workspaces', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.workspaces)) {
+            // Strictly filter workspaces belonging to Meeting Rooms category
+            const meetingOnly = data.workspaces.filter((ws: any) => {
+              const catName = (ws.categoryName || '').toLowerCase().trim();
+              const catId = (ws.categoryId || '').toLowerCase().trim();
+
+              return (
+                catName.includes('meeting') ||
+                catId === 'cat-1789845784650'
+              );
+            });
+            setWorkspaces(meetingOnly);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch meeting rooms workspaces:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMeetingRooms();
+  }, []);
+
+
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Today's date (YYYY-MM-DD)
+  const todayDate = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
+  const handleBookNow = (ws: Workspace) => {
+    try {
+      sessionStorage.setItem(`ws_cache_${ws.id}`, JSON.stringify(ws));
+    } catch (_) {}
+    const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&plan=hourly&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`;
+    if (user || isAuthenticated) {
+      router.push(targetUrl);
+    } else {
+      setSelectedWorkspaceForAuth(ws);
+      setShowAuthModal(true);
+    }
+  };
+
   const meetingFaqs = [
     {
       id: 'mr-1',
       question: 'Do I need to be an EnCourtyard member to book a meeting room?',
-      answer: 'No. Our executive meeting rooms, collaboration pods, and Glass Pavilion Hall are available for both EnCourtyard members and external corporate clients. Members receive discounted booking rates and monthly credit allocations.'
+      answer: 'No. Our executive meeting rooms, collaboration pods, and boardroom suites are open to both EnCourtyard members and external corporate clients. Members receive discounted booking rates and monthly credit allocations.'
     },
     {
       id: 'mr-2',
-      question: 'What AV equipment and cables are provided in the room?',
-      answer: 'Every room is fully equipped with Sony 4K commercial displays, Neat Bar Pro AI cameras with auto-speaker framing, Shure ceiling beamforming microphones, and wireless screencasting via Apple AirPlay, Miracast, and HDMI.'
+      question: 'What AV equipment and presentation displays are provided in the room?',
+      answer: 'Every room is fully equipped with Sony 4K commercial displays, Neat Bar Pro AI video conferencing with auto-speaker framing, Shure ceiling beamforming microphones, and wireless screencasting via Apple AirPlay, Miracast, and HDMI.'
     },
     {
       id: 'mr-3',
-      question: 'Can you provide catering and barista coffee for our meetings?',
-      answer: 'Yes! Our on-site botanical café can provide customized artisanal coffee service, pastries, organic lunch platters, and sparkling refreshments delivered directly to your meeting room at scheduled times.'
+      question: 'Can you provide artisanal barista coffee and executive catering for our meetings?',
+      answer: 'Yes! Our on-site botanical café provides customized artisanal espresso service, herbal teas, organic breakfast spreads, and hot lunch platters delivered directly to your meeting room at scheduled intervals.'
     },
     {
       id: 'mr-4',
-      question: 'What is the cancellation policy for meeting room reservations?',
+      question: 'What is the cancellation and rescheduling policy for meeting rooms?',
       answer: 'Meeting rooms can be cancelled or rescheduled with zero penalty up to 24 hours prior to the scheduled reservation start time.'
     }
   ];
 
-  const avHighlights = [
-    {
-      icon: <Video className="w-6 h-6 text-[#2E7D32]" />,
-      title: 'Neat AI Smart Video Conferencing',
-      description: 'Auto-framing and noise cancellation ensure every participant is seen and heard with studio fidelity.'
-    },
-    {
-      icon: <Mic className="w-6 h-6 text-[#263626]" />,
-      title: 'Shure Beamforming Ceiling Mics',
-      description: 'Crystal-clear acoustic pickup from any corner of the room without cluttered tabletop microphone cables.'
-    },
-    {
-      icon: <Cast className="w-6 h-6 text-[#C29B38]" />,
-      title: 'One-Touch Wireless Screen Casting',
-      description: 'Instant wireless sharing from MacBook, Windows, iPad, or Android with zero software dongles required.'
-    },
-    {
-      icon: <Coffee className="w-6 h-6 text-[#C05621]" />,
-      title: 'Barista Service & Butler Button',
-      description: 'Direct in-room call button for on-demand espresso, herbal teas, and executive catering refreshes.'
-    }
-  ];
-
   return (
-    <div className="bg-white min-h-screen">
-      {/* Page Hero with Clean White Canvas */}
-      <section className="bg-white text-[#181F18] pt-32 pb-16 border-b border-[#E5E1D8] relative overflow-hidden">
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-semibold text-[#2E7D32]">
-              <Monitor className="w-3.5 h-3.5" />
-              <span>Smart Meeting & Event Suites</span>
-            </div>
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#181F18] leading-[1.12]">
-              Architectural rooms engineered for impactful decisions.
-            </h1>
-            <p className="text-base sm:text-lg text-[#5C665C] leading-relaxed font-sans">
-              From high-stakes 16-person executive boardrooms to 70-person keynote amphitheaters, experience seamless AV tech, acoustic privacy, and concierge hospitality.
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="bg-white min-h-screen text-[#181F18] font-sans">
+      
+      {/* ========================================================================= */}
+      {/* MEETING ROOMS CATALOG (Direct load of office cards)                       */}
+      {/* ========================================================================= */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 lg:pt-36 pb-16">
 
-      {/* Meeting Rooms Catalog Grid */}
-      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
-              Available Meeting & Presentation Suites
-            </h2>
-            <p className="text-xs sm:text-sm text-[#5C665C] mt-1">
-              Select a room below to view equipment specifications or request static reservation hold.
-            </p>
-          </div>
-          <div className="text-xs font-mono text-[#5C665C] bg-[#F2EEE7] px-3.5 py-1.5 rounded-full border border-[#E5E1D8] hidden sm:block font-medium">
-            Sony 4K Displays & Fiber Included
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {MEETING_ROOMS.map((room) => (
-            <MeetingRoomCard key={room.id} room={room} />
-          ))}
-        </div>
-      </section>
-
-      {/* AV Technology & Smart Suite Specs */}
-      <section className="py-20 bg-white border-y border-[#E5E1D8]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
-              Broadcast Grade AV Suite
-            </span>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#181F18]">
-              Technology that gets out of your way
-            </h2>
-            <p className="text-base sm:text-lg text-[#5C665C]">
-              No confusing remotes or awkward video delays. Start hybrid video meetings in under 10 seconds with single-tap controls.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {avHighlights.map((item, idx) => (
-              <div
-                key={idx}
-                className="bg-white p-7 rounded-2xl border border-[#E5E1D8] shadow-warm hover:shadow-warm-lg hover:border-[#263626] transition-all transform hover:-translate-y-1"
-              >
-                <div className="w-12 h-12 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] flex items-center justify-center mb-4">
-                  {item.icon}
-                </div>
-                <h3 className="font-serif text-lg font-bold text-[#181F18] mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-[#5C665C] leading-relaxed">
-                  {item.description}
-                </p>
+        {/* Loading State */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {[1, 2].map((n) => (
+              <div key={n} className="bg-white rounded-3xl border border-[#E5E1D8] overflow-hidden shadow-sm p-6 space-y-4 animate-pulse">
+                <div className="h-64 bg-[#EAE5DB] rounded-2xl" />
+                <div className="h-6 bg-[#EAE5DB] rounded w-2/3" />
+                <div className="h-4 bg-[#EAE5DB] rounded w-full" />
+                <div className="h-10 bg-[#EAE5DB] rounded-xl" />
               </div>
             ))}
           </div>
-        </div>
+        ) : workspaces.length === 0 ? (
+          <div className="text-center py-16 bg-[#FAF9F5] rounded-3xl border border-[#E5E1D8]">
+            <Building2 className="w-12 h-12 text-[#738273] mx-auto mb-3" />
+            <h3 className="font-serif text-xl font-bold text-[#181F18]">No Meeting Rooms Found</h3>
+            <p className="text-xs sm:text-sm text-[#5C665C] mt-1 max-w-md mx-auto">
+              No workspaces are currently assigned to the Meeting Rooms category in the database.
+            </p>
+          </div>
+        ) : (
+          /* 2-Column Wide Grid matching Conference Hall layout */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {workspaces.map((ws) => {
+              const firstMedia = ws.mediaUrls?.[0];
+              const { isAvailable, nextAvailableTimestamp } = checkWorkspaceAvailability(
+                ws,
+                todayDate,
+                defaultStartTime,
+                todayDate,
+                defaultEndTime
+              );
+
+              return (
+                <div
+                  key={ws.id}
+                  className="bg-white hover:bg-[#2D3E2D] rounded-3xl border border-[#E0DCD3] hover:border-[#4ADE80]/50 shadow-sm hover:shadow-2xl transition-all duration-300 flex flex-col justify-between overflow-hidden group font-sans cursor-pointer hover:-translate-y-1"
+                >
+                  {/* Top Image Container */}
+                  <div>
+                    <div className="relative h-64 sm:h-72 w-full overflow-hidden bg-[#EAE5DB]">
+                      <img
+                        src={
+                          firstMedia?.url ||
+                          'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80'
+                        }
+                        alt={ws.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out select-none"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80';
+                        }}
+                      />
+
+                      {/* Top Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                      {/* Category Badge */}
+                      <div className="absolute top-4 left-4 flex flex-wrap gap-2 z-10">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-[#181F18] text-xs font-bold shadow-xs">
+                          <Layers className="w-3.5 h-3.5 text-[#2E7D32]" />
+                          <span>{ws.categoryName || 'Meeting Rooms'}</span>
+                        </span>
+
+                        {!isAvailable ? (
+                          <CountdownBadge targetTimestamp={nextAvailableTimestamp} className="!text-[10px] !px-2.5 !py-0.5" />
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-xs bg-emerald-500/90 text-white">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            <span>Available Today</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Bottom Bar on Image: Price & Capacity */}
+                      <div className="absolute bottom-4 left-4 right-4 text-white flex items-center justify-between z-10">
+                        <span className="font-serif font-bold text-base text-white drop-shadow-md bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg border border-white/20">
+                          {ws.price || 'Hourly Rate'}
+                        </span>
+                        {ws.capacity && (
+                          <span className="flex items-center gap-1.5 text-xs font-semibold drop-shadow-md px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs border border-white/20 text-[#4ADE80]">
+                            <Users className="w-3.5 h-3.5" />
+                            <span>{ws.capacity} Pax</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Information */}
+                    <div className="p-6 sm:p-7 space-y-3.5">
+                      <div>
+                        <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#181F18] group-hover:text-white transition-colors leading-snug">
+                          {ws.title}
+                        </h3>
+                        {ws.location && (
+                          <div className="flex items-center gap-1.5 text-xs text-[#5C665C] group-hover:text-[#D1E0D1] mt-1 transition-colors">
+                            <MapPin className="w-3.5 h-3.5 text-[#2E7D32] group-hover:text-[#4ADE80]" />
+                            <span>{ws.location}</span>
+                          </div>
+                        )}
+                        <p className="text-xs sm:text-sm text-[#5C665C] group-hover:text-[#D1E0D1] line-clamp-2 mt-2 leading-relaxed transition-colors min-h-[38px]">
+                          {ws.shortDescription}
+                        </p>
+                      </div>
+
+                      {/* Specifications Snippet */}
+                      {ws.specifications && ws.specifications.length > 0 && (
+                        <div className="pt-3 border-t border-[#E5E1D8] group-hover:border-white/15 flex flex-wrap gap-2 text-xs transition-colors">
+                          {ws.specifications.slice(0, 3).map((spec, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#FAF9F5] group-hover:bg-[#1E2B1E] border border-[#E5E1D8] group-hover:border-[#4ADE80]/30 text-[#334133] group-hover:text-[#E3EBE3] transition-colors text-[11px] font-mono"
+                            >
+                              <Check className="w-3 h-3 text-[#2E7D32] group-hover:text-[#4ADE80] transition-colors" />
+                              <span>
+                                {spec.key}: {spec.value}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Action Buttons (Identical Booking Features as Conference Hall) */}
+                  <div className="p-6 pt-0 flex items-center gap-3 border-t border-[#E5E1D8]/60 group-hover:border-white/15 pt-4 mt-2 transition-colors">
+                    {/* 1. Details Button -> navigates to /book-space/[id] with hourly plan */}
+                    <Link
+                      href={`/book-space/${ws.id}?plan=hourly&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`}
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem(`ws_cache_${ws.id}`, JSON.stringify(ws));
+                        } catch (_) {}
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] group-hover:bg-white/10 group-hover:hover:bg-white/20 text-[#181F18] group-hover:text-white border border-[#D5D0C5] group-hover:border-white/30 text-xs font-bold text-center transition-all duration-200 active:scale-95 shadow-2xs"
+                    >
+                      Details
+                    </Link>
+
+                    {/* 2. Book Now Button -> triggers auth check if guest, else navigates to /book with hourly plan */}
+                    <button
+                      type="button"
+                      disabled={!isAvailable}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (!isAvailable) return;
+                        handleBookNow(ws);
+                      }}
+                      className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                        !isAvailable
+                          ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
+                          : 'bg-[#2E7D32] hover:bg-[#1E5C23] text-white hover:shadow-md active:scale-95 cursor-pointer'
+                      }`}
+                    >
+                      <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
+                    </button>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {/* Meeting Rooms FAQ Section */}
+
+      {/* ========================================================================= */}
+      {/* 4. MEETING ROOMS FAQS                                                     */}
+      {/* ========================================================================= */}
       <section className="py-20 lg:py-28 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14 space-y-2">
-          <span className="text-xs uppercase font-mono tracking-widest text-[#263626] font-semibold">
-            Reservation Inquiries
-          </span>
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#181F18]">
-            Meeting Room FAQs
+            Frequently Asked Questions
           </h2>
         </div>
 
@@ -149,26 +384,106 @@ export default function MeetingRoomsPage() {
           <Accordion items={meetingFaqs} defaultOpenIndex={0} />
         </div>
 
-        {/* Schedule a Visit Banner */}
+        {/* Schedule a Walkthrough Banner */}
         <div className="mt-14 p-8 sm:p-10 bg-[#263626] text-white rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl border border-[#3A4D3A]">
           <div>
             <h4 className="font-serif text-2xl font-bold text-white">
-              Want a walkthrough of our meeting facilities?
+              Want a private technical inspection of our meeting rooms?
             </h4>
             <p className="text-xs sm:text-sm text-[#C5D5C5] mt-1">
-              Test the acoustics and video conferencing firsthand with our technical team.
+              Test the acoustics, 4K displays, and AI video bars firsthand with our AV engineering team.
             </p>
           </div>
-          <Button
-            href="/about#visit-form"
-            variant="white"
-            size="md"
-            icon={<ArrowRight className="w-4 h-4" />}
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-2 bg-[#185ADB] hover:bg-[#144BB8] text-white font-semibold text-xs sm:text-sm rounded-full px-6 py-3 shadow-md transition-all shrink-0 cursor-pointer"
           >
-            Schedule a Visit
-          </Button>
+            <span>Schedule a Visit</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </section>
+
+      {/* ========================================================================= */}
+      {/* 5. AUTH CHECK MODAL (Same as /conference-hall and /book-space)             */}
+      {/* ========================================================================= */}
+      {showAuthModal && selectedWorkspaceForAuth && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => {
+              setShowAuthModal(false);
+              setSelectedWorkspaceForAuth(null);
+            }}
+          />
+
+          <div className="relative z-10 w-full max-w-md bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-center animate-scaleUp font-sans">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAuthModal(false);
+                setSelectedWorkspaceForAuth(null);
+              }}
+              className="absolute top-4.5 right-4.5 p-2 rounded-full text-gray-400 hover:text-[#181F18] hover:bg-gray-100 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="relative w-20 h-20 mx-auto mb-5 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-[#E8F5E9] border-2 border-[#C8E6C9] text-[#2E7D32] flex items-center justify-center shadow-[0_0_25px_rgba(46,125,50,0.25)] animate-scaleUp">
+                <Lock className="w-8 h-8 stroke-[2.2]" />
+              </div>
+            </div>
+
+            <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] tracking-tight mb-2">
+              Sign In Required
+            </h3>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF9F5] border border-[#E5E1D8] text-xs text-[#2E7D32] mb-3 max-w-full">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="font-bold truncate max-w-[200px]">{selectedWorkspaceForAuth.title}</span>
+              <span className="text-[#8A968A]">•</span>
+              <span className="capitalize font-semibold text-[#181F18]">{selectedWorkspaceForAuth.categoryName}</span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-[#5C665C] leading-relaxed mb-6">
+              You must be signed in to reserve this meeting room so our team can coordinate your AV equipment, assign your guest pass, and issue your booking confirmation.
+            </p>
+
+            <div className="space-y-2.5">
+              <Link
+                href={`/login?redirect=${encodeURIComponent(`/book?workspace=${encodeURIComponent(selectedWorkspaceForAuth.id)}&plan=hourly&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`)}`}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#185ADB] hover:bg-[#144BB8] text-white font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In to Continue</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              <Link
+                href={`/signup?redirect=${encodeURIComponent(`/book?workspace=${encodeURIComponent(selectedWorkspaceForAuth.id)}&plan=hourly&startDate=${todayDate}&endDate=${todayDate}&startTime=${encodeURIComponent(defaultStartTime)}&endTime=${encodeURIComponent(defaultEndTime)}`)}`}
+                className="w-full py-3 px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EAE5DC] text-[#181F18] border border-[#E0DCD3] hover:border-[#181F18]/40 font-bold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 text-[#185ADB]" />
+                <span>Create Corporate Account</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setSelectedWorkspaceForAuth(null);
+                }}
+                className="w-full pt-2 text-xs text-[#5C665C] hover:text-[#181F18] font-medium transition-colors cursor-pointer"
+              >
+                Continue Browsing Meeting Rooms
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

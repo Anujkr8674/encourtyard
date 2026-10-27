@@ -27,7 +27,9 @@ import {
 } from 'lucide-react';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
+import { hasValidPrice, calculateHourlyDuration } from '@/lib/availability';
 import { FeedbackModal } from '@/components/ui/FeedbackModal';
+import { notifyBookingChange } from '@/lib/realtimeBookings';
 
 interface WorkspaceData {
   id: string;
@@ -41,6 +43,9 @@ interface WorkspaceData {
   capacity?: string | null;
   location?: string | null;
   badge?: string | null;
+  gstPercent?: number | string;
+  specifications?: { key: string; value: string }[];
+  showInDayPass?: boolean;
   mediaUrls?: { url: string; type: string; name: string }[];
 }
 
@@ -86,12 +91,149 @@ function BookPageContent() {
   const [guestCount, setGuestCount] = useState(isNaN(guestsParam) ? 1 : guestsParam);
   const [specialRequests, setSpecialRequests] = useState('');
 
-  // Workspace & Auth State
-  const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
+  // Workspace & Auth State - Instantly initialize from sessionStorage cache if available (0ms delay)
+  const [workspace, setWorkspace] = useState<WorkspaceData | null>(() => {
+    if (typeof window !== 'undefined' && workspaceParam) {
+      try {
+        const cached = sessionStorage.getItem(`ws_cache_${workspaceParam}`);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && workspaceParam) {
+      try {
+        const cached = sessionStorage.getItem(`ws_cache_${workspaceParam}`);
+        if (cached) return false;
+      } catch (_) {}
+    }
+    return true;
+  });
   const [submitting, setSubmitting] = useState(false);
+
+  // Pricing & GST Calculation
+  const numericPrice = useMemo(() => {
+    if (!workspace?.price) return 0;
+    const clean = String(workspace.price).replace(/[^0-9.]/g, '');
+    return parseFloat(clean) || 0;
+  }, [workspace?.price]);
+
+  const priceUnit = useMemo(() => {
+    if (!workspace?.price) return '';
+    const lower = String(workspace.price).toLowerCase();
+    if (lower.includes('/ day') || lower.includes('day')) return '/ day';
+    if (lower.includes('/ hr') || lower.includes('hr') || lower.includes('hour')) return '/ hr';
+    if (lower.includes('/ month') || lower.includes('month')) return '/ month';
+    return '';
+  }, [workspace?.price]);
+
+  const gstPercent = useMemo(() => {
+    if ((workspace as any)?.gstPercent) {
+      return Number((workspace as any).gstPercent) || 18;
+    }
+    const spec = workspace?.specifications?.find(
+      (s: any) => s.key === 'gstPercent' || s.key === 'GST %' || s.key === 'gstRate'
+    );
+    return spec ? parseFloat(spec.value) || 18 : 18;
+  }, [workspace]);
+
+  const gstAmount = useMemo(() => {
+    return Math.round((numericPrice * gstPercent) / 100);
+  }, [numericPrice, gstPercent]);
+
+  const totalPerUnitWithGst = useMemo(() => {
+    return numericPrice + gstAmount;
+  }, [numericPrice, gstAmount]);
+
+  const isPriced = useMemo(() => {
+    return hasValidPrice(workspace?.price);
+  }, [workspace?.price]);
+
+  const isMeetingWorkspace = useMemo(() => {
+    const cat = (workspace?.categoryName || '').toLowerCase();
+    const title = (workspace?.title || '').toLowerCase();
+    return cat.includes('meeting') || title.includes('meeting') || workspace?.categoryId === 'cat-1789845784650';
+  }, [workspace]);
+
+  const isConfrWorkspace = useMemo(() => {
+    const cat = (workspace?.categoryName || '').toLowerCase();
+    const title = (workspace?.title || '').toLowerCase();
+    return cat.includes('confr') || title.includes('confr') || cat.includes('conference') || title.includes('conference') || workspace?.categoryId === '1ac79bff-71f9-4924-8091-f07c9ae1ec06';
+  }, [workspace]);
+
+  const isHourlyWorkspace = useMemo(() => {
+    return rentalPlan === 'hourly' || planParam === 'hourly' || isMeetingWorkspace || isConfrWorkspace;
+  }, [rentalPlan, planParam, isMeetingWorkspace, isConfrWorkspace]);
+
+  const isDayPassWorkspace = useMemo(() => {
+    if (isHourlyWorkspace) return false;
+    const cat = (workspace?.categoryName || '').toLowerCase();
+    const title = (workspace?.title || '').toLowerCase();
+    return (
+      rentalPlan === 'daily' ||
+      planParam === 'daily' ||
+      Boolean((workspace as any)?.showInDayPass) ||
+      cat.includes('day pass') ||
+      title.includes('day pass') ||
+      title.includes('hot desk') ||
+      workspace?.categoryId === 'ee0ebc73-e2ba-4534-bccb-e228400bd967'
+    );
+  }, [rentalPlan, planParam, isHourlyWorkspace, workspace]);
+
+  // Dynamic duration calculation for hourly reservations (Conference Hall & Meeting Rooms)
+  const hourlyDuration = useMemo(() => {
+    return calculateHourlyDuration(startTime, endTime);
+  }, [startTime, endTime]);
+
+  const hourlyBaseAmount = useMemo(() => {
+    if (!numericPrice || !isHourlyWorkspace) return numericPrice;
+    return Math.round((numericPrice * hourlyDuration.totalMinutes) / 60);
+  }, [numericPrice, isHourlyWorkspace, hourlyDuration.totalMinutes]);
+
+  const hourlyGstAmount = useMemo(() => {
+    return Math.round((hourlyBaseAmount * gstPercent) / 100);
+  }, [hourlyBaseAmount, gstPercent]);
+
+  const hourlyTotalWithGst = useMemo(() => {
+    return hourlyBaseAmount + hourlyGstAmount;
+  }, [hourlyBaseAmount, hourlyGstAmount]);
+
+  // Active pricing values based on workspace type
+  const activeBaseAmount = isHourlyWorkspace ? hourlyBaseAmount : numericPrice;
+  const activeGstAmount = isHourlyWorkspace ? hourlyGstAmount : gstAmount;
+  const activeGrandTotal = isHourlyWorkspace ? hourlyTotalWithGst : totalPerUnitWithGst;
+
+  // Synchronize single-day date lock for Hourly and Day Pass workspaces
+  useEffect(() => {
+    if (isHourlyWorkspace || isDayPassWorkspace) {
+      if (startDate && endDate !== startDate) {
+        setEndDate(startDate);
+      }
+    }
+  }, [isHourlyWorkspace, isDayPassWorkspace, startDate, endDate]);
+
+  const isEligiblePaymentOffice = useMemo(() => {
+    if (!isPriced) return false;
+    const cat = (workspace?.categoryName || '').toLowerCase();
+    const title = (workspace?.title || '').toLowerCase();
+    const plan = (rentalPlan || '').toLowerCase();
+    return (
+      cat.includes('day pass') ||
+      title.includes('day pass') ||
+      plan === 'daily' ||
+      cat.includes('meeting') ||
+      title.includes('meeting') ||
+      cat.includes('confr') ||
+      title.includes('confr') ||
+      cat.includes('boardroom') ||
+      (workspace as any)?.showInDayPass === true
+    );
+  }, [workspace, rentalPlan, isPriced]);
 
   // Modals & Feedback State
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -140,42 +282,43 @@ function BookPageContent() {
     checkAuth();
   }, []);
 
-  // 2. Fetch Workspace Details
+  // 2. Fetch Workspace Details - Directly from DB without any fake fallback
   useEffect(() => {
-    const fetchWorkspace = async () => {
-      try {
-        setLoading(true);
-        if (workspaceParam) {
-          const res = await fetch(`/api/workspaces/${workspaceParam}`, { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.success && data.workspace) {
-              setWorkspace(data.workspace);
-            }
-          }
-        }
+    let isMounted = true;
 
-        // Fallback to fetching all workspaces if specific one not loaded
-        if (!workspace) {
-          const allRes = await fetch('/api/workspaces', { cache: 'no-store' });
-          if (allRes.ok) {
-            const allData = await allRes.json();
-            if (allData.success && Array.isArray(allData.workspaces) && allData.workspaces.length > 0) {
-              const matched = allData.workspaces.find(
-                (w: WorkspaceData) => w.id === workspaceParam || w.slug === workspaceParam
-              );
-              setWorkspace(matched || allData.workspaces[0]);
-            }
+    const fetchWorkspace = async () => {
+      if (!workspaceParam) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/workspaces/${encodeURIComponent(workspaceParam)}`, {
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data && data.success && data.workspace) {
+            setWorkspace(data.workspace);
+            try {
+              sessionStorage.setItem(`ws_cache_${workspaceParam}`, JSON.stringify(data.workspace));
+            } catch (_) {}
+            setLoading(false);
+            return;
           }
         }
       } catch (err) {
         console.error('Error fetching workspace for booking:', err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchWorkspace();
+
+    return () => {
+      isMounted = false;
+    };
   }, [workspaceParam]);
 
   // Adjust end date based on rental plan
@@ -211,6 +354,64 @@ function BookPageContent() {
       return;
     }
 
+    // If Day Pass, Meeting Rooms, or Conference Hall -> Redirect to QR Payment Page
+    if (isEligiblePaymentOffice) {
+      const grandTotal = activeGrandTotal;
+      const bookingPayload = {
+        workspaceId: workspace?.id,
+        workspaceTitle: workspace?.title || 'EnCourtyard Premium Workspace',
+        workspaceSlug: workspace?.slug,
+        workspaceImage: workspace?.mediaUrls?.[0]?.url,
+        categoryName: workspace?.categoryName || 'Sanctuary Workspace',
+        locationName: workspace?.location || 'Maruthi Plaza, Khairtabad, Hyderabad',
+        fullName: fullName.trim(),
+        companyName: companyName ? companyName.trim() : null,
+        email: email.trim(),
+        phone: phone.trim(),
+        spaceType: workspace?.categoryName?.toLowerCase().includes('pass') ? 'day-pass' : 'workspace',
+        plan: isHourlyWorkspace ? 'hourly' : rentalPlan,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        guests: guestCount,
+        baseAmount: activeBaseAmount,
+        gstPercent,
+        gstAmount: activeGstAmount,
+        totalAmount: grandTotal,
+        specialRequests: specialRequests.trim() || undefined,
+      };
+
+      try {
+        sessionStorage.setItem('pending_booking_intent', JSON.stringify(bookingPayload));
+      } catch (err) {
+        console.warn('Failed to store booking intent in sessionStorage:', err);
+      }
+
+      const queryParams = new URLSearchParams({
+        workspace: workspace?.id || '',
+        workspaceTitle: workspace?.title || 'EnCourtyard Premium Workspace',
+        plan: isHourlyWorkspace ? 'hourly' : rentalPlan,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        guests: String(guestCount),
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        companyName: companyName?.trim() || '',
+        specialRequests: specialRequests.trim() || '',
+        baseAmount: String(activeBaseAmount),
+        gstPercent: String(gstPercent),
+        gstAmount: String(activeGstAmount),
+        totalAmount: String(grandTotal),
+      });
+
+      router.push(`/book/payment?${queryParams.toString()}`);
+      return;
+    }
+
     try {
       setSubmitting(true);
       const payload = {
@@ -224,13 +425,16 @@ function BookPageContent() {
         companyName: companyName ? companyName.trim() : null,
         email: email.trim(),
         phone: phone.trim(),
-        plan: rentalPlan,
+        plan: isHourlyWorkspace ? 'hourly' : rentalPlan,
         startDate,
         endDate,
         startTime,
         endTime,
         guests: guestCount,
-        totalAmount: workspace?.price || 'Custom Quote',
+        baseAmount: activeBaseAmount,
+        gstPercent,
+        gstAmount: activeGstAmount,
+        totalAmount: isPriced && activeGrandTotal > 0 ? activeGrandTotal : 'Quote on Request',
         specialRequests: specialRequests.trim() || undefined,
       };
 
@@ -243,13 +447,16 @@ function BookPageContent() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        // Notify realtime websockets/broadcast so admin and user booking pages update instantly
+        notifyBookingChange();
         setConfirmedBookingId(data.booking?.id || 'BK-SUCCESS');
+        const isConfirmed = data.booking?.status === 'CONFIRMED';
         setFeedback({
           isOpen: true,
           type: 'success',
-          title: 'Reservation Confirmed!',
-          message: `Your booking request (${data.booking?.id}) for "${workspace?.title || 'Workspace'}" has been placed successfully.`,
-          subMessage: 'A confirmation receipt has been emailed to you and the sanctuary concierge team.',
+          title: isConfirmed ? 'Reservation Confirmed!' : 'Booking Request Placed!',
+          message: `Your booking request (${data.booking?.id}) for "${workspace?.title || 'Workspace'}" has been placed. Status: ${data.booking?.status || 'Pending'}.`,
+          subMessage: 'A booking receipt has been emailed to you and the sanctuary concierge team.',
         });
       } else {
         setFeedback({
@@ -280,15 +487,11 @@ function BookPageContent() {
     }
   };
 
-  const currentWorkspaceImage =
-    workspace?.mediaUrls?.[0]?.url ||
-    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80';
-
   return (
     <div className="bg-white min-h-screen text-[#181F18] font-sans pb-24">
       
       {/* 1. Header Banner */}
-      <section className="bg-white text-[#181F18] pt-28 pb-14 sm:pt-32 sm:pb-16 border-b border-[#E5E1D8] relative overflow-hidden">
+      <section className="bg-white text-[#181F18] pt-28 pb-14 sm:pt-32 sm:pb-16 border-b border-[#E5E1D8] relative overflow-hidden hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-2.5">
@@ -316,112 +519,195 @@ function BookPageContent() {
       </section>
 
       {/* 2. Main 2-Column Split Layout */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 lg:pt-36 pb-16">
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
           
           {/* ========================================================================= */}
-          {/* LEFT COLUMN: STICKY WORKSPACE PROPERTY PREVIEW & PRICE SUMMARY            */}
+          {/* LEFT COLUMN: WORKSPACE PROPERTY PREVIEW & PRICE SUMMARY                   */}
+          {/* (Sticky only on desktop lg screens, scrolls naturally on mobile/tablets)  */}
           {/* ========================================================================= */}
-          <div
-            style={{
-              position: 'sticky',
-              top: '96px',
-              alignSelf: 'flex-start',
-              zIndex: 10,
-            }}
-            className="lg:col-span-5 space-y-6"
-          >
+          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24 lg:self-start lg:z-10">
             {/* Property Image & Details Card */}
             <div className="bg-white border border-[#E5E1D8] rounded-3xl overflow-hidden shadow-sm space-y-5 p-5 sm:p-6 text-[#181F18]">
-              
-              {/* Workspace Hero Image */}
-              <div className="relative h-56 sm:h-64 w-full rounded-2xl overflow-hidden bg-[#FAF9F5] border border-[#E5E1D8]">
-                <img
-                  src={currentWorkspaceImage}
-                  alt={workspace?.title || 'Selected Workspace'}
-                  className="w-full h-full object-cover"
-                />
-                {workspace?.badge && (
-                  <span className="absolute top-3.5 right-3.5 px-3 py-1 rounded-full bg-[#E65100] text-white text-[11px] font-mono font-bold shadow-md">
-                    {workspace.badge}
-                  </span>
-                )}
-                {workspace?.categoryName && (
-                  <span className="absolute bottom-3.5 left-3.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-[#181F18] text-[11px] font-bold shadow-sm">
-                    <Layers className="w-3.5 h-3.5 text-[#2E7D32]" />
-                    <span>{workspace.categoryName}</span>
-                  </span>
-                )}
-              </div>
+              {loading && !workspace ? (
+                /* Shimmer Skeleton Placeholder - NEVER show fake fallback office */
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-56 sm:h-64 w-full rounded-2xl bg-[#FAF9F5] border border-[#E5E1D8] flex items-center justify-center">
+                    <Building2 className="w-10 h-10 text-[#E5E1D8] animate-pulse" />
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <div className="h-6 w-3/4 rounded-lg bg-[#FAF9F5] border border-[#E5E1D8]" />
+                    <div className="h-4 w-1/2 rounded-md bg-[#FAF9F5] border border-[#E5E1D8]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E5E1D8]">
+                    <div className="h-14 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]" />
+                    <div className="h-14 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]" />
+                    <div className="h-14 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]" />
+                    <div className="h-14 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]" />
+                  </div>
+                </div>
+              ) : workspace ? (
+                <>
+                  {/* Workspace Hero Image */}
+                  <div className="relative h-56 sm:h-64 w-full rounded-2xl overflow-hidden bg-[#FAF9F5] border border-[#E5E1D8]">
+                    {workspace.mediaUrls?.[0]?.url ? (
+                      <img
+                        src={workspace.mediaUrls[0].url}
+                        alt={workspace.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#FAF9F5] text-[#5C665C]">
+                        <Building2 className="w-12 h-12 text-[#2E7D32]/40" />
+                      </div>
+                    )}
+                    {workspace.badge && (
+                      <span className="absolute top-3.5 right-3.5 px-3 py-1 rounded-full bg-[#E65100] text-white text-[11px] font-mono font-bold shadow-md">
+                        {workspace.badge}
+                      </span>
+                    )}
+                    {workspace.categoryName && (
+                      <span className="absolute bottom-3.5 left-3.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 backdrop-blur-md text-[#181F18] text-[11px] font-bold shadow-sm">
+                        <Layers className="w-3.5 h-3.5 text-[#2E7D32]" />
+                        <span>{workspace.categoryName}</span>
+                      </span>
+                    )}
+                  </div>
 
-              {/* Title & Location */}
-              <div>
-                <h2 className="font-serif text-2xl font-bold text-[#181F18] leading-tight">
-                  {workspace?.title || 'EnCourtyard Workspace Sanctuary'}
-                </h2>
-                <div className="flex items-center gap-1.5 text-xs text-[#5C665C] mt-2">
-                  <MapPin className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
-                  <span>{workspace?.location || 'Maruthi Plaza, Khairtabad, Hyderabad - 500004'}</span>
-                </div>
-              </div>
+                  {/* Title & Location */}
+                  <div>
+                    <h2 className="font-serif text-2xl font-bold text-[#181F18] leading-tight">
+                      {workspace.title}
+                    </h2>
+                    {workspace.location && (
+                      <div className="flex items-center gap-1.5 text-xs text-[#5C665C] mt-2">
+                        <MapPin className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
+                        <span>{workspace.location}</span>
+                      </div>
+                    )}
+                  </div>
 
-              {/* Key Specs Highlights */}
-              <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E5E1D8] text-xs">
-                <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
-                  <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Capacity</span>
-                  <strong className="text-[#181F18]">{workspace?.capacity || `${guestCount} Pax Allocated`}</strong>
-                </div>
-                <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
-                  <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Connectivity</span>
-                  <strong className="text-[#181F18]">1 Gbps Dedicated Fiber</strong>
-                </div>
-                <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
-                  <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Acoustics</span>
-                  <strong className="text-[#181F18]">STC 65 Soundproof</strong>
-                </div>
-                <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
-                  <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Access</span>
-                  <strong className="text-[#181F18]">24/7 Biometric Keyless</strong>
-                </div>
-              </div>
+                  {/* Key Specs Highlights */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[#E5E1D8] text-xs">
+                    <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
+                      <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Capacity</span>
+                      <strong className="text-[#181F18]">{workspace.capacity || `${guestCount} Pax Allocated`}</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
+                      <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Connectivity</span>
+                      <strong className="text-[#181F18]">1 Gbps Dedicated Fiber</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
+                      <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Acoustics</span>
+                      <strong className="text-[#181F18]">STC 65 Soundproof</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-0.5">
+                      <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Access</span>
+                      <strong className="text-[#181F18]">24/7 Biometric Keyless</strong>
+                    </div>
+                  </div>
 
-              {/* Price Breakdown Preview */}
-              <div className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-2.5 text-xs text-[#5C665C]">
-                <div className="flex justify-between">
-                  <span>Base Workspace Rate:</span>
-                  <span className="font-semibold text-[#181F18]">{workspace?.price || 'Custom Quote'}</span>
-                </div>
-                {/* <div className="flex justify-between">
-                  <span>Selected Rental Plan:</span>
-                  <span className="font-semibold text-[#181F18] capitalize">{rentalPlan}</span>
-                </div> */}
-                <div className="flex justify-between">
-                  <span>Attendees / Seats:</span>
-                  <span className="font-semibold text-[#181F18]">{guestCount} Member{guestCount > 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Botanical Concierge Service:</span>
-                  <span className="text-[#2E7D32] font-semibold">Included Free</span>
-                </div>
-                <div className="pt-2.5 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]">
-                  <span>Total Estimated:</span>
-                  <span className="text-base text-[#2E7D32] font-serif">{workspace?.price || 'Flexible Plan'}</span>
-                </div>
-              </div>
+                  {/* Price Breakdown Preview - Completely hidden if workspace price is optional / not set */}
+                  {isPriced && (
+                    <div
+                      style={{ fontFamily: 'Tahoma, sans-serif' }}
+                      className="bg-[#FAF9F5] border border-[#E5E1D8] rounded-2xl p-4 space-y-2.5 text-xs text-[#5C665C]"
+                    >
+                      {isHourlyWorkspace ? (
+                        <>
+                          <div className="flex justify-between items-center pb-2 border-b border-[#E5E1D8]">
+                            <span className="font-semibold text-[#181F18]">Hourly Rate (1 hr):</span>
+                            <span className="font-bold text-[#181F18]">
+                              ₹ {numericPrice.toLocaleString('en-IN')} / hr
+                            </span>
+                          </div>
 
-              {/* Trust & Guarantee Badges */}
-              <div className="flex items-center justify-between text-[11px] text-[#5C665C] pt-1">
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
-                  <span>GST & MCA Verified</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-[#E65100]" />
-                  <span>Instant Confirmation</span>
-                </div>
-              </div>
+                          <div className="flex justify-between items-center bg-[#E8F5E9] px-2.5 py-1.5 rounded-lg border border-[#C8E6C9]">
+                            <span className="font-semibold text-[#1B5E20]">Total Selected Duration:</span>
+                            <span className="font-bold font-mono text-[#1B5E20]">
+                              {hourlyDuration.formatted}
+                            </span>
+                          </div>
 
+                          <div className="flex justify-between">
+                            <span>Base Rate ({hourlyDuration.formatted}):</span>
+                            <span className="font-semibold text-[#181F18]">
+                              ₹ {hourlyBaseAmount.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span>GST ({gstPercent}%):</span>
+                            <span className="font-semibold text-amber-800">
+                              + ₹ {hourlyGstAmount.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span>Botanical Concierge Service:</span>
+                            <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                          </div>
+
+                          <div
+                            style={{ fontFamily: 'Tahoma, sans-serif' }}
+                            className="pt-2.5 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]"
+                          >
+                            <span>Total Estimated:</span>
+                            <span className="text-base text-[#2E7D32] font-bold">
+                              ₹ {hourlyTotalWithGst.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span>Base Workspace Rate:</span>
+                            <span className="font-semibold text-[#181F18]">
+                              ₹ {numericPrice.toLocaleString('en-IN')} {priceUnit}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>GST ({gstPercent}%):</span>
+                            <span className="font-semibold text-amber-800">
+                              + ₹ {gstAmount.toLocaleString('en-IN')} {priceUnit}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Botanical Concierge Service:</span>
+                            <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                          </div>
+                          <div
+                            style={{ fontFamily: 'Tahoma, sans-serif' }}
+                            className="pt-2.5 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]"
+                          >
+                            <span>Total Estimated:</span>
+                            <span className="text-base text-[#2E7D32] font-bold">
+                              ₹ {totalPerUnitWithGst.toLocaleString('en-IN')} {priceUnit}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Trust & Guarantee Badges */}
+                  <div className="flex items-center justify-between text-[11px] text-[#5C665C] pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
+                      <span>GST & MCA Verified</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#E65100]" />
+                      <span>Instant Confirmation</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-12 text-center text-xs text-[#5C665C]">
+                  <p>Workspace details not found.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -543,7 +829,73 @@ function BookPageContent() {
                   */}
 
                   {/* Multi-Row Date & Time Pickers */}
-                  {rentalPlan === 'daily' || planParam === 'daily' ? (
+                  {isHourlyWorkspace ? (
+                    /* Hourly Mode: Conference Hall / Meeting Rooms (Single Day Slot) */
+                    <div className="space-y-3 bg-[#FAF9F5] p-4 rounded-2xl border border-[#E5E1D8]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#181F18] flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-[#2E7D32]" />
+                          <span>Event / Meeting Schedule (Hourly Reservation)</span>
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-[#2E7D32] text-white text-[10px] font-mono font-bold">
+                          Hourly Slot
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Single Date Picker (Future Dates Only) */}
+                        <div className="space-y-1.5 text-left">
+                          <label className="text-[11px] font-semibold text-[#5C665C]">
+                            Event Date <span className="text-red-500">*</span>
+                          </label>
+                          <MaterialDatePicker
+                            value={startDate}
+                            minDate={todayDate}
+                            onChange={(newDate) => {
+                              setStartDate(newDate);
+                              setEndDate(newDate); // Strictly lock to single day
+                            }}
+                            align="left"
+                          />
+                        </div>
+
+                        {/* Timing Slots */}
+                        <div className="space-y-1.5 text-left">
+                          <label className="text-[11px] font-semibold text-[#5C665C]">
+                            Event Hours (Start & End) <span className="text-red-500">*</span>
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <MaterialTimePicker
+                              value={startTime}
+                              onChange={(newTime) => setStartTime(newTime)}
+                              align="left"
+                            />
+                            <MaterialTimePicker
+                              value={endTime}
+                              onChange={(newTime) => setEndTime(newTime)}
+                              align="right"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Real-time Calculated Total Duration Banner */}
+                      <div className="mt-2.5 p-3 rounded-xl bg-white border border-[#E5E1D8] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 text-[#5C665C]">
+                          <Clock className="w-4 h-4 text-[#2E7D32]" />
+                          <span className="font-semibold text-[#181F18]">Calculated Total Duration:</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#1B5E20] font-mono bg-[#E8F5E9] px-2.5 py-1 rounded-lg border border-[#C8E6C9]">
+                            {hourlyDuration.formatted}
+                          </span>
+                          <span className="text-[11px] text-[#5C665C] font-medium">
+                            ({startTime} – {endTime})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : isDayPassWorkspace ? (
                     /* Day Pass Mode: Single Day Only, Future Dates Only */
                     <div className="space-y-3 bg-[#FAF9F5] p-4 rounded-2xl border border-[#E5E1D8]">
                       <div className="flex items-center justify-between">

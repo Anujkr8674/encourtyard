@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -32,14 +32,16 @@ import {
   Lock,
   LogIn,
   UserPlus,
-  User
+  User,
+  Monitor
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
 import { CountdownBadge } from '@/components/ui/CountdownBadge';
+import { hasValidPrice } from '@/lib/availability';
 
 interface SpecItem {
   key: string;
@@ -193,8 +195,9 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return `${formattedHours}:${formattedMinutes} ${period}`;
 });
 
-export default function BookSpacePage() {
+function BookSpaceContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -210,6 +213,59 @@ export default function BookSpacePage() {
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }, []);
+
+  // Space Type Tab State (Workspaces, Day Pass, Meeting Rooms, Conference Hall)
+  type SpaceTypeTab = 'workspaces' | 'day-pass' | 'meeting-rooms' | 'conference-hall' | 'all';
+  const [activeSpaceTab, setActiveSpaceTab] = useState<SpaceTypeTab>('workspaces');
+
+  // Space Classification Helpers (Mirrors Admin Panel)
+  const isMeeting = (w: Workspace) => (w.categoryName || '').toLowerCase().includes('meeting') || w.categoryId === 'cat-1789845784650';
+  const isConfr = (w: Workspace) => (w.categoryName || '').toLowerCase().includes('confr') || w.categoryId === '1ac79bff-71f9-4924-8091-f07c9ae1ec06';
+  const isDayPassSpace = (w: Workspace) => w.showInDayPass === true || (w.categoryName || '').toLowerCase().includes('day pass') || w.categoryId === 'ee0ebc73-e2ba-4534-bccb-e228400bd967';
+
+  // Space counts per category
+  const spaceCounts = useMemo(() => {
+    return {
+      all: workspaces.length,
+      workspaces: workspaces.filter((w) => !isMeeting(w) && !isConfr(w) && !isDayPassSpace(w)).length,
+      dayPass: workspaces.filter((w) => isDayPassSpace(w)).length,
+      meetingRooms: workspaces.filter((w) => isMeeting(w)).length,
+      conferenceHall: workspaces.filter((w) => isConfr(w)).length,
+    };
+  }, [workspaces]);
+
+  // Standard office categories for filter sidebar (excludes meeting, conference, day pass)
+  const standardOfficeCategories = useMemo(() => {
+    return categories.filter(
+      (c) =>
+        !c.name.toLowerCase().includes('meeting') &&
+        !c.name.toLowerCase().includes('confr') &&
+        !c.name.toLowerCase().includes('day pass')
+    );
+  }, [categories]);
+
+  // Tab switcher handler
+  const handleSpaceTabChange = (tab: SpaceTypeTab) => {
+    setActiveSpaceTab(tab);
+    setSelectedCategory('all');
+    setCurrentPage(1);
+
+    if (tab === 'day-pass') {
+      setIsDayPass(true);
+      if (startDate) setEndDate(startDate);
+      router.push('/book-space?plan=day-pass');
+    } else if (tab === 'workspaces') {
+      setIsDayPass(false);
+      router.push('/book-space');
+    } else if (tab === 'meeting-rooms') {
+      router.push('/meeting-rooms');
+    } else if (tab === 'conference-hall') {
+      router.push('/conference-hall');
+    } else {
+      setIsDayPass(false);
+      router.push('/book-space?tab=all');
+    }
+  };
 
   // Filter States
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -237,7 +293,7 @@ export default function BookSpacePage() {
   );
   const { typedLines, currentLineIndex, isTyping } = useLineTypewriter(typewriterLines, 30);
 
-  // Default dates initialization and URL search params
+  // Reactively sync with URL parameters (e.g. Quick Booking -> Day Pass, or Book Space navbar link)
   useEffect(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -252,44 +308,82 @@ export default function BookSpacePage() {
     const nmDay = String(nextMonth.getDate()).padStart(2, '0');
     const nextMonthStr = `${nmYear}-${nmMonth}-${nmDay}`;
 
-    setStartDate(todayStr);
-    setEndDate(nextMonthStr);
+    const tabParam = searchParams.get('tab') || searchParams.get('section');
+    const planParam = searchParams.get('plan');
+    const catParam = searchParams.get('category');
+    const capParam = searchParams.get('capacity');
+    const dateParam = searchParams.get('date') || searchParams.get('startDate');
+    const startParam = searchParams.get('startTime');
+    const endParam = searchParams.get('endTime');
 
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const planParam = urlParams.get('plan');
-      const catParam = urlParams.get('category');
-      const capParam = urlParams.get('capacity');
-      
-      let shouldScroll = false;
+    let shouldScroll = false;
 
-      if (planParam === 'day-pass' || planParam === 'daily') {
-        setIsDayPass(true);
-        setSelectedCategory('all');
-        setEndDate(todayStr);
-        shouldScroll = true;
-      } else if (catParam) {
-        setSelectedCategory(catParam);
-        shouldScroll = true;
-      }
-      if (capParam) {
-        setSelectedCapacity(capParam);
-        shouldScroll = true;
-      }
-
-      if (shouldScroll) {
-        // Delay slightly to ensure page has rendered before calculating scroll position
-        setTimeout(() => {
-          const element = document.getElementById('workspaces-section');
-          if (element) {
-            const yOffset = -80; // Clearance for fixed header
-            const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-            window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-          }
-        }, 500);
-      }
+    if (tabParam === 'day-pass' || planParam === 'day-pass' || planParam === 'daily') {
+      setActiveSpaceTab('day-pass');
+      setIsDayPass(true);
+      setSelectedCategory('all');
+      const chosenDate = dateParam || todayStr;
+      setStartDate(chosenDate);
+      setEndDate(chosenDate);
+      setStartTime(startParam || '09:00 AM');
+      setEndTime(endParam || '06:00 PM');
+      setCurrentPage(1);
+      shouldScroll = true;
+    } else if (tabParam === 'meeting-rooms' || catParam?.toLowerCase().includes('meeting')) {
+      setActiveSpaceTab('meeting-rooms');
+      setIsDayPass(false);
+      setSelectedCategory('all');
+      if (dateParam) setStartDate(dateParam);
+      setCurrentPage(1);
+      shouldScroll = true;
+    } else if (tabParam === 'conference-hall' || catParam?.toLowerCase().includes('confr')) {
+      setActiveSpaceTab('conference-hall');
+      setIsDayPass(false);
+      setSelectedCategory('all');
+      if (dateParam) setStartDate(dateParam);
+      setCurrentPage(1);
+      shouldScroll = true;
+    } else if (tabParam === 'all') {
+      setActiveSpaceTab('all');
+      setIsDayPass(false);
+      setSelectedCategory('all');
+      setCurrentPage(1);
+      shouldScroll = true;
+    } else if (catParam) {
+      setActiveSpaceTab('workspaces');
+      setIsDayPass(false);
+      setSelectedCategory(catParam);
+      if (dateParam) setStartDate(dateParam);
+      setCurrentPage(1);
+      shouldScroll = true;
+    } else {
+      // Default /book-space: Standard Workspaces & Offices
+      setActiveSpaceTab('workspaces');
+      setIsDayPass(false);
+      setSelectedCategory('all');
+      setStartDate(todayStr);
+      setEndDate(nextMonthStr);
+      setStartTime('09:00 AM');
+      setEndTime('06:00 PM');
+      setCurrentPage(1);
     }
-  }, []);
+
+    if (capParam) {
+      setSelectedCapacity(capParam);
+      shouldScroll = true;
+    }
+
+    if (shouldScroll && (planParam || tabParam || catParam)) {
+      setTimeout(() => {
+        const element = document.getElementById('workspaces-section');
+        if (element) {
+          const yOffset = -80; // Clearance for fixed header
+          const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+        }
+      }, 300);
+    }
+  }, [searchParams]);
 
   // Fetch workspaces and categories from API with defensive fallback handling
   useEffect(() => {
@@ -349,13 +443,19 @@ export default function BookSpacePage() {
   // Filter & Sort Logic
   const filteredWorkspaces = useMemo(() => {
     return workspaces.filter((ws) => {
-      // Day Pass filter: when user is on Day Pass page (?plan=day-pass), show only offices enabled for Day Pass
-      if (isDayPass && !ws.showInDayPass) {
-        return false;
+      // 1. Primary Category Tab filter (Workspaces, Day Pass, Meeting Rooms, Conference Hall)
+      if (activeSpaceTab === 'workspaces') {
+        if (isMeeting(ws) || isConfr(ws) || isDayPassSpace(ws)) return false;
+      } else if (activeSpaceTab === 'day-pass') {
+        if (!isDayPassSpace(ws)) return false;
+      } else if (activeSpaceTab === 'meeting-rooms') {
+        if (!isMeeting(ws)) return false;
+      } else if (activeSpaceTab === 'conference-hall') {
+        if (!isConfr(ws)) return false;
       }
 
-      // Category filter (match by ID, slug, or name) - not applied on Day Pass page
-      if (!isDayPass && selectedCategory !== 'all') {
+      // 2. Sub-Category filter (when on Workspaces or All)
+      if (selectedCategory !== 'all') {
         const matchesCat =
           ws.categoryId === selectedCategory ||
           ws.categoryName?.toLowerCase().trim() === selectedCategory.toLowerCase().trim() ||
@@ -363,7 +463,7 @@ export default function BookSpacePage() {
         if (!matchesCat) return false;
       }
 
-      // Search query filter
+      // 3. Search query filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesTitle = ws.title?.toLowerCase().includes(query);
@@ -373,18 +473,18 @@ export default function BookSpacePage() {
         if (!matchesTitle && !matchesDesc && !matchesLoc && !matchesCat) return false;
       }
 
-      // Price filter
+      // 4. Price filter
       const numPrice = extractNumericPrice(ws.price);
       if (numPrice > 0 && numPrice > maxPrice) {
         return false;
       }
 
-      // Capacity filter
+      // 5. Capacity filter
       if (selectedCapacity !== 'all') {
         if (ws.capacity !== selectedCapacity) return false;
       }
 
-      // Amenities filter
+      // 6. Amenities filter
       if (selectedAmenities.length > 0) {
         const specText = JSON.stringify(ws.specifications || []).toLowerCase();
         const descText = ((ws.shortDescription || '') + (ws.longDescription || '')).toLowerCase();
@@ -407,7 +507,7 @@ export default function BookSpacePage() {
       }
       return (a.order || 0) - (b.order || 0);
     });
-  }, [workspaces, selectedCategory, searchQuery, maxPrice, selectedCapacity, selectedAmenities, sortBy]);
+  }, [workspaces, activeSpaceTab, selectedCategory, searchQuery, maxPrice, selectedCapacity, selectedAmenities, sortBy]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredWorkspaces.length / ITEMS_PER_PAGE) || 1;
@@ -592,27 +692,27 @@ export default function BookSpacePage() {
         )}
       </div>
 
-      {/* SECTION 2: CATEGORY (Hidden on Day Pass page as requested) */}
-      {!isDayPass && (
+      {/* SECTION 2: CATEGORY (Adapted based on active space tab) */}
+      {activeSpaceTab === 'workspaces' && (
         <div className="space-y-2.5 text-left">
           <div className="flex items-center justify-between">
             <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
-              CATEGORY
+              OFFICE CATEGORY
             </label>
-            {categories.length > 5 && (
+            {standardOfficeCategories.length > 5 && (
               <button
                 type="button"
                 onClick={() => setShowAllCategories(!showAllCategories)}
                 className="text-[11px] font-bold text-[#2E7D32] hover:text-[#1B5E20] hover:underline flex items-center gap-0.5 cursor-pointer"
               >
-                <span>{showAllCategories ? 'Show Less' : `+ See More (${categories.length - 5})`}</span>
+                <span>{showAllCategories ? 'Show Less' : `+ See More (${standardOfficeCategories.length - 5})`}</span>
                 <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
               </button>
             )}
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
-            {/* Item 1: All */}
+            {/* Item 1: All Offices */}
             <button
               type="button"
               onClick={() => {
@@ -625,11 +725,11 @@ export default function BookSpacePage() {
                   : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
               }`}
             >
-              All
+              All Offices
             </button>
 
-            {/* Items 2..6: Categories */}
-            {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => {
+            {/* Standard Category Pills */}
+            {(showAllCategories ? standardOfficeCategories : standardOfficeCategories.slice(0, 5)).map((cat) => {
               const isSelected = selectedCategory === cat.id || selectedCategory === cat.slug || selectedCategory === cat.name;
               return (
                 <button
@@ -649,18 +749,79 @@ export default function BookSpacePage() {
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
 
-            {/* Expand / Collapse Button Pill */}
-            {categories.length > 5 && (
-              <button
-                type="button"
-                onClick={() => setShowAllCategories(!showAllCategories)}
-                className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-[#2E7D32] hover:text-[#1B5E20] bg-[#E8F5E9]/60 hover:bg-[#E8F5E9] border border-[#2E7D32]/30 transition-all cursor-pointer inline-flex items-center gap-1"
-              >
-                <span>{showAllCategories ? 'Show Less' : '+ See More'}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} />
-              </button>
-            )}
+      {activeSpaceTab === 'day-pass' && (
+        <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-xs space-y-1 text-left">
+          <span className="font-bold text-amber-950 block">Day Pass Inventory</span>
+          <p className="text-[11px] text-amber-800 leading-relaxed">
+            Viewing all dedicated hot desks and private suites configured for single-day pass access.
+          </p>
+        </div>
+      )}
+
+      {activeSpaceTab === 'meeting-rooms' && (
+        <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 text-xs space-y-1 text-left">
+          <span className="font-bold text-blue-950 block">Meeting Rooms & Pods</span>
+          <p className="text-[11px] text-blue-800 leading-relaxed">
+            Equipped with 4K screens, audio-visual conferencing, and acoustic double glazing charged hourly.
+          </p>
+        </div>
+      )}
+
+      {activeSpaceTab === 'conference-hall' && (
+        <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200/80 text-xs space-y-1 text-left">
+          <span className="font-bold text-purple-950 block">Conference Halls & Venues</span>
+          <p className="text-[11px] text-purple-800 leading-relaxed">
+            Large keynote auditoriums and executive presentation suites charged on an hourly commercial rate.
+          </p>
+        </div>
+      )}
+
+      {activeSpaceTab === 'all' && (
+        <div className="space-y-2.5 text-left">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
+              ALL CATEGORIES
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('all');
+                setCurrentPage(1);
+              }}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+                selectedCategory === 'all'
+                  ? 'bg-[#263626] text-white font-bold shadow-sm border border-[#263626]'
+                  : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+              }`}
+            >
+              All
+            </button>
+            {categories.map((cat) => {
+              const isSelected = selectedCategory === cat.id || selectedCategory === cat.slug || selectedCategory === cat.name;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(cat.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#263626] text-white font-bold shadow-sm border border-[#263626]'
+                      : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1002,7 +1163,47 @@ export default function BookSpacePage() {
           {/* ========================================================================= */}
           <section className="lg:col-span-8 space-y-6 pb-8">
 
-            {/* Top Toolbar: Search Bar + Live Count + Sort */}
+            {/* 1. Category Switcher Tabs - Exactly Mirrors Admin Panel Categorization */}
+            <div className="bg-white border border-[#E5E1D8] rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 shadow-sm hidden">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none pb-0.5">
+                {[
+                  { id: 'workspaces', label: 'Workspaces & Offices', icon: Building2, count: spaceCounts.workspaces },
+                  { id: 'day-pass', label: 'Day Pass', icon: Sparkles, count: spaceCounts.dayPass },
+                  { id: 'meeting-rooms', label: 'Meeting Rooms', icon: Monitor, count: spaceCounts.meetingRooms },
+                  { id: 'conference-hall', label: 'Conference Hall', icon: Layers, count: spaceCounts.conferenceHall },
+                  { id: 'all', label: 'All Spaces', icon: null, count: spaceCounts.all },
+                ].map((tab) => {
+                  const isSelected = activeSpaceTab === tab.id;
+                  const TabIcon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => handleSpaceTabChange(tab.id as SpaceTypeTab)}
+                      className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0 shadow-2xs ${
+                        isSelected
+                          ? 'bg-[#2E7D32] text-white shadow-md font-bold'
+                          : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+                      }`}
+                    >
+                      {TabIcon && <TabIcon className="w-4 h-4 shrink-0" />}
+                      <span>{tab.label}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                          isSelected
+                            ? 'bg-white/20 text-white'
+                            : 'bg-white text-[#5C665C] border border-[#E5E1D8]'
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Top Toolbar: Search Bar + Sort */}
             <div className="bg-white border border-[#E5E1D8] rounded-2xl p-2.5 sm:p-4 flex flex-row items-center justify-between gap-2 sm:gap-4 shadow-sm">
 
               {/* Search Bar Input */}
@@ -1039,10 +1240,13 @@ export default function BookSpacePage() {
 
             {/* Results Count & Parallel Mobile Filter Trigger Button */}
             <div className="flex items-center justify-between gap-3 px-1">
-              {/* Two-row stack: Row 1 = Workspaces available, Row 2 = Page count */}
               <div className="flex flex-col text-left">
                 <span className="text-xs sm:text-sm font-mono font-bold text-[#181F18]">
-                  {filteredWorkspaces.length} workspace{filteredWorkspaces.length === 1 ? '' : 's'} available
+                  {activeSpaceTab === 'workspaces' && `${filteredWorkspaces.length} Standard Workspaces Available`}
+                  {activeSpaceTab === 'day-pass' && `${filteredWorkspaces.length} Day Pass Desks & Offices Available`}
+                  {activeSpaceTab === 'meeting-rooms' && `${filteredWorkspaces.length} Meeting Rooms & Boardrooms Available`}
+                  {activeSpaceTab === 'conference-hall' && `${filteredWorkspaces.length} Conference Halls Available`}
+                  {activeSpaceTab === 'all' && `${filteredWorkspaces.length} Workspaces Available`}
                 </span>
                 <span className="text-[11px] font-mono text-[#5C665C]">
                   Page {currentPage} of {totalPages}
@@ -1173,9 +1377,11 @@ export default function BookSpacePage() {
 
                           {/* Bottom Bar on Image: Price & Capacity */}
                           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs select-none">
-                            <span className="font-bold text-sm text-white drop-shadow-md">
-                              {ws.price || 'Flexible Plan'}
-                            </span>
+                            {hasValidPrice(ws.price) ? (
+                              <span className="font-bold text-sm text-white drop-shadow-md">
+                                {ws.price}
+                              </span>
+                            ) : <div />}
                             {ws.capacity && (
                               <span className="px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono text-[#4ADE80] border border-emerald-500/30">
                                 {ws.capacity}
@@ -1223,39 +1429,59 @@ export default function BookSpacePage() {
                       </div>
 
                       {/* Card Action Buttons (Details & Book Now) */}
-                      <div className="p-5 pt-0 flex items-center gap-2.5 border-t border-[#E5E1D8]/60 group-hover:border-white/15 pt-3 mt-1 transition-colors">
-                        {/* 1. Details Button -> navigates to /book-space/[id] */}
-                        <Link
-                          href={`/book-space/${ws.id}`}
-                          className="flex-1 py-2.5 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] group-hover:bg-white/10 group-hover:hover:bg-white/20 text-[#181F18] group-hover:text-white border border-[#D5D0C5] group-hover:border-white/30 text-xs font-bold text-center transition-all duration-200 active:scale-95 shadow-2xs"
-                        >
-                          Details
-                        </Link>
+                      {(() => {
+                        const isThisMeeting = isMeeting(ws);
+                        const isThisConfr = isConfr(ws);
+                        const isThisHourly = isThisMeeting || isThisConfr;
+                        const isThisDayPass = isDayPass || isDayPassSpace(ws);
+                        const wsPlan = isThisHourly ? 'hourly' : isThisDayPass ? 'daily' : 'monthly';
+                        const effStartDate = startDate || todayDate;
+                        const effEndDate = isThisHourly || isThisDayPass ? effStartDate : (endDate || effStartDate);
 
-                        {/* 2. Book Now Button -> triggers auth check modal if guest, else navigates to /book */}
-                        <button
-                          type="button"
-                          disabled={!isAvailable}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (!isAvailable) return;
-                            const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&plan=${isDayPass ? 'daily' : 'monthly'}&startDate=${startDate}&endDate=${isDayPass ? startDate : endDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`;
-                            if (user || isAuthenticated) {
-                              router.push(targetUrl);
-                            } else {
-                              setSelectedWorkspaceForAuth(ws);
-                              setShowAuthModal(true);
-                            }
-                          }}
-                          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1 ${
-                            !isAvailable 
-                              ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
-                              : 'bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] hover:shadow-md active:scale-95 cursor-pointer'
-                          }`}
-                        >
-                          <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
-                        </button>
-                      </div>
+                        return (
+                          <div className="p-5 pt-0 flex items-center gap-2.5 border-t border-[#E5E1D8]/60 group-hover:border-white/15 pt-3 mt-1 transition-colors">
+                            {/* 1. Details Button -> navigates to /book-space/[id] with plan & dates */}
+                            <Link
+                              href={`/book-space/${ws.id}?plan=${wsPlan}&startDate=${effStartDate}&endDate=${effEndDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`}
+                              onClick={() => {
+                                try {
+                                  sessionStorage.setItem(`ws_cache_${ws.id}`, JSON.stringify(ws));
+                                } catch (_) {}
+                              }}
+                              className="flex-1 py-2.5 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] group-hover:bg-white/10 group-hover:hover:bg-white/20 text-[#181F18] group-hover:text-white border border-[#D5D0C5] group-hover:border-white/30 text-xs font-bold text-center transition-all duration-200 active:scale-95 shadow-2xs"
+                            >
+                              Details
+                            </Link>
+
+                            {/* 2. Book Now Button -> triggers auth check modal if guest, else navigates to /book */}
+                            <button
+                              type="button"
+                              disabled={!isAvailable}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (!isAvailable) return;
+                                try {
+                                  sessionStorage.setItem(`ws_cache_${ws.id}`, JSON.stringify(ws));
+                                } catch (_) {}
+                                const targetUrl = `/book?workspace=${encodeURIComponent(ws.id)}&plan=${wsPlan}&startDate=${effStartDate}&endDate=${effEndDate}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`;
+                                if (user || isAuthenticated) {
+                                  router.push(targetUrl);
+                                } else {
+                                  setSelectedWorkspaceForAuth(ws);
+                                  setShowAuthModal(true);
+                                }
+                              }}
+                              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold text-center shadow-xs transition-all duration-200 flex items-center justify-center gap-1 ${
+                                !isAvailable 
+                                  ? 'bg-[#E5E1D8] text-[#8C968C] cursor-not-allowed border border-[#D5D0C5]'
+                                  : 'bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] hover:shadow-md active:scale-95 cursor-pointer'
+                              }`}
+                            >
+                              <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
+                            </button>
+                          </div>
+                        );
+                      })()}
 
                     </div>
                   );
@@ -1409,5 +1635,19 @@ export default function BookSpacePage() {
       )}
 
     </div>
+  );
+}
+
+export default function BookSpacePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FAF9F5] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-[#2E7D32] border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <BookSpaceContent />
+    </Suspense>
   );
 }

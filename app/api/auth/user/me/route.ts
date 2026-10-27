@@ -9,20 +9,25 @@ export async function GET() {
       return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
     }
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: session.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        company: true,
-        role: true,
-        avatarUrl: true,
-        isEmailVerified: true,
-        createdAt: true,
-      },
-    });
+    let dbUser = null;
+    try {
+      dbUser = await prisma.user.findUnique({
+        where: { id: session.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          company: true,
+          role: true,
+          avatarUrl: true,
+          isEmailVerified: true,
+          createdAt: true,
+        },
+      });
+    } catch (dbErr) {
+      console.warn('⚠️ DB lookup in /api/auth/user/me failed, falling back to JWT session:', dbErr);
+    }
 
     if (dbUser) {
       return NextResponse.json({

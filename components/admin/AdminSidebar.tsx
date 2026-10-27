@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Shield,
   Layers,
-  Image
+  Image,
+  QrCode
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -34,14 +35,17 @@ interface SidebarItem {
 export const ADMIN_NAV_ITEMS: SidebarItem[] = [
   { name: 'Dashboard Overview', href: '/admin', icon: LayoutDashboard },
   { name: 'Workspace Category', href: '/admin/categories', icon: Layers, badge: 'Live', badgeColor: 'bg-[#2E7D32] text-white' },
-  { name: 'Workspaces', href: '/admin/workspaces', icon: Building2, badge: 'New', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
+  { name: 'Workspaces', href: '/admin/workspaces', icon: Building2, badge: 'Offices', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
+  { name: 'Day Pass', href: '/admin/day-passes', icon: Sparkles, badge: 'Daily', badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300' },
+  { name: 'Meeting Rooms', href: '/admin/meeting-rooms', icon: Monitor, badge: 'Hourly', badgeColor: 'bg-blue-100 text-blue-900 border border-blue-300' },
+  { name: 'Conference Hall', href: '/admin/conference-halls', icon: Layers, badge: 'Hourly', badgeColor: 'bg-purple-100 text-purple-900 border border-purple-300' },
   { name: 'Gallery', href: '/admin/gallery', icon: Image as any, badge: 'New', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
   { name: 'Popular Picks', href: '/admin/popular-picks', icon: Sparkles, badge: 'Top 10', badgeColor: 'bg-amber-100 text-amber-900 border border-amber-300' },
+  { name: 'QR Code', href: '/admin/qr-code', icon: QrCode, badge: 'UPI', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
   // { name: 'Client Companies', href: '/admin/companies', icon: Building2, badge: '28' },
   { name: 'Member Directory', href: '/admin/members', icon: Users, badge: '342' },
   { name: 'Bookings & Passes', href: '/admin/bookings', icon: Calendar, badge: '0 New', badgeColor: 'bg-[#2E7D32] text-white' },
   // { name: 'Centres & Cities', href: '/admin/locations', icon: MapPin, badge: '79' },
-  // { name: 'Meeting Rooms', href: '/admin/meeting-rooms', icon: Monitor },
   // { name: 'Revenue & Invoices', href: '/admin/revenue', icon: IndianRupee, badge: '+14%', badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-300' },
   // { name: 'Security Audit Logs', href: '/admin/logs', icon: ShieldCheck },
   { name: 'System Settings', href: '/admin/settings', icon: Settings },

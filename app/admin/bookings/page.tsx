@@ -23,9 +23,17 @@ import {
   User,
   Sparkles,
   Layers,
-  Copy
+  Copy,
+  Monitor,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { FeedbackModal } from '@/components/ui/FeedbackModal';
+import { BookingStatusTracker } from '@/components/user/BookingStatusTracker';
+import { useRealtimeBookings, notifyBookingChange } from '@/lib/realtimeBookings';
+import { parseBookingNotes } from '@/lib/bookingNotes';
 
 interface BookingRecord {
   id: string;
@@ -40,6 +48,7 @@ interface BookingRecord {
   companyName?: string | null;
   email: string;
   phone: string;
+  spaceType?: string;
   plan: 'monthly' | 'daily' | 'hourly';
   startDate: string;
   endDate: string;
@@ -61,10 +70,51 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [categoryTypeFilter, setCategoryTypeFilter] = useState<'ALL' | 'DAY_PASS' | 'MEETING_ROOMS' | 'CONFERENCE_HALL' | 'STANDARD_OFFICES'>('ALL');
 
-  // Pagination State
+  // Space Category Helper
+  const getBookingCategory = (b: BookingRecord): 'DAY_PASS' | 'MEETING_ROOMS' | 'CONFERENCE_HALL' | 'STANDARD_OFFICES' => {
+    const cat = (b.categoryName || '').toLowerCase();
+    const title = (b.workspaceTitle || '').toLowerCase();
+    const plan = (b.plan || '').toLowerCase();
+    const space = (b.spaceType || '').toLowerCase();
+
+    if (plan === 'daily' || cat.includes('day pass') || title.includes('day pass') || space.includes('pass')) {
+      return 'DAY_PASS';
+    }
+    if (cat.includes('meeting') || title.includes('meeting') || space.includes('meeting')) {
+      return 'MEETING_ROOMS';
+    }
+    if (cat.includes('confr') || title.includes('confr') || title.includes('boardroom') || space.includes('confr')) {
+      return 'CONFERENCE_HALL';
+    }
+    return 'STANDARD_OFFICES';
+  };
+
+  const extractPaymentInfo = (notes?: string | null) => {
+    const parsed = parseBookingNotes(notes);
+    return {
+      utr: parsed.utr,
+      proofUrl: parsed.proofUrl,
+      cleanNotes: parsed.adminNotes || parsed.userNotes,
+      userNotes: parsed.userNotes,
+      adminNotes: parsed.adminNotes,
+    };
+  };
+
+  const categoryCounts = useMemo(() => {
+    return {
+      all: bookings.length,
+      dayPass: bookings.filter((b) => getBookingCategory(b) === 'DAY_PASS').length,
+      meetingRooms: bookings.filter((b) => getBookingCategory(b) === 'MEETING_ROOMS').length,
+      conferenceHall: bookings.filter((b) => getBookingCategory(b) === 'CONFERENCE_HALL').length,
+      standard: bookings.filter((b) => getBookingCategory(b) === 'STANDARD_OFFICES').length,
+    };
+  }, [bookings]);
+
+  // Pagination State (20 rows per page for admin view)
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 15;
+  const rowsPerPage = 20;
 
   // Selected Booking for Edit Modal
   const [editingBooking, setEditingBooking] = useState<BookingRecord | null>(null);
@@ -112,18 +162,20 @@ export default function AdminBookingsPage() {
 
   useEffect(() => {
     fetchBookings();
-    
-    // Auto-refresh using polling every 5 seconds
-    const intervalId = setInterval(() => {
-      fetchBookings(true);
-    }, 5000);
-    
-    return () => clearInterval(intervalId);
   }, []);
+
+  // Realtime WebSockets: Update admin bookings instantly without page refresh
+  useRealtimeBookings(() => {
+    fetchBookings(true);
+  });
 
   // Filter Bookings
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
+      // Category / Space filter
+      if (categoryTypeFilter !== 'ALL') {
+        if (getBookingCategory(b) !== categoryTypeFilter) return false;
+      }
       // Status filter
       if (statusFilter !== 'ALL' && b.status !== statusFilter) {
         return false;
@@ -136,19 +188,20 @@ export default function AdminBookingsPage() {
         const matchesEmail = b.email.toLowerCase().includes(q);
         const matchesCompany = b.companyName?.toLowerCase().includes(q);
         const matchesSpace = b.workspaceTitle.toLowerCase().includes(q);
+        const matchesCategory = (b.categoryName || '').toLowerCase().includes(q);
         const matchesPhone = b.phone.toLowerCase().includes(q);
-        if (!matchesId && !matchesName && !matchesEmail && !matchesCompany && !matchesSpace && !matchesPhone) {
+        if (!matchesId && !matchesName && !matchesEmail && !matchesCompany && !matchesSpace && !matchesCategory && !matchesPhone) {
           return false;
         }
       }
       return true;
     });
-  }, [bookings, statusFilter, searchQuery]);
+  }, [bookings, categoryTypeFilter, statusFilter, searchQuery]);
 
   // Reset pagination on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, categoryTypeFilter]);
 
   // Pagination Calculations
   const totalPages = Math.ceil(filteredBookings.length / rowsPerPage);
@@ -157,23 +210,27 @@ export default function AdminBookingsPage() {
     return filteredBookings.slice(startIndex, startIndex + rowsPerPage);
   }, [filteredBookings, currentPage]);
 
-  // Status Counts
+  // Status Counts (computed for active category filter)
   const counts = useMemo(() => {
+    const list = categoryTypeFilter === 'ALL'
+      ? bookings
+      : bookings.filter((b) => getBookingCategory(b) === categoryTypeFilter);
     return {
-      all: bookings.length,
-      pending: bookings.filter((b) => b.status === 'PENDING').length,
-      confirmed: bookings.filter((b) => b.status === 'CONFIRMED').length,
-      completed: bookings.filter((b) => b.status === 'COMPLETED').length,
-      cancelled: bookings.filter((b) => b.status === 'CANCELLED').length,
+      all: list.length,
+      pending: list.filter((b) => b.status === 'PENDING').length,
+      confirmed: list.filter((b) => b.status === 'CONFIRMED').length,
+      completed: list.filter((b) => b.status === 'COMPLETED').length,
+      cancelled: list.filter((b) => b.status === 'CANCELLED').length,
     };
-  }, [bookings]);
+  }, [bookings, categoryTypeFilter]);
 
   // Open Edit Status Modal
   const handleOpenEdit = (bk: BookingRecord) => {
     setEditingBooking(bk);
     setSelectedStatus(bk.status);
     setCompletionType('maintenance');
-    setAdminNotesInput(bk.adminNotes || '');
+    const { adminNotes } = extractPaymentInfo(bk.adminNotes);
+    setAdminNotesInput(adminNotes || '');
   };
 
   // Submit Status Update
@@ -212,6 +269,8 @@ export default function AdminBookingsPage() {
         setBookings((prev) =>
           prev.map((b) => (b.id === editingBooking.id ? data.booking : b))
         );
+        // Instant cross-tab and WebSocket dispatch to notify user & admin
+        notifyBookingChange();
         setEditingBooking(null);
         setFeedback({
           isOpen: true,
@@ -248,12 +307,15 @@ export default function AdminBookingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-16 text-[#181F18]">
+    <div
+      style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+      className="space-y-6 max-w-7xl mx-auto pb-16 text-[#181F18]"
+    >
       
       {/* 1. Top Header & Stats Counter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#E3EBE3] text-[#2E7D32] text-xs font-mono font-semibold uppercase tracking-wider mb-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#E3EBE3] text-[#2E7D32] text-xs font-semibold uppercase tracking-wider mb-1">
             <span>Reservation Control Center</span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
@@ -273,7 +335,49 @@ export default function AdminBookingsPage() {
         </button>
       </div>
 
-      {/* 2. Stats Pill Cards */}
+      {/* 2. Space Category Filter Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        {[
+          { id: 'ALL', label: 'All Reservations', icon: Calendar, badge: `${categoryCounts.all}` },
+          { id: 'DAY_PASS', label: 'Day Pass', icon: Sparkles, badge: `${categoryCounts.dayPass}` },
+          { id: 'MEETING_ROOMS', label: 'Meeting Rooms', icon: Monitor, badge: `${categoryCounts.meetingRooms}` },
+          { id: 'CONFERENCE_HALL', label: 'Conference Hall', icon: Building2, badge: `${categoryCounts.conferenceHall}` },
+          { id: 'STANDARD_OFFICES', label: 'Standard Workspaces', icon: Layers, badge: `${categoryCounts.standard}` },
+        ].map((tab) => {
+          const isSelected = categoryTypeFilter === tab.id;
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setCategoryTypeFilter(tab.id as any);
+                setCurrentPage(1);
+              }}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 shadow-2xs ${
+                isSelected
+                  ? 'bg-[#181F18] text-white border-[#181F18] shadow-md ring-2 ring-[#2E7D32]'
+                  : 'bg-white hover:bg-[#FAF9F5] border-[#E5E1D8] text-[#5C665C] hover:text-[#181F18]'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className={`p-1.5 rounded-xl ${isSelected ? 'bg-white/10 text-emerald-300' : 'bg-[#FAF9F5] text-[#738273]'}`}>
+                  <TabIcon className="w-4 h-4" />
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                  isSelected ? 'bg-[#2E7D32] text-white' : 'bg-[#FAF9F5] border border-[#E5E1D8] text-[#5C665C]'
+                }`}>
+                  {tab.badge}
+                </span>
+              </div>
+              <span className={`text-xs font-bold font-serif ${isSelected ? 'text-white' : 'text-[#181F18]'}`}>
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3. Stats Pill Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <button
           onClick={() => setStatusFilter('ALL')}
@@ -387,46 +491,76 @@ export default function AdminBookingsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-[#FAF9F5] border-b border-[#E5E1D8] text-[#5C665C] font-mono uppercase text-[11px]">
-                  <th className="py-3.5 px-4 font-bold">Booking Ref</th>
-                  <th className="py-3.5 px-4 font-bold">Workspace & Category</th>
-                  <th className="py-3.5 px-4 font-bold">Host & Organization</th>
-                  <th className="py-3.5 px-4 font-bold">Schedule (From → To)</th>
-                  <th className="py-3.5 px-4 text-center font-bold">Seats</th>
-                  <th className="py-3.5 px-4 font-bold">Amount</th>
-                  <th className="py-3.5 px-4 font-bold">Status</th>
-                  <th className="py-3.5 px-4 font-bold">Admin Notes & Timestamp</th>
-                  <th className="py-3.5 px-4 text-right font-bold">Actions</th>
+                <tr className="bg-[#FAF9F5] border-b border-[#E5E1D8] text-[#5C665C] uppercase text-[11px]">
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap min-w-[280px]">Booking Ref</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap min-w-[190px]">Workspace & Category</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap min-w-[180px]">Host & Organization</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap min-w-[170px]">Schedule (From → To)</th>
+                  <th className="py-3.5 px-4 text-center font-bold whitespace-nowrap">Seats</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap">Amount</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap">Status</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap min-w-[200px]">Admin Notes & Timestamp</th>
+                  <th className="py-3.5 px-4 text-right font-bold whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E5E1D8]/60">
                 {paginatedBookings.map((bk) => (
                   <tr key={bk.id} className="hover:bg-[#FAF9F5]/70 transition-colors">
-                    {/* Ref ID */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1.5 font-mono font-bold text-[#181F18]">
-                        <span>{bk.id}</span>
+                    {/* Ref ID - Guaranteed single row */}
+                    <td className="py-3.5 px-4 whitespace-nowrap min-w-[280px] align-top">
+                      <div className="flex items-center gap-1.5 font-bold text-[#181F18] whitespace-nowrap">
+                        <span className="whitespace-nowrap select-all tracking-tight text-xs font-mono inline-block">
+                          {bk.id}
+                        </span>
                         <button
                           onClick={() => handleCopy(bk.id)}
-                          className="text-[#738273] hover:text-[#2E7D32] transition-colors cursor-pointer"
+                          className="text-[#738273] hover:text-[#2E7D32] transition-colors cursor-pointer shrink-0 p-1 rounded hover:bg-neutral-100"
                           title="Copy Booking ID"
                         >
                           {copiedId === bk.id ? <Check className="w-3.5 h-3.5 text-[#2E7D32]" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
-                      <span className="text-[10px] text-[#738273] block mt-0.5">
+                      <span className="text-[10px] text-[#738273] block mt-0.5 whitespace-nowrap">
                         {new Date(bk.createdAt).toLocaleDateString()}
                       </span>
                     </td>
 
-                    {/* Workspace */}
+                    {/* Workspace & Category Badge */}
                     <td className="py-3.5 px-4">
                       <strong className="text-[#181F18] font-bold block max-w-[200px] truncate" title={bk.workspaceTitle}>
                         {bk.workspaceTitle}
                       </strong>
-                      <span className="text-[10px] text-[#2E7D32] font-mono font-semibold uppercase">
-                        {bk.categoryName || 'Sanctuary'}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {(() => {
+                          const catType = getBookingCategory(bk);
+                          if (catType === 'DAY_PASS') {
+                            return (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[9px] font-mono font-bold">
+                                Day Pass · Daily
+                              </span>
+                            );
+                          }
+                          if (catType === 'MEETING_ROOMS') {
+                            return (
+                              <span className="px-1.5 py-0.2 rounded bg-blue-50 border border-blue-200 text-blue-900 text-[9px] font-mono font-bold">
+                                Meeting Room · Hourly
+                              </span>
+                            );
+                          }
+                          if (catType === 'CONFERENCE_HALL') {
+                            return (
+                              <span className="px-1.5 py-0.2 rounded bg-purple-50 border border-purple-200 text-purple-900 text-[9px] font-mono font-bold">
+                                Conference Hall · Hourly
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200 text-[#2E7D32] text-[9px] font-mono font-bold">
+                              {bk.categoryName || 'Office'} · Monthly
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </td>
 
                     {/* Host & Organization */}
@@ -488,20 +622,59 @@ export default function AdminBookingsPage() {
 
                     {/* Admin Notes & Timestamp */}
                     <td className="py-3.5 px-4 min-w-[220px]">
-                      {bk.adminNotes ? (
-                        <div>
-                          <p className="text-[#263626] font-medium line-clamp-2 text-[11px] leading-tight" title={bk.adminNotes}>
-                            {bk.adminNotes}
-                          </p>
-                          {bk.statusUpdatedAt && (
-                            <span className="text-[9px] text-[#738273] font-mono block mt-0.5">
-                              Updated: {new Date(bk.statusUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[#9EA89E] italic text-[11px]">No notes added</span>
-                      )}
+                      {(() => {
+                        const { utr, proofUrl, userNotes, adminNotes } = extractPaymentInfo(bk.adminNotes);
+                        return (
+                          <div className="space-y-1">
+                            {utr && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[#1E5C23] font-mono text-[10px] font-bold">
+                                  UTR: {utr}
+                                </span>
+                                {proofUrl && (
+                                  <a
+                                    href={proofUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-1.5 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 font-bold text-[10px] hover:underline inline-flex items-center gap-0.5"
+                                  >
+                                    <span>Proof</span>
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            {userNotes && (
+                              <div className="flex items-start gap-1 text-[11px] leading-tight">
+                                <span className="px-1 py-0.2 rounded bg-blue-50 border border-blue-200 text-blue-800 text-[9px] font-mono font-bold shrink-0 mt-0.5">
+                                  User
+                                </span>
+                                <span className="text-[#181F18] font-medium line-clamp-1" title={userNotes}>
+                                  {userNotes}
+                                </span>
+                              </div>
+                            )}
+                            {adminNotes && (
+                              <div className="flex items-start gap-1 text-[11px] leading-tight">
+                                <span className="px-1 py-0.2 rounded bg-emerald-50 border border-emerald-200 text-[#1E5C23] text-[9px] font-mono font-bold shrink-0 mt-0.5">
+                                  Admin
+                                </span>
+                                <span className="text-[#263626] font-medium line-clamp-1" title={adminNotes}>
+                                  {adminNotes}
+                                </span>
+                              </div>
+                            )}
+                            {!userNotes && !adminNotes && !utr && (
+                              <span className="text-[#9EA89E] italic text-[11px]">No notes added</span>
+                            )}
+                            {bk.statusUpdatedAt && (
+                              <span className="text-[9px] text-[#738273] font-mono block mt-0.5">
+                                Updated: {new Date(bk.statusUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* Actions */}
@@ -527,29 +700,73 @@ export default function AdminBookingsPage() {
               </tbody>
             </table>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-[#E5E1D8] bg-[#FAF9F5]">
-                <div className="text-xs text-[#5C665C] font-medium">
-                  Showing {(currentPage - 1) * rowsPerPage + 1} to {Math.min(currentPage * rowsPerPage, filteredBookings.length)} of {filteredBookings.length} entries
+            {/* Pagination Controls (20 rows per page) */}
+            {filteredBookings.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-[#E5E1D8] bg-[#FAF9F5]">
+                <div className="text-xs text-[#5C665C]">
+                  Showing <strong className="text-[#181F18]">{(currentPage - 1) * rowsPerPage + 1}</strong> to{' '}
+                  <strong className="text-[#181F18]">{Math.min(currentPage * rowsPerPage, filteredBookings.length)}</strong> of{' '}
+                  <strong className="text-[#181F18]">{filteredBookings.length}</strong> reservations
+                  <span className="ml-2 text-[11px] text-[#738273]">(20 per page)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1.5 rounded-lg border border-[#E5E1D8] bg-white text-[#181F18] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EAE5DC] transition-colors cursor-pointer"
-                  >
-                    Prev
-                  </button>
-                  <span className="text-xs font-bold text-[#181F18] px-2">{currentPage} / {totalPages}</span>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 rounded-lg border border-[#E5E1D8] bg-white text-[#181F18] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#EAE5DC] transition-colors cursor-pointer"
-                  >
-                    Next
-                  </button>
-                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#E5E1D8] bg-white text-[#181F18] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#EAE5DC] transition-colors cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Prev</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                        // Display sliding window if many pages
+                        if (
+                          totalPages > 7 &&
+                          Math.abs(pageNum - currentPage) > 2 &&
+                          pageNum !== 1 &&
+                          pageNum !== totalPages
+                        ) {
+                          if (pageNum === 2 || pageNum === totalPages - 1) {
+                            return (
+                              <span key={pageNum} className="px-1 text-xs text-[#738273]">
+                                ...
+                              </span>
+                            );
+                          }
+                          return null;
+                        }
+
+                        const isActive = pageNum === currentPage;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              isActive
+                                ? 'bg-[#2E7D32] text-white shadow-xs'
+                                : 'bg-white border border-[#E5E1D8] text-[#181F18] hover:bg-[#EAE5DC]'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#E5E1D8] bg-white text-[#181F18] text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#EAE5DC] transition-colors cursor-pointer"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -633,8 +850,16 @@ export default function AdminBookingsPage() {
                           className="mt-0.5 accent-blue-600"
                         />
                         <div>
-                          <span className="block font-bold text-blue-900 text-xs">Requires Maintenance (1Hr Buffer)</span>
-                          <span className="block text-[10px] text-blue-700 leading-tight mt-0.5">Blocks the workspace for 1 hour after the booking ends before it becomes available again.</span>
+                          <span className="block font-bold text-blue-900 text-xs">
+                            {editingBooking && (getBookingCategory(editingBooking) === 'MEETING_ROOMS' || getBookingCategory(editingBooking) === 'CONFERENCE_HALL')
+                              ? 'Requires Maintenance (15 Min Buffer)'
+                              : 'Requires Maintenance (1 Hr Buffer)'}
+                          </span>
+                          <span className="block text-[10px] text-blue-700 leading-tight mt-0.5">
+                            {editingBooking && (getBookingCategory(editingBooking) === 'MEETING_ROOMS' || getBookingCategory(editingBooking) === 'CONFERENCE_HALL')
+                              ? 'Blocks the workspace for 15 minutes after the booking ends before it becomes available again.'
+                              : 'Blocks the workspace for 1 hour after the booking ends before it becomes available again.'}
+                          </span>
                         </div>
                       </label>
                       <label className="flex items-start gap-2 cursor-pointer pt-2 border-t border-blue-100/50 group">
@@ -656,10 +881,28 @@ export default function AdminBookingsPage() {
                 )}
               </div>
 
-              {/* Customer Notes */}
+              {/* User Note (Submitted during booking) */}
+              {(() => {
+                const { userNotes } = extractPaymentInfo(editingBooking.adminNotes);
+                if (!userNotes) return null;
+                return (
+                  <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200/90 text-xs space-y-1">
+                    <span className="text-[10px] uppercase font-mono text-blue-800 font-bold flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-blue-700" />
+                      <span>User Note / Special Request (From Booking):</span>
+                    </span>
+                    <p className="text-blue-950 font-medium pl-5 italic">
+                      &ldquo;{userNotes}&rdquo;
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Admin Concierge Notes Input */}
               <div className="space-y-1.5">
-                <label className="font-bold text-[#181F18] block">
-                  Concierge / Admin Notes <span className="text-[11px] font-normal text-[#5C665C]">(Included in customer email & saved with timestamp)</span>
+                <label className="font-bold text-[#181F18] block flex items-center justify-between">
+                  <span>Admin / Concierge Note</span>
+                  <span className="text-[11px] font-normal text-[#5C665C]">(Visible to customer on portal & in status email)</span>
                 </label>
                 <textarea
                   rows={3}
@@ -732,7 +975,7 @@ export default function AdminBookingsPage() {
       {/* ========================================================================= */}
       {viewingBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn select-none">
-          <div className="relative z-10 w-full max-w-xl bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-left animate-scaleUp font-sans max-h-[90vh] overflow-y-auto">
+          <div className="relative z-10 w-full max-w-3xl lg:max-w-4xl bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-left animate-scaleUp font-sans max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-start justify-between pb-4 border-b border-[#E5E1D8]">
               <div>
@@ -804,20 +1047,152 @@ export default function AdminBookingsPage() {
                 </div>
               </div>
 
-              {/* Notes History */}
-              {viewingBooking.adminNotes && (
-                <div className="p-4 rounded-2xl bg-[#FFF8E1] border border-[#FFE082] space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-[#E65100] font-bold block">
-                    Admin Notes (Visible to Customer)
-                  </span>
-                  <p className="text-[#5D4037]">{viewingBooking.adminNotes}</p>
-                  {viewingBooking.statusUpdatedAt && (
-                    <span className="text-[10px] text-[#738273] font-mono block pt-1">
-                      Last Updated: {new Date(viewingBooking.statusUpdatedAt).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* Status Path & Progression Audit Timeline (Flipkart-Style Horizontal Stages) */}
+              <div className="space-y-2 pt-1">
+                <BookingStatusTracker
+                  status={viewingBooking.status}
+                  paymentStatus={viewingBooking.paymentStatus}
+                  createdAt={viewingBooking.createdAt}
+                  statusUpdatedAt={viewingBooking.statusUpdatedAt}
+                  startDate={viewingBooking.startDate}
+                  utrNumber={extractPaymentInfo(viewingBooking.adminNotes).utr}
+                  adminNotes={viewingBooking.adminNotes}
+                />
+              </div>
+
+              {/* Complete Payment & Financial Settlement Details (Always Shown for all statuses) */}
+              {(() => {
+                const { utr, proofUrl } = extractPaymentInfo(viewingBooking.adminNotes);
+                const total = Number(viewingBooking.totalAmount) || 0;
+                const rental = Math.round((total / 1.18) * 100) / 100;
+                const gst = Math.round((total - rental) * 100) / 100;
+                const isPaid = (viewingBooking.paymentStatus || '').toUpperCase() === 'PAID';
+
+                return (
+                  <div className="p-4 rounded-2xl bg-white border border-[#E5E1D8] space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#E5E1D8]">
+                      <span className="text-[10px] uppercase font-mono text-[#2E7D32] font-bold block">
+                        PAYMENT & FINANCIAL SETTLEMENT DETAILS
+                      </span>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full font-mono text-[10px] font-bold ${
+                          isPaid
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-amber-100 text-amber-800 border border-amber-300'
+                        }`}
+                      >
+                        {isPaid ? 'PAID & VERIFIED' : 'PAYMENT PENDING'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                      <div className="p-2.5 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]">
+                        <span className="text-[#5C665C] block text-[10px] font-mono uppercase">Rental Base</span>
+                        <strong className="text-sm font-mono text-[#181F18]">
+                          ₹{rental.toLocaleString('en-IN')}
+                        </strong>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]">
+                        <span className="text-[#5C665C] block text-[10px] font-mono uppercase">GST (18%)</span>
+                        <strong className="text-sm font-mono text-[#181F18]">
+                          ₹{gst.toLocaleString('en-IN')}
+                        </strong>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#E8F5E9] border border-[#C8E6C9]">
+                        <span className="text-[#2E7D32] block text-[10px] font-mono uppercase font-bold">Total Settled</span>
+                        <strong className="text-sm font-mono text-[#1B5E20]">
+                          ₹{total.toLocaleString('en-IN')}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* UTR & Transaction Reference */}
+                    {utr && (
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] text-xs">
+                        <span className="text-[#5C665C]">12-Digit UTR Ref Number:</span>
+                        <strong className="font-mono text-xs text-[#181F18] bg-white px-2.5 py-1 rounded-lg border border-[#E5E1D8]">
+                          {utr}
+                        </strong>
+                      </div>
+                    )}
+
+                    {/* Payment Proof Screenshot Preview */}
+                    {proofUrl && (
+                      <div className="space-y-2 p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8]">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-[#5C665C] font-semibold">Payment Proof Screenshot:</span>
+                          <a
+                            href={proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-[#2E7D32] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Open Full Size</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                        <div className="rounded-xl overflow-hidden border border-[#E5E1D8] bg-white max-h-48 flex items-center justify-center p-2">
+                          <img
+                            src={proofUrl}
+                            alt="Payment Proof Screenshot"
+                            className="max-h-44 object-contain rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {!utr && !proofUrl && (
+                      <p className="text-[11px] text-[#5C665C] italic">
+                        No manual UTR / slip uploaded. Booking registered via standard concierge flow.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Distinct User Notes & Admin Notes Display */}
+              {(() => {
+                const { userNotes, adminNotes } = extractPaymentInfo(viewingBooking.adminNotes);
+                if (!userNotes && !adminNotes) return null;
+                return (
+                  <div className="space-y-3">
+                    {/* 1. User Note (From Booking Time) */}
+                    {userNotes && (
+                      <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 space-y-1.5">
+                        <span className="text-[10px] uppercase font-mono text-blue-800 font-bold flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-blue-700" />
+                          <span>User Note (Submitted during Booking)</span>
+                        </span>
+                        <p className="text-blue-950 text-xs font-semibold pl-5 leading-relaxed">
+                          {userNotes}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 2. Admin Note (Official Status Note) */}
+                    <div className="p-4 rounded-2xl bg-[#FFF8E1] border border-[#FFE082] space-y-1.5">
+                      <span className="text-[10px] uppercase font-mono text-[#E65100] font-bold flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#E65100]" />
+                        <span>Admin Note (Visible to Customer)</span>
+                      </span>
+                      {adminNotes ? (
+                        <p className="text-[#5D4037] text-xs font-medium pl-5 leading-relaxed">
+                          {adminNotes}
+                        </p>
+                      ) : (
+                        <p className="text-[#8D6E63] text-xs italic pl-5">
+                          No admin note added yet. (Click &ldquo;Update Status&rdquo; to add a concierge note).
+                        </p>
+                      )}
+                      {viewingBooking.statusUpdatedAt && adminNotes && (
+                        <span className="text-[10px] text-[#738273] font-mono block pl-5 pt-0.5">
+                          Last Updated: {new Date(viewingBooking.statusUpdatedAt).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
             </div>
 
