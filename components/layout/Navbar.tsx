@@ -78,6 +78,8 @@ export const Navbar: React.FC = () => {
   const [quickDropdownOpen, setQuickDropdownOpen] = useState(false);
   const [quickDayPassOpen, setQuickDayPassOpen] = useState(false);
   const [mobileDayPassCalendarOpen, setMobileDayPassCalendarOpen] = useState(false);
+  const [mobileBookSpaceOpen, setMobileBookSpaceOpen] = useState(false);
+  const [mobileBookSpaceDayPassOpen, setMobileBookSpaceDayPassOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -88,6 +90,7 @@ export const Navbar: React.FC = () => {
   const isQuickActive = isDayPassActive || isConferenceActive || isContactActive;
   const dropdownRef = useRef<HTMLDivElement>(null);
   const quickDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileBookSpaceRef = useRef<HTMLDivElement>(null);
   const quickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { user, admin, isAuthenticated, isAdmin, logout } = useAuth();
@@ -141,6 +144,10 @@ export const Navbar: React.FC = () => {
         setQuickDropdownOpen(false);
         setQuickDayPassOpen(false);
       }
+      if (mobileBookSpaceRef.current && !mobileBookSpaceRef.current.contains(event.target as Node)) {
+        setMobileBookSpaceOpen(false);
+        setMobileBookSpaceDayPassOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -163,7 +170,7 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close drawer on path change
+  // Close drawer & dropdowns on path change
   useEffect(() => {
     setMobileMenuOpen(false);
     setMobileQuickBookOpen(false);
@@ -171,6 +178,8 @@ export const Navbar: React.FC = () => {
     setQuickDropdownOpen(false);
     setQuickDayPassOpen(false);
     setMobileDayPassCalendarOpen(false);
+    setMobileBookSpaceOpen(false);
+    setMobileBookSpaceDayPassOpen(false);
   }, [pathname]);
 
   // Prevent background scrolling when drawer is open
@@ -607,6 +616,7 @@ export const Navbar: React.FC = () => {
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
+                  id="user-profile-menu-btn"
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                   className="flex items-center gap-2 px-3.5 py-1.5 rounded-full transition-all cursor-pointer shadow-sm group select-none bg-white hover:bg-[#FAF9F5] border border-[#DDD7CA] hover:border-[#2E7D32] text-[#181F18]"
                   aria-expanded={profileDropdownOpen}
@@ -620,9 +630,11 @@ export const Navbar: React.FC = () => {
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 text-[#5C665C] group-hover:text-[#181F18] ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* Profile Floating Dropdown Menu */}
+                {/* Profile Floating Dropdown Menu: Centered below trigger and prevented from cutting off on mobile */}
                 {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-64 rounded-2xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_20px_50px_rgba(0,0,0,0.18)] p-2 z-50 animate-fadeIn font-sans">
+                  <div
+                    className="absolute top-full mt-2.5 z-50 animate-fadeIn font-sans p-2 rounded-2xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_20px_50px_rgba(0,0,0,0.18)] w-[260px] max-w-[calc(100vw-24px)] left-1/2 -translate-x-1/2 md:left-auto md:right-0 md:translate-x-0 md:w-64"
+                  >
                     {/* User Info Header */}
                     <div className="px-3 py-2.5 border-b border-[#EAE5DB] mb-1">
                       <div className="flex items-center justify-between">
@@ -636,23 +648,27 @@ export const Navbar: React.FC = () => {
 
                     {/* Navigation Items */}
                     <div className="space-y-0.5 text-xs">
-                      <Link
-                        href="/user/dashboard"
-                        onClick={() => setProfileDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#FAF9F5] transition-colors font-medium"
-                      >
-                        <UserCheck className="w-4 h-4 text-[#2E7D32]" />
-                        <span>Member Dashboard</span>
-                      </Link>
+                      {!isAdmin && (
+                        <>
+                          <Link
+                            href="/user/dashboard"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#FAF9F5] transition-colors font-medium"
+                          >
+                            <UserCheck className="w-4 h-4 text-[#2E7D32]" />
+                            <span>Member Dashboard</span>
+                          </Link>
 
-                      <Link
-                        href="/user/bookings"
-                        onClick={() => setProfileDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#E8F5E9] transition-colors font-medium"
-                      >
-                        <CalendarCheck2 className="w-4 h-4 text-[#2E7D32]" />
-                        <span>My Bookings</span>
-                      </Link>
+                          <Link
+                            href="/user/bookings"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[#2D3E2D] hover:text-[#181F18] hover:bg-[#E8F5E9] transition-colors font-medium"
+                          >
+                            <CalendarCheck2 className="w-4 h-4 text-[#2E7D32]" />
+                            <span>My Bookings</span>
+                          </Link>
+                        </>
+                      )}
 
                       {isAdmin && (
                         <Link
@@ -682,7 +698,7 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* "Book a Tour" Action Button (Redirects to Contact Us / Schedule Visit) */}
+            {/* Desktop "Book a Tour" Action Button (Unchanged, ONLY on desktop/tablet md+) */}
             <Link
               href="/contact"
               className="hidden md:inline-flex items-center gap-2 bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-semibold text-xs sm:text-sm rounded-full px-4 sm:px-5 py-2.5 shadow-lg border border-[#4ADE80]/40 transition-all hover:scale-105 cursor-pointer select-none group"
@@ -691,14 +707,234 @@ export const Navbar: React.FC = () => {
               <span>Book a Tour</span>
             </Link>
 
-            {/* Mobile Responsive "Book a Tour" CTA Button */}
-            <Link
-              href="/contact"
-              className="md:hidden inline-flex items-center gap-1.5 bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-semibold text-xs sm:text-sm rounded-full px-3.5 py-2 shadow-sm border border-[#4ADE80]/30 transition-all active:scale-95 shrink-0"
-            >
-              <Calendar className="w-3.5 h-3.5 text-[#86EFAC]" />
-              <span>Book a Tour</span>
-            </Link>
+            {/* Mobile Responsive "Book a Space" Dropdown Trigger & Panel (md:hidden ONLY in mobile view) */}
+            <div className="relative md:hidden" ref={mobileBookSpaceRef}>
+              <button
+                type="button"
+                id="mobile-book-space-btn"
+                onClick={() => {
+                  setMobileBookSpaceOpen((prev) => !prev);
+                  setMobileBookSpaceDayPassOpen(false);
+                }}
+                className="inline-flex items-center gap-1.5 bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-semibold text-xs rounded-full px-3 py-1.5 shadow-sm border border-[#4ADE80]/30 transition-all active:scale-95 shrink-0 cursor-pointer select-none"
+                aria-expanded={mobileBookSpaceOpen}
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#86EFAC]" />
+                <span>Book a Space</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-[#86EFAC] transition-transform duration-200 ${
+                    mobileBookSpaceOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Mobile Book a Space Dropdown Panel */}
+              {mobileBookSpaceOpen && (
+                <div
+                  className="absolute top-full mt-2.5 z-50 animate-fadeIn font-sans p-3.5 rounded-3xl bg-white text-[#181F18] border border-[#DDD7CA] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] w-[310px] sm:w-[350px] max-w-[calc(100vw-24px)] -right-6 sm:right-auto sm:left-1/2 sm:-translate-x-1/2"
+                >
+                  {mobileBookSpaceDayPassOpen ? (
+                    /* Day Pass Calendar View inside mobile dropdown */
+                    <div className="animate-fadeIn">
+                      <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-[#EAE5DB]">
+                        <button
+                          type="button"
+                          onClick={() => setMobileBookSpaceDayPassOpen(false)}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#2E7D32] hover:text-[#1E5C23] transition-colors cursor-pointer group"
+                        >
+                          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                          <span>Back to Spaces</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileBookSpaceOpen(false);
+                            setMobileBookSpaceDayPassOpen(false);
+                          }}
+                          className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
+                          aria-label="Close menu"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <DayPassCalendar
+                        onSelectDate={(ymd) => {
+                          setMobileBookSpaceOpen(false);
+                          setMobileBookSpaceDayPassOpen(false);
+                          router.push(
+                            `/book-space?plan=day-pass&date=${encodeURIComponent(ymd)}&startTime=${encodeURIComponent('09:00 AM')}&endTime=${encodeURIComponent('06:00 PM')}`
+                          );
+                        }}
+                        onCancel={() => setMobileBookSpaceDayPassOpen(false)}
+                        showTitle={true}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Dropdown Header */}
+                      <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-[#EAE5DB]">
+                        <span className="text-xs font-bold text-[#181F18] tracking-tight">
+                          Select Workspace :
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setMobileBookSpaceOpen(false)}
+                          className="w-6 h-6 rounded-full bg-[#FAF9F5] text-[#738273] hover:text-[#181F18] hover:bg-[#EAE5DB] flex items-center justify-center transition-colors text-xs cursor-pointer"
+                          aria-label="Close book space menu"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Space Services Cards */}
+                      <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-0.5">
+                        {/* Item 1: Day Pass with Calendar Trigger */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => {
+                            setMobileBookSpaceOpen(false);
+                            router.push('/book-space?plan=day-pass');
+                          }}
+                          className="group/card flex items-center gap-2.5 p-2 rounded-xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all shadow-sm active:scale-[0.99] cursor-pointer"
+                        >
+                          <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1A261A] relative">
+                            <img
+                              src="https://images.unsplash.com/photo-1527192491265-7e15c55b1ed2?auto=format&fit=crop&w=400&q=80"
+                              alt="Day Pass"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 pr-1 text-left">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block leading-tight">
+                              On Demand • 9 AM – 6 PM
+                            </span>
+                            <h4 className="font-serif font-bold text-xs sm:text-sm text-white leading-tight">
+                              Day Pass
+                            </h4>
+                            <p className="text-[10px] text-[#D1E0D1] font-sans leading-tight line-clamp-1 mt-0.5">
+                              Full-day drop-in workspace
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            title="Pick a Date for Day Pass"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMobileBookSpaceDayPassOpen(true);
+                            }}
+                            className="w-7 h-7 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#2E7D32] group-hover/card:text-white flex items-center justify-center shrink-0 transition-colors shadow-sm cursor-pointer"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Item 2: Conference Hall */}
+                        <Link
+                          href="/conference-hall"
+                          onClick={() => setMobileBookSpaceOpen(false)}
+                          className="group/card flex items-center gap-2.5 p-2 rounded-xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all shadow-sm active:scale-[0.99]"
+                        >
+                          <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1A261A] relative">
+                            <img
+                              src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=400&q=80"
+                              alt="Conference Hall"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 pr-1 text-left">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-[#C29B38] font-semibold block leading-tight">
+                              Featured
+                            </span>
+                            <h4 className="font-serif font-bold text-xs sm:text-sm text-white leading-tight">
+                              Conference Hall
+                            </h4>
+                            <p className="text-[10px] text-[#D1E0D1] font-sans leading-tight line-clamp-1 mt-0.5">
+                              Grand presentation suites & auditoriums
+                            </p>
+                          </div>
+                          <div className="w-7 h-7 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#185ADB] group-hover/card:text-white flex items-center justify-center shrink-0 transition-colors shadow-sm">
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+                        </Link>
+
+                        {/* Item 3: Meeting Rooms */}
+                        <Link
+                          href="/meeting-rooms"
+                          onClick={() => setMobileBookSpaceOpen(false)}
+                          className="group/card flex items-center gap-2.5 p-2 rounded-xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all shadow-sm active:scale-[0.99]"
+                        >
+                          <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1A261A] relative">
+                            <img
+                              src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&q=80"
+                              alt="Meeting Rooms"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 pr-1 text-left">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-[#4ADE80] font-semibold block leading-tight">
+                              Audio-Visual Spaces
+                            </span>
+                            <h4 className="font-serif font-bold text-xs sm:text-sm text-white leading-tight">
+                              Meeting Rooms
+                            </h4>
+                            <p className="text-[10px] text-[#D1E0D1] font-sans leading-tight line-clamp-1 mt-0.5">
+                              Executive presentation & collaboration pods
+                            </p>
+                          </div>
+                          <div className="w-7 h-7 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#2E7D32] group-hover/card:text-white flex items-center justify-center shrink-0 transition-colors shadow-sm">
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+                        </Link>
+
+                        {/* Item 4: Private Offices & Workspaces */}
+                        <Link
+                          href="/book-space"
+                          onClick={() => setMobileBookSpaceOpen(false)}
+                          className="group/card flex items-center gap-2.5 p-2 rounded-xl bg-gradient-to-r from-[#182319] to-[#0E150F] hover:from-[#1E2E20] hover:to-[#121B13] border border-[#2E7D32]/40 hover:border-[#4ADE80]/60 text-white transition-all shadow-sm active:scale-[0.99]"
+                        >
+                          <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#1A261A] relative">
+                            <img
+                              src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=400&q=80"
+                              alt="Private Offices"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 pr-1 text-left">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-[#FBBF24] font-semibold block leading-tight">
+                              Dedicated & Private
+                            </span>
+                            <h4 className="font-serif font-bold text-xs sm:text-sm text-white leading-tight">
+                              Private Offices & Desks
+                            </h4>
+                            <p className="text-[10px] text-[#D1E0D1] font-sans leading-tight line-clamp-1 mt-0.5">
+                              Bespoke dedicated workspaces & suites
+                            </p>
+                          </div>
+                          <div className="w-7 h-7 rounded-full bg-white text-[#181F18] group-hover/card:bg-[#2E7D32] group-hover/card:text-white flex items-center justify-center shrink-0 transition-colors shadow-sm">
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
+                        </Link>
+                      </div>
+
+                      {/* Quick Footer for Tour Option */}
+                      <div className="pt-2 mt-2 border-t border-[#EAE5DB] flex items-center justify-between text-[11px]">
+                        <span className="text-[#5C665C]">Want a guided walkthrough?</span>
+                        <Link
+                          href="/contact"
+                          onClick={() => setMobileBookSpaceOpen(false)}
+                          className="font-semibold text-[#2E7D32] hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>Schedule Tour</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Mobile Drawer Trigger (ONLY visible in mobile/tablet, hidden on desktop lg:hidden) */}
             <button
@@ -948,29 +1184,33 @@ export const Navbar: React.FC = () => {
                     </div>
                   </div>
 
-                  <Link
-                    href="/user/bookings"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-[#2D3E2D] hover:bg-[#E8F5E9] transition-all"
-                  >
-                    <span className="flex items-center gap-2">
-                      <CalendarCheck2 className="w-4 h-4 text-[#2E7D32]" />
-                      My Bookings
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#738273]" />
-                  </Link>
+                  {!isAdmin && (
+                    <>
+                      <Link
+                        href="/user/bookings"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-[#2D3E2D] hover:bg-[#E8F5E9] transition-all"
+                      >
+                        <span className="flex items-center gap-2">
+                          <CalendarCheck2 className="w-4 h-4 text-[#2E7D32]" />
+                          My Bookings
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-[#738273]" />
+                      </Link>
 
-                  <Link
-                    href="/user/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-[#2D3E2D] hover:bg-[#F0ECE1] transition-all"
-                  >
-                    <span className="flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-[#185ADB]" />
-                      My Dashboard
-                    </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#738273]" />
-                  </Link>
+                      <Link
+                        href="/user/dashboard"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between text-[#2D3E2D] hover:bg-[#F0ECE1] transition-all"
+                      >
+                        <span className="flex items-center gap-2">
+                          <UserCheck className="w-4 h-4 text-[#185ADB]" />
+                          My Dashboard
+                        </span>
+                        <ChevronRight className="w-3.5 h-3.5 text-[#738273]" />
+                      </Link>
+                    </>
+                  )}
 
                   {isAdmin && (
                     <Link

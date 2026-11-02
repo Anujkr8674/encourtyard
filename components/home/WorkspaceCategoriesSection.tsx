@@ -80,6 +80,33 @@ const getCategoryTag = (name: string = '') => {
   return 'More Than A Space';
 };
 
+// Helper to determine the dedicated dynamic page link for each category
+export const getCategoryDedicatedLink = (cat: { name?: string; slug?: string; id?: string }): string => {
+  const name = (cat.name || '').toLowerCase().trim();
+  const slug = (cat.slug || '').toLowerCase().trim();
+  const id = (cat.id || '').toLowerCase().trim();
+  const combined = `${name} ${slug} ${id}`;
+
+  // 1. Day Pass dedicated route / filter
+  if (combined.includes('day pass') || combined.includes('day-pass')) {
+    return '/book-space?plan=day-pass';
+  }
+
+  // 2. Meeting Rooms dedicated dynamic page
+  if (combined.includes('meeting') || combined.includes('boardroom')) {
+    return '/meeting-rooms';
+  }
+
+  // 3. Conference Hall dedicated dynamic page (covers 'conference', 'confr', 'confreence')
+  if (combined.includes('confr') || combined.includes('conference')) {
+    return '/conference-hall';
+  }
+
+  // 4. All other categories -> /book-space with dedicated category filter query param
+  const param = cat.slug || cat.id || encodeURIComponent(name);
+  return `/book-space?category=${param}`;
+};
+
 // Safe image extractor for database workspaces
 const getWorkspaceImage = (ws: any, fallbackCatImage: string): string => {
   try {
@@ -208,7 +235,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
             imageUrl: dbCat.imageUrl || '',
             bgFeatureImage: dbCat.imageUrl || '',
             icon: catIcon,
-            link: `/workspaces?category=${dbCat.slug || dbCat.id}`,
+            link: getCategoryDedicatedLink(dbCat),
             detailTitle: dbCat.name,
             detailDescription: dbCat.description || 'A focused space to do your best work',
             ctaText: `View All ${dbCat.name}`,
@@ -443,7 +470,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
           {/* Action Links & Top Carousel Controls */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap md:self-start md:pt-1">
             <Link
-              href="/workspaces"
+              href="/book-space"
               className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#181F18] hover:text-[#263626] group transition-colors"
             >
               <span>Explore All Workspaces</span>
@@ -627,7 +654,7 @@ export const WorkspaceCategoriesSection: React.FC = () => {
 
               {/* End-of-Slider Explore All Card */}
               <Link
-                href="/workspaces"
+                href="/book-space"
                 onClick={(e) => {
                   if (dragDistance > 10) e.preventDefault();
                 }}

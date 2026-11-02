@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminLoginForm } from '@/components/admin/AdminLoginForm';
+import { AdminNotificationsProvider } from '@/context/AdminNotificationsContext';
+import { AdminNotificationDropdown } from '@/components/admin/AdminNotificationDropdown';
 import {
   Menu,
   X,
@@ -101,64 +103,69 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div
-      style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
-      className="min-h-screen bg-[#FAF9F5] flex flex-col lg:flex-row admin-panel-root"
-    >
-      {/* Desktop Persistent Fixed Sidebar */}
-      <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-64 sm:w-72 h-screen z-30">
-        <AdminSidebar />
-      </aside>
+    <AdminNotificationsProvider>
+      <div
+        style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+        className="min-h-screen bg-[#FAF9F5] flex flex-col lg:flex-row admin-panel-root"
+      >
+        {/* Desktop Persistent Fixed Sidebar */}
+        <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-64 sm:w-72 h-screen z-30">
+          <AdminSidebar />
+        </aside>
 
-      {/* Mobile Sidebar Overlay Drawer */}
-      {mobileSidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setMobileSidebarOpen(false)}
-          />
-          <div className="relative z-10 h-full w-64 sm:w-72">
-            <AdminSidebar onCloseMobile={() => setMobileSidebarOpen(false)} />
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Area with offset for fixed sidebar */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-64 sm:lg:ml-72 min-h-screen">
-        {/* Top Header Bar - Clean Light High-Visibility Aesthetic */}
-        <header className="h-20 bg-white text-[#181F18] border-b border-[#E5E1D8] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-          {/* Left Side: Welcome Admin Message */}
-          <div className="flex items-center gap-3.5">
-            {/* Mobile Hamburger Toggle */}
-            <button
-              type="button"
-              onClick={() => setMobileSidebarOpen(true)}
-              className="lg:hidden p-2.5 rounded-xl bg-[#FAF9F5] hover:bg-[#E3EBE3] border border-[#E5E1D8] text-[#181F18] cursor-pointer transition-all shadow-sm"
-              aria-label="Open Admin Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            <div>
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#181F18] tracking-tight">
-                Welcome Administrator
-              </h2>
+        {/* Mobile Sidebar Overlay Drawer */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden flex">
+            <div
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setMobileSidebarOpen(false)}
+            />
+            <div className="relative z-10 h-full w-64 sm:w-72">
+              <AdminSidebar onCloseMobile={() => setMobileSidebarOpen(false)} />
             </div>
           </div>
+        )}
 
-          {/* Right Side: Admin 'A' Avatar Icon with Online Green Dot & Profile Dropdown */}
-          <div className="flex items-center gap-3" ref={dropdownRef}>
-            <div className="relative">
+        {/* Main Content Area with offset for fixed sidebar */}
+        <div className="flex-1 flex flex-col min-w-0 lg:ml-64 sm:lg:ml-72 min-h-screen">
+          {/* Top Header Bar - Clean Light High-Visibility Aesthetic */}
+          <header className="h-20 bg-white text-[#181F18] border-b border-[#E5E1D8] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 shadow-sm">
+            {/* Left Side: Welcome Admin Message */}
+            <div className="flex items-center gap-3.5">
+              {/* Mobile Hamburger Toggle */}
               <button
                 type="button"
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="relative w-10 h-10 rounded-full bg-gradient-to-br from-[#2E7D32] to-[#1E5C23] text-white flex items-center justify-center font-bold text-base shadow-sm ring-2 ring-[#4ADE80]/50 hover:ring-[#2E7D32] hover:scale-105 transition-all cursor-pointer select-none group"
-                aria-expanded={profileDropdownOpen}
-                aria-label="Admin Profile Menu"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="lg:hidden p-2.5 rounded-xl bg-[#FAF9F5] hover:bg-[#E3EBE3] border border-[#E5E1D8] text-[#181F18] cursor-pointer transition-all shadow-sm"
+                aria-label="Open Admin Menu"
               >
-                <span>A</span>
-                <span className="w-3 h-3 rounded-full bg-[#22C55E] ring-2 ring-white absolute -bottom-0.5 -right-0.5 animate-pulse shadow-sm" />
+                <Menu className="w-5 h-5" />
               </button>
+
+              <div>
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#181F18] tracking-tight">
+                  Welcome Administrator
+                </h2>
+              </div>
+            </div>
+
+            {/* Right Side: Notification Bell Dropdown + Admin Avatar Dropdown */}
+            <div className="flex items-center gap-3.5">
+              {/* Realtime WebSocket Notification Icon & Dropdown */}
+              <AdminNotificationDropdown />
+
+              {/* Admin 'A' Avatar Icon with Online Green Dot & Profile Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="relative w-10 h-10 rounded-full bg-gradient-to-br from-[#2E7D32] to-[#1E5C23] text-white flex items-center justify-center font-bold text-base shadow-sm ring-2 ring-[#4ADE80]/50 hover:ring-[#2E7D32] hover:scale-105 transition-all cursor-pointer select-none group"
+                  aria-expanded={profileDropdownOpen}
+                  aria-label="Admin Profile Menu"
+                >
+                  <span>A</span>
+                  <span className="w-3 h-3 rounded-full bg-[#22C55E] ring-2 ring-white absolute -bottom-0.5 -right-0.5 animate-pulse shadow-sm" />
+                </button>
 
               {/* Profile Floating Dropdown Menu */}
               {profileDropdownOpen && (
@@ -222,5 +229,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </main>
       </div>
     </div>
+    </AdminNotificationsProvider>
   );
 }

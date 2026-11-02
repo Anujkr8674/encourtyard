@@ -32,10 +32,12 @@ import {
   Sparkles,
   Calendar,
   Hash,
-  Monitor
+  Monitor,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useFeedbackModal } from '@/context/FeedbackModalContext';
+import { calculateWorkspaceInventory, WorkspaceInventoryStatus } from '@/lib/availability';
 
 interface CategoryOption {
   id: string;
@@ -72,6 +74,10 @@ interface Workspace {
   order: number;
   isActive: boolean;
   showInDayPass?: boolean;
+  totalUnits?: number;
+  alertThreshold?: number;
+  bookings?: any[];
+  maintenanceBlocks?: any[];
   createdAt: string | Date;
 }
 
@@ -110,6 +116,32 @@ export default function AdminWorkspacesPage() {
   const [formBadge, setFormBadge] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
   const [formShowInDayPass, setFormShowInDayPass] = useState(false);
+  const [formTotalUnits, setFormTotalUnits] = useState<number>(1);
+  const [formAlertThreshold, setFormAlertThreshold] = useState<number>(5);
+
+  // Live Inventory Date Checker State (Default Today)
+  const todayStr = React.useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+  const [inventoryCheckDate, setInventoryCheckDate] = useState<string>(todayStr);
+  const [selectedCheckDate, setSelectedCheckDate] = useState<string>(todayStr);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Compute workspaces with low availability or sold out for the selected date
+  const lowStockWorkspaces = React.useMemo(() => {
+    return workspaces
+      .filter((ws) => ws.isActive)
+      .map((ws) => {
+        const inv = calculateWorkspaceInventory(ws, inventoryCheckDate, '09:00 AM', inventoryCheckDate, '06:00 PM');
+        return { ws, inv };
+      })
+      .filter(({ inv }) => inv.isLowStock || inv.availableUnits === 0);
+  }, [workspaces, inventoryCheckDate]);
 
   // Key-Value Specifications
   const [specifications, setSpecifications] = useState<SpecItem[]>([
@@ -371,6 +403,8 @@ export default function AdminWorkspacesPage() {
       badge: formBadge.trim() || null,
       isActive: formIsActive,
       showInDayPass: formShowInDayPass,
+      totalUnits: formTotalUnits,
+      alertThreshold: formAlertThreshold,
       order: workspaces.length + 1,
     };
 
@@ -439,6 +473,8 @@ export default function AdminWorkspacesPage() {
     setFormBadge('');
     setFormIsActive(true);
     setFormShowInDayPass(false);
+    setFormTotalUnits(1);
+    setFormAlertThreshold(5);
     setSpecifications([
       { key: 'Seating Capacity', value: '4 - 6 Pax' },
       { key: 'Soundproofing', value: 'Acoustic Double Glazed STC 65' },
@@ -464,6 +500,8 @@ export default function AdminWorkspacesPage() {
     setFormBadge(ws.badge || '');
     setFormIsActive(ws.isActive);
     setFormShowInDayPass(!!ws.showInDayPass);
+    setFormTotalUnits(ws.totalUnits || 1);
+    setFormAlertThreshold(ws.alertThreshold !== undefined ? ws.alertThreshold : 5);
     setSpecifications(
       Array.isArray(ws.specifications) && ws.specifications.length > 0
         ? ws.specifications
@@ -715,11 +753,91 @@ export default function AdminWorkspacesPage() {
         </Link>
       </div>
 
-      {/* Filter and Search Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-[#E0DCD3] shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+      {/* Low Inventory Alert Notification Banner for Admin */}
+      {lowStockWorkspaces.length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 animate-pulse text-amber-800" />
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900 block">
+                ⚠️ Low Inventory Alert ({lowStockWorkspaces.length} Office{lowStockWorkspaces.length > 1 ? 's' : ''} on {inventoryCheckDate})
+              </span>
+              <span className="text-xs text-amber-800">
+                Some offices have reached or dropped below their notification threshold on the selected date.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAlertModalOpen(true)}
+            className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>View Low Inventory Alert List ({lowStockWorkspaces.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* 1. Mobile Filter Toolbar (lg:hidden) - Row 1: Search + Filters btn, Row 2: Showing count + Refresh */}
+      <div className="lg:hidden bg-white p-3.5 rounded-2xl border border-[#E0DCD3] shadow-xs space-y-2.5">
+        {/* Row 1: Left search field, Right filter button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-[#738273] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by space name, category, or specs..."
+              className="w-full pl-9 pr-3 py-2 bg-[#FAF9F5] border border-[#E0DCD3] focus:border-[#2E7D32] rounded-xl text-xs text-[#181F18] placeholder-[#738273] outline-none transition-colors"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A968A] hover:text-[#181F18]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileFilterOpen(true)}
+            className="px-3.5 py-2 bg-[#181F18] hover:bg-[#2E7D32] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-xs active:scale-95"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Filters</span>
+            {(filterCategory !== 'ALL' || filterDayPass || inventoryCheckDate !== todayStr) && (
+              <span className="w-2 h-2 rounded-full bg-[#4ADE80] ring-2 ring-[#181F18] animate-pulse" />
+            )}
+          </button>
+        </div>
+
+        {/* Row 2: Showing message just below search and filter row btn */}
+        <div className="flex items-center justify-between pt-1 border-t border-[#E0DCD3]/60">
+          <span className="text-xs text-[#5C665C] font-mono font-medium">
+            Showing {totalItems === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + pageSize, totalItems)} of {totalItems} workspaces
+          </span>
+          <button
+            type="button"
+            onClick={loadData}
+            className="p-1.5 rounded-xl border border-[#E0DCD3] hover:border-[#2E7D32] text-[#181F18] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#2E7D32] ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Desktop Filter and Search Toolbar (hidden lg:flex) */}
+      <div className="hidden lg:flex bg-white p-4 rounded-2xl border border-[#E0DCD3] shadow-xs flex-nowrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
           {/* Search Input */}
-          <div className="relative w-full sm:w-72">
+          <div className="relative w-64">
             <Search className="w-4 h-4 text-[#6A806A] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -737,7 +855,7 @@ export default function AdminWorkspacesPage() {
               setFilterCategory(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full sm:w-auto px-3.5 py-2 bg-[#FAF9F5] border border-[#E0DCD3] focus:border-[#2E7D32] rounded-xl text-xs text-[#181F18] outline-none font-medium"
+            className="px-3.5 py-2 bg-[#FAF9F5] border border-[#E0DCD3] focus:border-[#2E7D32] rounded-xl text-xs text-[#181F18] outline-none font-medium"
           >
             <option value="ALL">All Workspace Categories ({categories.length})</option>
             {categories.map((c) => (
@@ -747,14 +865,48 @@ export default function AdminWorkspacesPage() {
             ))}
           </select>
 
-          {/* Day Pass Filter Button (Image 3) */}
+          {/* Live Inventory Date Checker with Submit Button */}
+          <div className="flex items-center gap-1.5 bg-[#FAF9F5] border border-[#E0DCD3] px-2.5 py-1.5 rounded-xl">
+            <Calendar className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
+            <span className="text-[11px] font-semibold text-[#5C665C] whitespace-nowrap">Check Date:</span>
+            <input
+              type="date"
+              value={selectedCheckDate}
+              onChange={(e) => setSelectedCheckDate(e.target.value || todayStr)}
+              className="bg-white border border-[#E0DCD3] rounded-lg px-2 py-0.5 text-xs text-[#181F18] font-mono outline-none cursor-pointer"
+            />
+            <button
+              type="button"
+              onClick={() => setInventoryCheckDate(selectedCheckDate)}
+              className="px-2.5 py-1 bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap active:scale-95"
+              title="Apply date and show details"
+            >
+              <Check className="w-3 h-3 stroke-[3]" />
+              <span>Submit</span>
+            </button>
+            {(selectedCheckDate !== todayStr || inventoryCheckDate !== todayStr) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCheckDate(todayStr);
+                  setInventoryCheckDate(todayStr);
+                }}
+                className="text-[10px] font-bold text-[#2E7D32] hover:underline cursor-pointer ml-0.5 whitespace-nowrap"
+                title="Reset to today"
+              >
+                Today
+              </button>
+            )}
+          </div>
+
+          {/* Day Pass Filter Button */}
           <button
             type="button"
             onClick={() => {
               setFilterDayPass((prev) => !prev);
               setCurrentPage(1);
             }}
-            className={`w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border cursor-pointer whitespace-nowrap shadow-xs ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border cursor-pointer whitespace-nowrap shadow-xs ${
               filterDayPass
                 ? 'bg-[#185ADB] text-white border-[#185ADB]'
                 : 'bg-[#FAF9F5] hover:bg-[#F0ECE1] text-[#181F18] border-[#E0DCD3]'
@@ -769,8 +921,9 @@ export default function AdminWorkspacesPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <span className="text-xs text-[#6A806A] font-mono">
+        {/* Right Section: Showing Count + Refresh */}
+        <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap ml-auto">
+          <span className="text-xs text-[#6A806A] font-mono font-medium">
             Showing {totalItems === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + pageSize, totalItems)} of {totalItems} workspaces
           </span>
           <button
@@ -784,26 +937,189 @@ export default function AdminWorkspacesPage() {
         </div>
       </div>
 
+      {/* 3. Mobile Filter Slide-Out Drawer from Right */}
+      {mobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileFilterOpen(false)}
+          />
+
+          {/* Right-Side Drawer Panel */}
+          <div className="fixed top-0 right-0 bottom-0 w-full max-w-xs sm:max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-300">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#181F18] text-white flex items-center justify-center">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-[#181F18]">Filters &amp; Availability</h3>
+                  <p className="text-[11px] text-[#5C665C]">Refine workspaces and dates</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(false)}
+                className="p-2 rounded-xl text-[#5C665C] hover:text-[#181F18] hover:bg-white border border-transparent hover:border-[#E0DCD3] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+              {/* Category Filter */}
+              <div>
+                <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
+                  Workspace Category
+                </label>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => {
+                    setFilterCategory(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-3 py-2 bg-[#FAF9F5] border border-[#E0DCD3] focus:border-[#2E7D32] rounded-xl text-xs text-[#181F18] outline-none font-medium"
+                >
+                  <option value="ALL">All Workspace Categories ({categories.length})</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Check Date Filter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider">
+                    Check Date
+                  </label>
+                  {selectedCheckDate !== todayStr && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCheckDate(todayStr)}
+                      className="text-[11px] font-bold text-[#2E7D32] hover:underline cursor-pointer"
+                    >
+                      Reset to Today
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 bg-[#FAF9F5] border border-[#E0DCD3] p-2.5 rounded-xl">
+                  <Calendar className="w-4 h-4 text-[#2E7D32] shrink-0" />
+                  <input
+                    type="date"
+                    value={selectedCheckDate}
+                    onChange={(e) => setSelectedCheckDate(e.target.value || todayStr)}
+                    className="bg-transparent text-xs text-[#181F18] font-mono font-bold outline-none flex-1 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-[#738273]">
+                  Check real-time booked units and available stock for this date.
+                </p>
+              </div>
+
+              {/* Day Pass Filter */}
+              <div>
+                <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
+                  Workspace Type
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterDayPass((prev) => !prev);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                    filterDayPass
+                      ? 'bg-blue-50 border-[#185ADB] text-[#185ADB]'
+                      : 'bg-[#FAF9F5] border-[#E0DCD3] text-[#181F18] hover:bg-[#F0ECE1]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#185ADB]" />
+                    <span>Day Pass Only</span>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                      filterDayPass ? 'bg-[#185ADB] border-[#185ADB]' : 'border-[#8A968A]'
+                    }`}
+                  >
+                    {filterDayPass && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                  </div>
+                </button>
+              </div>
+
+              {/* Active Filters Summary */}
+              {(filterCategory !== 'ALL' || filterDayPass || inventoryCheckDate !== todayStr) && (
+                <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                  <span className="font-bold block">Active Filters:</span>
+                  <ul className="text-[11px] space-y-0.5 list-disc list-inside text-emerald-800">
+                    {filterCategory !== 'ALL' && <li>Category filter applied</li>}
+                    {filterDayPass && <li>Day Pass only</li>}
+                    {inventoryCheckDate !== todayStr && <li>Date: {inventoryCheckDate}</li>}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#E0DCD3] bg-[#FAF9F5] flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterCategory('ALL');
+                  setFilterDayPass(false);
+                  setSelectedCheckDate(todayStr);
+                  setInventoryCheckDate(todayStr);
+                  setCurrentPage(1);
+                  setMobileFilterOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#E0DCD3] hover:bg-white text-xs font-semibold text-[#5C665C] transition-colors cursor-pointer"
+              >
+                Reset All
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInventoryCheckDate(selectedCheckDate);
+                  setMobileFilterOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              >
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Apply &amp; Submit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Workspaces Data Table */}
       <div className="bg-white border border-[#E0DCD3] rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#F7F5F0] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D2CBBF] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#2E7D32]">
+          <table className="w-full text-left border-collapse text-xs min-w-[1100px]">
             <thead>
               <tr className="bg-[#FAF9F5] border-b border-[#E0DCD3] text-[#6A806A] font-mono uppercase text-[11px] tracking-wider">
-                <th className="py-4 px-4 w-20 text-center">Order</th>
-                <th className="py-4 px-4 w-24">Media</th>
-                <th className="py-4 px-4">Workspace Heading</th>
-                <th className="py-4 px-4">Category</th>
-                <th className="py-4 px-4">Short Description</th>
-                <th className="py-4 px-4">Storage & Status</th>
-                <th className="py-4 px-4 text-right">Actions</th>
+                <th className="py-4 px-4 w-20 text-center whitespace-nowrap">Order</th>
+                <th className="py-4 px-4 w-24 whitespace-nowrap">Media</th>
+                <th className="py-4 px-4 whitespace-nowrap min-w-[180px]">Workspace Heading</th>
+                <th className="py-4 px-4 whitespace-nowrap">Category</th>
+                <th className="py-4 px-4 whitespace-nowrap">Short Description</th>
+                <th className="py-4 px-4 text-center whitespace-nowrap">Total Inventory</th>
+                <th className="py-4 px-4 text-center whitespace-nowrap">Available Units</th>
+                <th className="py-4 px-4 whitespace-nowrap">Storage & Status</th>
+                <th className="py-4 px-4 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-[#E0DCD3]/70">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#5C665C]">
+                  <td colSpan={9} className="py-12 text-center text-[#5C665C]">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="w-6 h-6 text-[#2E7D32] animate-spin" />
                       <span className="text-xs font-mono">Loading workspaces from database...</span>
@@ -812,7 +1128,7 @@ export default function AdminWorkspacesPage() {
                 </tr>
               ) : paginatedWorkspaces.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#5C665C]">
+                  <td colSpan={9} className="py-12 text-center text-[#5C665C]">
                     <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#2E7D32] flex items-center justify-center mb-1">
                         <Building2 className="w-6 h-6" />
@@ -934,12 +1250,70 @@ export default function AdminWorkspacesPage() {
                         </p>
                       </td>
 
+                      {/* Total Inventory Allocation Column */}
+                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                        {(() => {
+                          const inv = calculateWorkspaceInventory(ws, inventoryCheckDate, '09:00 AM', inventoryCheckDate, '06:00 PM');
+                          return (
+                            <div className="inline-flex flex-col items-center gap-0.5 whitespace-nowrap">
+                              <span className="font-mono text-xs font-bold text-[#181F18] whitespace-nowrap">
+                                {inv.totalUnits} Total Unit{inv.totalUnits > 1 ? 's' : ''}
+                              </span>
+                              <span className="text-[10px] text-[#738273] font-mono whitespace-nowrap">
+                                {inv.bookedUnits} booked ({inventoryCheckDate})
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Dedicated Available Units Column (1, 3, 5, etc.) */}
+                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                        {(() => {
+                          const inv = calculateWorkspaceInventory(ws, inventoryCheckDate, '09:00 AM', inventoryCheckDate, '06:00 PM');
+                          return (
+                            <div className="inline-flex items-center gap-2 whitespace-nowrap justify-center">
+                              <div className="flex items-baseline gap-1 whitespace-nowrap bg-[#FAF9F5] px-2 py-1 rounded-lg border border-[#E0DCD3]">
+                                <span
+                                  className={`font-mono text-xs font-extrabold ${
+                                    inv.availableUnits === 0
+                                      ? 'text-red-600'
+                                      : inv.isLowStock
+                                      ? 'text-amber-700'
+                                      : 'text-[#2E7D32]'
+                                  }`}
+                                >
+                                  {inv.availableUnits}
+                                </span>
+                                <span className="text-[10px] font-mono text-[#5C665C]">
+                                  / {inv.totalUnits}
+                                </span>
+                              </div>
+
+                              {inv.availableUnits === 0 ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 border border-red-200 text-red-700 text-[9px] font-bold font-mono whitespace-nowrap">
+                                  ⛔ Sold Out
+                                </span>
+                              ) : inv.isLowStock ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-bold font-mono whitespace-nowrap animate-pulse">
+                                  ⚠️ Few Left (&le; {inv.alertThreshold})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-[#1B5E20] text-[9px] font-bold font-mono whitespace-nowrap">
+                                  ● Available
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+
                       {/* Status */}
-                      <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="space-y-1 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold whitespace-nowrap ${
                                 ws.isActive
                                   ? 'bg-emerald-50 text-[#2E7D32] border border-emerald-200'
                                   : 'bg-red-50 text-red-700 border border-red-200'
@@ -954,12 +1328,12 @@ export default function AdminWorkspacesPage() {
                             </span>
 
                             {ws.showInDayPass && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-[#185ADB] border border-blue-200">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-50 text-[#185ADB] border border-blue-200 whitespace-nowrap">
                                 Day Pass
                               </span>
                             )}
                           </div>
-                          <span className="block text-[10px] text-[#6A806A] font-mono">
+                          <span className="block text-[10px] text-[#6A806A] font-mono whitespace-nowrap">
                             Supabase Media
                           </span>
                         </div>
@@ -1400,11 +1774,92 @@ export default function AdminWorkspacesPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Single Executive Suite, Team Pod A"
+                    placeholder="e.g. Small Team Office, Meeting Room Executive"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-[#E0DCD3] bg-[#FAF9F5] text-xs text-[#181F18] focus:outline-none focus:border-[#2E7D32] focus:bg-white font-medium"
                   />
+                </div>
+              </div>
+
+              {/* INVENTORY TRACKING & MULTI-OFFICE ALLOCATION */}
+              <div className="p-5 rounded-2xl bg-[#F0F7F0] border border-[#C8E6C9] space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#1B5E20] uppercase tracking-wider block flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-[#2E7D32]" />
+                      Office Inventory & Multi-Unit Allocation
+                    </span>
+                    <span className="text-[11px] text-[#4A724D] block mt-0.5">
+                      Set total physical units available (e.g. 20 team offices, 40 meeting rooms) and set alert limits.
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-[#2E7D32] text-white text-[10px] font-mono font-bold">
+                    Tracking Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Total Units Input with Stepper */}
+                  <div>
+                    <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
+                      Total Office Units / Quantity <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex items-center bg-white border border-[#C8E6C9] rounded-xl px-3 py-1.5 shadow-2xs">
+                        <Building2 className="w-4 h-4 text-[#2E7D32] mr-2 shrink-0" />
+                        <input
+                          type="number"
+                          min={1}
+                          max={5000}
+                          required
+                          value={formTotalUnits}
+                          onChange={(e) => setFormTotalUnits(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-full text-xs font-bold text-[#181F18] outline-none"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormTotalUnits((u) => Math.max(1, u - 1))}
+                          className="w-8 h-8 rounded-lg bg-white border border-[#C8E6C9] text-[#181F18] font-bold text-xs flex items-center justify-center hover:bg-[#E8F5E9] cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormTotalUnits((u) => u + 1)}
+                          className="w-8 h-8 rounded-lg bg-white border border-[#C8E6C9] text-[#181F18] font-bold text-xs flex items-center justify-center hover:bg-[#E8F5E9] cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-[#5C665C] block mt-1">
+                      Total count of identical rooms/desks in inventory.
+                    </span>
+                  </div>
+
+                  {/* Low Stock Alert Threshold */}
+                  <div>
+                    <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
+                      Low Inventory Alert Limit
+                    </label>
+                    <div className="flex items-center bg-white border border-[#C8E6C9] rounded-xl px-3 py-1.5 shadow-2xs">
+                      <AlertCircle className="w-4 h-4 text-amber-600 mr-2 shrink-0" />
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={formAlertThreshold}
+                        onChange={(e) => setFormAlertThreshold(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="w-full text-xs font-bold text-[#181F18] outline-none"
+                      />
+                    </div>
+                    <span className="text-[10px] text-[#5C665C] block mt-1">
+                      Triggers Admin alert popup & &quot;Few Left&quot; badge when available &le; this limit.
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1840,6 +2295,102 @@ export default function AdminWorkspacesPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Low Inventory Alert Reminder Popup Modal for Admin */}
+      {alertModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-amber-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-scaleUp">
+            {/* Header */}
+            <div className="p-6 bg-amber-500/10 border-b border-amber-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-amber-700 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-amber-950">
+                    Low Inventory Reminder & Alert
+                  </h3>
+                  <p className="text-xs text-amber-800">
+                    Showing offices at or below threshold on {inventoryCheckDate}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAlertModalOpen(false)}
+                className="p-2 rounded-xl text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content List */}
+            <div className="p-6 overflow-y-auto space-y-3">
+              {lowStockWorkspaces.length === 0 ? (
+                <div className="p-8 text-center text-sm text-[#556955]">
+                  No offices are currently low on stock for {inventoryCheckDate}. All inventory levels are healthy!
+                </div>
+              ) : (
+                lowStockWorkspaces.map(({ ws, inv }) => (
+                  <div
+                    key={ws.id}
+                    className="p-4 rounded-2xl border border-amber-200/90 bg-amber-50/40 flex items-center justify-between gap-4"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-[#181F18]">{ws.title}</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                          {ws.categoryName}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#556955] mt-1 flex items-center gap-3">
+                        <span>Total Units: <strong>{inv.totalUnits}</strong></span>
+                        <span>Booked: <strong className="text-amber-800">{inv.bookedUnits}</strong></span>
+                        <span>Available: <strong className={inv.availableUnits === 0 ? 'text-red-700' : 'text-amber-700'}>{inv.availableUnits}</strong></span>
+                        <span>Alert Limit: <strong>&le; {inv.alertThreshold}</strong></span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
+                          inv.availableUnits === 0
+                            ? 'bg-red-100 text-red-800 border border-red-200'
+                            : 'bg-amber-100 text-amber-800 border border-amber-200'
+                        }`}
+                      >
+                        {inv.availableUnits === 0 ? 'Sold Out' : `Only ${inv.availableUnits} Left`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAlertModalOpen(false);
+                          openEditModal(ws);
+                        }}
+                        className="px-3 py-1.5 bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                      >
+                        Adjust Capacity
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 px-6 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-[#556955]">
+              <span>Tip: You can customize each office&apos;s alert notification threshold anytime in the edit modal.</span>
+              <button
+                type="button"
+                onClick={() => setAlertModalOpen(false)}
+                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold rounded-xl cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

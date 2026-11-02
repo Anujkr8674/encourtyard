@@ -189,10 +189,13 @@ export const Footer: React.FC = () => {
             <ul className="space-y-1">
               {[
                 { label: 'Home', href: '/' },
-                { label: 'Book Space', href: '/book-space' },
                 { label: 'Day Pass', href: '/book-space?plan=day-pass' },
                 { label: 'Conference Hall', href: '/conference-hall' },
-                { label: 'Schedule Visit', href: '/contact' },
+                
+                { label: 'Meeting Hall', href: '/meeting-rooms' },
+                { label: 'Book Space', href: '/book-space' },
+                
+                { label: 'Amenities', href: '/amenities' },
               ].map((link, idx) => (
                 <li key={idx}>
                   <Link
@@ -228,6 +231,7 @@ export const Footer: React.FC = () => {
                 { label: 'Gallery', href: '/gallery' },
                 { label: 'Privacy Policy', href: '/privacy' },
                 { label: 'Terms & Conditions', href: '/terms' },
+                { label: 'Contact', href: '/contact' },
               ].map((link, idx) => (
                 <li key={idx}>
                   <Link

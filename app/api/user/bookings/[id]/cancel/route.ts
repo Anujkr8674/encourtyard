@@ -18,8 +18,13 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Booking ID required' }, { status: 400 });
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
+    const booking = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { id },
+          { bookingRef: id },
+        ],
+      },
     });
 
     if (!booking) {
@@ -31,6 +36,9 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
     }
 
+    const body = await req.json().catch(() => ({}));
+    const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
+
     if (booking.status === 'COMPLETED' || booking.status === 'CANCELLED') {
       return NextResponse.json(
         { success: false, error: `Booking cannot be cancelled because it is already ${booking.status.toLowerCase()}` },
@@ -38,21 +46,31 @@ export async function POST(
       );
     }
 
+    if (booking.cancellationRequested) {
+      return NextResponse.json({
+        success: true,
+        booking,
+        message: 'A cancellation request for this reservation is already under admin review.',
+      });
+    }
+
+    const noteAddition = `Cancellation Requested by user on ${new Date().toLocaleDateString()}${reason ? `: "${reason}"` : ' (No reason specified)'}`;
+    const updatedNotes = booking.adminNotes ? `${booking.adminNotes} | ${noteAddition}` : noteAddition;
+
     const updated = await prisma.booking.update({
-      where: { id },
+      where: { id: booking.id },
       data: {
-        status: 'CANCELLED' as BookingStatus,
-        statusUpdatedAt: new Date(),
-        adminNotes: booking.adminNotes
-          ? `${booking.adminNotes} | Cancelled by user on ${new Date().toLocaleDateString()}`
-          : `Cancelled by user on ${new Date().toLocaleDateString()}`,
+        cancellationRequested: true,
+        cancellationReason: reason || 'No reason specified',
+        cancellationRequestedAt: new Date(),
+        adminNotes: updatedNotes,
       },
     });
 
     return NextResponse.json({
       success: true,
       booking: updated,
-      message: 'Booking cancelled successfully',
+      message: 'Cancellation request submitted successfully. Our admin team will review it shortly.',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to cancel booking';

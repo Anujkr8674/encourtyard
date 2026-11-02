@@ -28,23 +28,55 @@ export function parseBookingDateTime(dateStr: string, timeStr: string): number {
   return new Date(year, month - 1, day, hours, mins).getTime();
 }
 
+export interface WorkspaceInventoryStatus {
+  totalUnits: number;
+  bookedUnits: number;
+  availableUnits: number;
+  isAvailable: boolean;
+  isLowStock: boolean;
+  alertThreshold: number;
+  nextAvailableTimestamp?: number;
+}
+
 export function checkWorkspaceAvailabilityDetailed(
   bookings: BookingSlot[] | undefined,
   maintenanceBlocks: BookingSlot[] | undefined,
   userStartDate: string,
   userStartTime: string,
   userEndDate: string,
-  userEndTime: string
-): { isAvailable: boolean, nextAvailableTimestamp?: number } {
+  userEndTime: string,
+  totalUnits: number = 1,
+  alertThreshold: number = 5
+): WorkspaceInventoryStatus {
+  const safeTotalUnits = Math.max(1, totalUnits || 1);
+  const safeAlertThreshold = Math.max(0, alertThreshold !== undefined ? alertThreshold : 5);
   const combinedBlocks = [...(bookings || []), ...(maintenanceBlocks || [])];
-  
-  if (combinedBlocks.length === 0) return { isAvailable: true };
-  
+
+  if (combinedBlocks.length === 0) {
+    return {
+      totalUnits: safeTotalUnits,
+      bookedUnits: 0,
+      availableUnits: safeTotalUnits,
+      isAvailable: true,
+      isLowStock: safeTotalUnits <= safeAlertThreshold,
+      alertThreshold: safeAlertThreshold,
+    };
+  }
+
   const userStart = parseBookingDateTime(userStartDate, userStartTime);
   const userEnd = parseBookingDateTime(userEndDate, userEndTime);
-  if (!userStart || !userEnd) return { isAvailable: true };
+  if (!userStart || !userEnd) {
+    return {
+      totalUnits: safeTotalUnits,
+      bookedUnits: 0,
+      availableUnits: safeTotalUnits,
+      isAvailable: true,
+      isLowStock: safeTotalUnits <= safeAlertThreshold,
+      alertThreshold: safeAlertThreshold,
+    };
+  }
 
-  let isAvail = true;
+  let overlappingCount = 0;
   let maxEndTime = 0;
 
   for (const b of combinedBlocks) {
@@ -52,27 +84,94 @@ export function checkWorkspaceAvailabilityDetailed(
     const bEnd = parseBookingDateTime(b.endDate, b.endTime);
     if (!bStart || !bEnd) continue;
 
-    // Normal bookings used to have a 1 hour buffer automatically.
-    // If it's a maintenance block, the buffer is already explicitly baked into its endTime.
-    // However, to keep it simple and robust, we assume all provided blocks represent actual blocked time.
-    // Wait, the prompt says "maintains and another is instant avivlbe", meaning if instant, there's NO 1hr buffer.
-    // So bookings alone SHOULD NOT have an implicit 1hr buffer anymore, EXCEPT for existing CONFIRMED ones that don't have a block yet.
-    // Let's just use the exact times of the blocks provided.
-    // But since the legacy logic added 1hr to bookings, I will keep it for backwards compatibility if needed, but the prompt says 1hr buffer is applied via Maintenance.
-    // Let's treat bookings as exactly their times. (We explicitly add Maintenance blocks for the buffer now).
-
+    // Check if slot overlaps with requested window
     if (userStart < bEnd && userEnd > bStart) {
-      isAvail = false;
+      overlappingCount++;
       if (bEnd > maxEndTime) {
         maxEndTime = bEnd;
       }
     }
   }
-  
-  if (!isAvail) {
-     return { isAvailable: false, nextAvailableTimestamp: maxEndTime };
+
+  const availableUnits = Math.max(0, safeTotalUnits - overlappingCount);
+  const isAvailable = availableUnits > 0;
+  const isLowStock = isAvailable && availableUnits <= safeAlertThreshold;
+
+  return {
+    totalUnits: safeTotalUnits,
+    bookedUnits: overlappingCount,
+    availableUnits,
+    isAvailable,
+    isLowStock,
+    alertThreshold: safeAlertThreshold,
+    nextAvailableTimestamp: !isAvailable ? maxEndTime : undefined,
+  };
+}
+
+/**
+ * Universal helper to calculate inventory & stock status for any workspace object
+ */
+export function calculateWorkspaceInventory(
+  workspace: any,
+  userStartDate?: string,
+  userStartTime?: string,
+  userEndDate?: string,
+  userEndTime?: string
+): WorkspaceInventoryStatus {
+  if (!workspace) {
+    return {
+      totalUnits: 1,
+      bookedUnits: 0,
+      availableUnits: 1,
+      isAvailable: true,
+      isLowStock: false,
+      alertThreshold: 5,
+    };
   }
-  return { isAvailable: true };
+
+  // 1. Resolve totalUnits
+  let totalUnits = 1;
+  if (typeof workspace.totalUnits === 'number' && workspace.totalUnits > 0) {
+    totalUnits = workspace.totalUnits;
+  } else if (Array.isArray(workspace.specifications)) {
+    const spec = workspace.specifications.find(
+      (s: any) => s.key === 'totalUnits' || s.key === 'Total Units' || s.key === 'quantity' || s.key === 'inventory'
+    );
+    if (spec && !isNaN(parseInt(spec.value, 10))) {
+      totalUnits = Math.max(1, parseInt(spec.value, 10));
+    }
+  }
+
+  // 2. Resolve alertThreshold
+  let alertThreshold = 5;
+  if (typeof workspace.alertThreshold === 'number') {
+    alertThreshold = workspace.alertThreshold;
+  } else if (Array.isArray(workspace.specifications)) {
+    const spec = workspace.specifications.find(
+      (s: any) => s.key === 'alertThreshold' || s.key === 'Alert Threshold' || s.key === 'lowStockLimit'
+    );
+    if (spec && !isNaN(parseInt(spec.value, 10))) {
+      alertThreshold = Math.max(0, parseInt(spec.value, 10));
+    }
+  }
+
+  // 3. Fallback dates to today if unspecified
+  const defaultDates = getDefaultDates();
+  const startD = userStartDate || defaultDates.startDate;
+  const startT = userStartTime || defaultDates.startTime;
+  const endD = userEndDate || startD;
+  const endT = userEndTime || defaultDates.endTime;
+
+  return checkWorkspaceAvailabilityDetailed(
+    workspace.bookings,
+    workspace.maintenanceBlocks,
+    startD,
+    startT,
+    endD,
+    endT,
+    totalUnits,
+    alertThreshold
+  );
 }
 
 export function checkWorkspaceAvailability(

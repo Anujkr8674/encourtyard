@@ -18,7 +18,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { CountdownBadge } from '@/components/ui/CountdownBadge';
+import { calculateWorkspaceInventory } from '@/lib/availability';
 import { Accordion } from '@/components/ui/Accordion';
 
 interface SpecItem {
@@ -48,6 +48,8 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  totalUnits?: number;
+  alertThreshold?: number;
   bookings?: { startDate: string; endDate: string; startTime: string; endTime: string }[];
   maintenanceBlocks?: { startDate: string; endDate: string; startTime: string; endTime: string }[];
 }
@@ -76,32 +78,8 @@ function checkWorkspaceAvailability(
   userStartTime: string,
   userEndDate: string,
   userEndTime: string
-): { isAvailable: boolean; nextAvailableTimestamp?: number } {
-  const combinedBlocks = [...(workspace.bookings || []), ...(workspace.maintenanceBlocks || [])];
-  if (combinedBlocks.length === 0) return { isAvailable: true };
-
-  const userStart = parseBookingDateTime(userStartDate, userStartTime);
-  const userEnd = parseBookingDateTime(userEndDate, userEndTime);
-  if (!userStart || !userEnd) return { isAvailable: true };
-
-  let isAvail = true;
-  let maxEndTime = 0;
-
-  for (const b of combinedBlocks) {
-    const bStart = parseBookingDateTime(b.startDate, b.startTime);
-    const bEnd = parseBookingDateTime(b.endDate, b.endTime);
-    if (!bStart || !bEnd) continue;
-
-    if (userStart < bEnd && userEnd > bStart) {
-      isAvail = false;
-      if (bEnd > maxEndTime) maxEndTime = bEnd;
-    }
-  }
-
-  if (!isAvail) {
-    return { isAvailable: false, nextAvailableTimestamp: maxEndTime };
-  }
-  return { isAvailable: true };
+) {
+  return calculateWorkspaceInventory(workspace, userStartDate, userStartTime, userEndDate, userEndTime);
 }
 
 export default function MeetingRoomsPage() {
@@ -228,13 +206,14 @@ export default function MeetingRoomsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {workspaces.map((ws) => {
               const firstMedia = ws.mediaUrls?.[0];
-              const { isAvailable, nextAvailableTimestamp } = checkWorkspaceAvailability(
+              const inv = checkWorkspaceAvailability(
                 ws,
                 todayDate,
                 defaultStartTime,
                 todayDate,
                 defaultEndTime
               );
+              const isAvailable = inv.isAvailable;
 
               return (
                 <div
@@ -269,7 +248,13 @@ export default function MeetingRoomsPage() {
                         </span>
 
                         {!isAvailable ? (
-                          <CountdownBadge targetTimestamp={nextAvailableTimestamp} className="!text-[10px] !px-2.5 !py-0.5" />
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-xs bg-red-600 text-white">
+                            <span>Sold Out</span>
+                          </span>
+                        ) : inv.isLowStock ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-xs bg-amber-500 text-white animate-pulse">
+                            <span>⚡ Few Left</span>
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-xs bg-emerald-500/90 text-white">
                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
@@ -280,7 +265,7 @@ export default function MeetingRoomsPage() {
 
                       {/* Bottom Bar on Image: Price & Capacity */}
                       <div className="absolute bottom-4 left-4 right-4 text-white flex items-center justify-between z-10">
-                        <span className="font-serif font-bold text-base text-white drop-shadow-md bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg border border-white/20">
+                        <span className="font-[Tahoma] font-bold text-base text-white drop-shadow-md bg-black/40 backdrop-blur-sm px-3 py-1 rounded-lg border border-white/20">
                           {ws.price || 'Hourly Rate'}
                         </span>
                         {ws.capacity && (
@@ -358,7 +343,7 @@ export default function MeetingRoomsPage() {
                           : 'bg-[#2E7D32] hover:bg-[#1E5C23] text-white hover:shadow-md active:scale-95 cursor-pointer'
                       }`}
                     >
-                      <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
+                      <span>{isAvailable ? 'Book Now' : 'Sold Out'}</span>
                     </button>
                   </div>
 

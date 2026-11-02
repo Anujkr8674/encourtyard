@@ -17,7 +17,12 @@ import {
   Phone,
   Calendar,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Users,
+  Printer,
+  Mic,
+  Utensils,
+  UserCheck
 } from 'lucide-react';
 import { AMENITIES_DATA, AmenityItem, getAmenityBySlug } from '@/lib/amenitiesData';
 
@@ -34,7 +39,12 @@ export default function AmenityDetailPage() {
     Wifi,
     ShieldCheck,
     Coffee,
-    Sparkles
+    Sparkles,
+    Users,
+    Printer,
+    Mic,
+    Utensils,
+    UserCheck
   };
 
   const IconComp = iconComponents[amenity.iconName] || Sparkles;
@@ -50,10 +60,18 @@ export default function AmenityDetailPage() {
   const otherAmenities = AMENITIES_DATA.filter((item) => item.id !== amenity.id);
 
   return (
-    <div className="bg-[#FAF9F5] min-h-screen text-[#181F18] selection:bg-[#2E7D32] selection:text-white pb-24">
+    <div
+      style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+      className="bg-[#FAF9F5] min-h-screen text-[#181F18] selection:bg-[#2E7D32] selection:text-white pb-24 amenity-detail-tahoma"
+    >
+      <style>{`
+        .amenity-detail-tahoma, .amenity-detail-tahoma * {
+          font-family: Tahoma, Verdana, 'Segoe UI', sans-serif !important;
+        }
+      `}</style>
       
       {/* 1. Breadcrumbs Navigation */}
-      <section className="bg-white border-b border-[#EAE5DB] pt-32 pb-5">
+      <section className="bg-white border-b border-[#EAE5DB] pt-32 pb-5 hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             
@@ -104,7 +122,7 @@ export default function AmenityDetailPage() {
       </section>
 
       {/* Main Content Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-16 lg:space-y-20">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-16 lg:space-y-20 pt-28 sm:pt-32 lg:pt-36 pb-16">
 
         {/* ============================================================== */}
         {/* ROW 1: Hero Overview (Left) + High-Res Photo Showcase (Right)   */}
@@ -114,14 +132,14 @@ export default function AmenityDetailPage() {
           {/* Left: Heading, Badge, 2 Detailed Paragraphs, and Action Buttons */}
           <div className="lg:col-span-7 space-y-6">
             <div>
-              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-mono font-bold uppercase tracking-wider text-[#1B5E20] mb-3">
+              <span className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-xs font-bold uppercase tracking-wider text-[#1B5E20] mb-3">
                 <IconComp className="w-3.5 h-3.5" />
                 <span>HYDERABAD COWORKING AMENITY</span>
               </span>
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#181F18] leading-[1.15]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[#181F18] leading-[1.15]">
                 {amenity.title}
               </h1>
-              <p className="font-serif text-lg sm:text-xl text-[#2E7D32] italic mt-2">
+              <p className="text-lg sm:text-xl text-[#2E7D32] italic mt-2">
                 {amenity.tagline}
               </p>
             </div>
@@ -172,7 +190,7 @@ export default function AmenityDetailPage() {
                     <IconComp className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-serif font-bold text-xs sm:text-sm text-[#181F18] leading-tight">
+                    <h4 className="font-bold text-xs sm:text-sm text-[#181F18] leading-tight">
                       {amenity.title}
                     </h4>
                     <p className="text-[11px] text-[#5C665C]">
@@ -180,7 +198,7 @@ export default function AmenityDetailPage() {
                     </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1B5E20] bg-[#E8F5E9] px-2.5 py-1 rounded-full">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1B5E20] bg-[#E8F5E9] px-2.5 py-1 rounded-full">
                   Verified
                 </span>
               </div>
@@ -194,10 +212,10 @@ export default function AmenityDetailPage() {
         {/* ============================================================== */}
         <div className="bg-white rounded-3xl border border-[#EAE5DB] p-6 sm:p-10 shadow-sm space-y-6">
           <div className="max-w-2xl">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#2E7D32]">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#2E7D32]">
               WHAT MAKES IT EXCEPTIONAL
             </span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] mt-1">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#181F18] mt-1">
               Key Highlights & Advantages
             </h2>
             <p className="text-sm text-[#5C665C] mt-1.5">
@@ -227,10 +245,10 @@ export default function AmenityDetailPage() {
         {/* ============================================================== */}
         <div className="space-y-6">
           <div className="text-center max-w-2xl mx-auto space-y-2">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#2E7D32]">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#2E7D32]">
               ENTERPRISE-GRADE STANDARDS
             </span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#181F18]">
               Technical Specifications & Features
             </h2>
             <p className="text-sm text-[#5C665C]">
@@ -244,10 +262,10 @@ export default function AmenityDetailPage() {
                 key={idx}
                 className="p-5 rounded-2xl bg-white border border-[#EAE5DB] shadow-xs flex flex-col justify-between space-y-2 hover:shadow-md transition-shadow"
               >
-                <span className="text-xs font-mono font-semibold text-[#738273] uppercase tracking-wider">
+                <span className="text-xs font-semibold text-[#738273] uppercase tracking-wider">
                   {spec.label}
                 </span>
-                <p className="font-serif text-base sm:text-lg font-bold text-[#181F18]">
+                <p className="text-base sm:text-lg font-bold text-[#181F18]">
                   {spec.value}
                 </p>
               </div>
@@ -264,7 +282,7 @@ export default function AmenityDetailPage() {
               <HelpCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#181F18]">
                 Frequently Asked Questions
               </h2>
               <p className="text-xs sm:text-sm text-[#5C665C]">
@@ -276,7 +294,7 @@ export default function AmenityDetailPage() {
           <div className="divide-y divide-[#EAE5DB]">
             {amenity.faqs.map((faq, idx) => (
               <div key={idx} className="py-5 first:pt-2 last:pb-2 space-y-2">
-                <h3 className="font-serif text-base sm:text-lg font-bold text-[#181F18]">
+                <h3 className="text-base sm:text-lg font-bold text-[#181F18]">
                   {faq.question}
                 </h3>
                 <p className="text-xs sm:text-sm text-[#4F634F] leading-relaxed">
@@ -293,10 +311,10 @@ export default function AmenityDetailPage() {
         <div className="space-y-6 pt-4">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#2E7D32]">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#2E7D32]">
                 MORE WORKSPACE ADVANTAGES
               </span>
-              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18] mt-1">
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#181F18] mt-1">
                 Explore Other Amenities
               </h2>
             </div>
@@ -323,7 +341,7 @@ export default function AmenityDetailPage() {
                       <OtherIcon className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-serif text-sm font-bold text-[#181F18] group-hover:text-[#2E7D32] transition-colors leading-snug">
+                      <h3 className="text-sm font-bold text-[#181F18] group-hover:text-[#2E7D32] transition-colors leading-snug">
                         {other.title}
                       </h3>
                       <p className="text-[11px] text-[#5C665C] mt-1 line-clamp-2">
@@ -346,10 +364,10 @@ export default function AmenityDetailPage() {
         {/* ============================================================== */}
         <div className="relative rounded-3xl bg-[#263626] text-white p-8 sm:p-12 overflow-hidden shadow-xl text-center space-y-5">
           <div className="max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#86EFAC]">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#86EFAC]">
               BEST COWORKING SPACE IN HYDERABAD
             </span>
-            <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
               Ready to Upgrade Your Workday?
             </h2>
             <p className="text-sm sm:text-base text-white/80 leading-relaxed">

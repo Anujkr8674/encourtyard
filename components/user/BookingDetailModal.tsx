@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Building2,
@@ -28,6 +29,7 @@ import { parseBookingNotes } from '@/lib/bookingNotes';
 
 export interface BookingRecord {
   id: string;
+  bookingRef?: string | null;
   workspaceId?: string | null;
   workspaceTitle?: string | null;
   categoryName?: string | null;
@@ -47,6 +49,9 @@ export interface BookingRecord {
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | string;
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED' | string;
   adminNotes?: string | null;
+  cancellationRequested?: boolean;
+  cancellationReason?: string | null;
+  cancellationRequestedAt?: string | null;
   statusUpdatedAt?: string | null;
   createdAt: string;
 }
@@ -66,7 +71,15 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 }) => {
   const [copiedId, setCopiedId] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelPopup, setShowCancelPopup] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSuccessMsg, setCancelSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!booking) return null;
 
@@ -77,8 +90,10 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   const customerNotes = parsed.userNotes;
   const adminNotes = parsed.adminNotes;
 
+  const displayBookingRef = booking.bookingRef || booking.id;
+
   const handleCopyId = () => {
-    navigator.clipboard.writeText(booking.id);
+    navigator.clipboard.writeText(displayBookingRef);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   };
@@ -87,22 +102,28 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     window.print();
   };
 
-  const handleCancel = async () => {
-    if (!confirm('Are you sure you want to cancel this pending reservation?')) return;
+  const handleSubmitCancelRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       setCancelling(true);
       setErrorMsg('');
-      const res = await fetch(`/api/user/bookings/${booking.id}/cancel`, { method: 'POST' });
+      const res = await fetch(`/api/user/bookings/${booking.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReason.trim() }),
+      });
       const data = await res.json();
       if (res.ok && data.success) {
-        if (onCancelled) onCancelled(booking.id);
+        booking.cancellationRequested = true;
+        booking.cancellationReason = cancelReason.trim();
+        setShowCancelPopup(false);
+        setCancelSuccessMsg('Your cancellation request has been submitted to the admin concierge for review.');
         if (onBookingCancelled) onBookingCancelled();
-        onClose();
       } else {
-        setErrorMsg(data.error || 'Failed to cancel booking');
+        setErrorMsg(data.error || 'Failed to submit cancellation request');
       }
     } catch {
-      setErrorMsg('Network error while cancelling');
+      setErrorMsg('Network error while requesting cancellation');
     } finally {
       setCancelling(false);
     }
@@ -132,7 +153,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             <span className="text-[10px] uppercase font-mono font-bold text-[#2E7D32] bg-[#E8F5E9] px-2.5 py-0.5 rounded-full border border-[#C8E6C9]">
               RESERVATION DETAILS
             </span>
-            <span className="text-xs font-mono text-[#5C665C]">Ref: #{booking.id.slice(0, 8)}</span>
+            <span className="text-xs font-mono text-[#5C665C]">Ref: #{booking.bookingRef || booking.id.slice(0, 8)}</span>
             <span
               className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full uppercase ${
                 isConfirmed
@@ -355,7 +376,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             </button>
 
             <a
-              href={`https://wa.me/919908209993?text=Hello%20EnCourtyard%20Concierge%2C%20inquiry%20regarding%20booking%20ID%20${booking.id.slice(0, 8)}`}
+              href={`https://wa.me/919908209993?text=Hello%20EnCourtyard%20Concierge%2C%20inquiry%20regarding%20booking%20Ref%20${displayBookingRef}`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-3.5 py-2 rounded-xl bg-[#FAF9F5] hover:bg-[#F2EEE7] text-[#25D366] border border-[#E5E1D8] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
@@ -366,17 +387,21 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {booking.status === 'PENDING' && (
+            {booking.cancellationRequested ? (
+              <span className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold inline-flex items-center gap-1.5 font-mono">
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Cancel Under Review</span>
+              </span>
+            ) : booking.status === 'PENDING' ? (
               <button
                 type="button"
-                disabled={cancelling}
-                onClick={handleCancel}
-                className="px-4 py-2 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+                onClick={() => setShowCancelPopup(true)}
+                className="px-4 py-2 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
               >
                 <Ban className="w-3.5 h-3.5" />
-                <span>{cancelling ? 'Cancelling...' : 'Cancel Reservation'}</span>
+                <span>Request Cancellation</span>
               </button>
-            )}
+            ) : null}
 
             <button
               type="button"
@@ -387,6 +412,75 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Cancellation Request Modal */}
+        {showCancelPopup && mounted && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn select-none">
+            <div className="relative z-10 w-full max-w-lg bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-7 text-left animate-scaleUp font-sans my-auto">
+              <div className="flex items-start justify-between pb-3.5 border-b border-[#E5E1D8]">
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-mono text-rose-700 font-bold block">
+                    RESERVATION CANCELLATION
+                  </span>
+                  <h3 className="font-serif text-xl font-bold text-[#181F18]">
+                    Request Cancellation
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCancelPopup(false)}
+                  className="p-1.5 rounded-full hover:bg-neutral-100 text-[#5C665C] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitCancelRequest} className="space-y-4 py-4 text-xs">
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1">
+                  <span className="font-bold text-amber-900 block text-xs">
+                    Admin Review Workflow
+                  </span>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Submitting this form sends a cancellation request to the EnCourtyard admin team. Our concierge will review your reservation and confirm cancellation.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-[#181F18] block flex items-center justify-between">
+                    <span>Reason for Cancellation</span>
+                    <span className="text-[11px] font-normal text-[#5C665C] font-mono">(Optional)</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Write your reason here (e.g., change of plans, wrong date booked, etc.)..."
+                    className="w-full p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] text-xs text-[#181F18] placeholder-[#9EA89E] focus:outline-none focus:border-rose-500 focus:bg-white transition-all resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E1D8]">
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelPopup(false)}
+                    className="px-4 py-2.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] text-[#181F18] border border-[#E5E1D8] font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    Never Mind, Keep Booking
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={cancelling}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all active:scale-98 cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+                  >
+                    <Ban className="w-3.5 h-3.5" />
+                    <span>{cancelling ? 'Submitting...' : 'Submit Request'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     </div>
   );

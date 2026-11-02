@@ -65,7 +65,21 @@ export async function GET(
     const showInDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
     const gstSpec = specs.find((s: any) => s.key === 'gstPercent' || s.key === 'GST %' || s.key === 'gstRate');
     const gstPercent = gstSpec ? parseFloat(gstSpec.value) || 18 : 18;
-    const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+
+    const totalUnitsSpec = specs.find((s: any) => s.key === 'totalUnits' || s.key === 'Total Units' || s.key === 'quantity' || s.key === 'inventory');
+    const totalUnits = totalUnitsSpec ? Math.max(1, parseInt(totalUnitsSpec.value, 10) || 1) : 1;
+
+    const alertThresholdSpec = specs.find((s: any) => s.key === 'alertThreshold' || s.key === 'Alert Threshold' || s.key === 'lowStockLimit');
+    const alertThreshold = alertThresholdSpec ? Math.max(0, parseInt(alertThresholdSpec.value, 10) || 5) : 5;
+
+    const cleanSpecs = specs.filter((s: any) => 
+      s.key !== 'showInDayPass' && 
+      s.key !== 'Show in Day Pass' &&
+      s.key !== 'totalUnits' &&
+      s.key !== 'Total Units' &&
+      s.key !== 'alertThreshold' &&
+      s.key !== 'Alert Threshold'
+    );
 
     return NextResponse.json({
       success: true,
@@ -73,6 +87,8 @@ export async function GET(
         ...workspace,
         showInDayPass,
         gstPercent,
+        totalUnits,
+        alertThreshold,
         specifications: cleanSpecs,
         mediaUrls: media,
         bookings: activeBookings,
@@ -105,6 +121,8 @@ export async function PUT(
       mediaUrls,
       price,
       gstPercent,
+      totalUnits,
+      alertThreshold,
       capacity,
       location,
       badge,
@@ -143,7 +161,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
     }
 
-    if (specifications !== undefined || showInDayPass !== undefined || gstPercent !== undefined) {
+    if (
+      specifications !== undefined || 
+      showInDayPass !== undefined || 
+      gstPercent !== undefined ||
+      totalUnits !== undefined ||
+      alertThreshold !== undefined
+    ) {
       let currentSpecs: any[] = [];
       if (specifications !== undefined) {
         currentSpecs = Array.isArray(specifications)
@@ -172,6 +196,16 @@ export async function PUT(
         currentSpecs.push({ key: 'gstPercent', value: String(gstPercent) });
       }
 
+      if (totalUnits !== undefined) {
+        currentSpecs = currentSpecs.filter((s: any) => s.key !== 'totalUnits' && s.key !== 'Total Units' && s.key !== 'quantity' && s.key !== 'inventory');
+        currentSpecs.push({ key: 'totalUnits', value: String(Math.max(1, parseInt(String(totalUnits), 10) || 1)) });
+      }
+
+      if (alertThreshold !== undefined) {
+        currentSpecs = currentSpecs.filter((s: any) => s.key !== 'alertThreshold' && s.key !== 'Alert Threshold' && s.key !== 'lowStockLimit');
+        currentSpecs.push({ key: 'alertThreshold', value: String(Math.max(0, parseInt(String(alertThreshold), 10) || 0)) });
+      }
+
       updatePayload.specifications = JSON.stringify(currentSpecs);
     }
 
@@ -197,7 +231,21 @@ export async function PUT(
     const isDayPass = dayPassSpec ? dayPassSpec.value === 'true' : false;
     const updatedGstSpec = specs.find((s: any) => s.key === 'gstPercent' || s.key === 'GST %' || s.key === 'gstRate');
     const updatedGstPercent = updatedGstSpec ? parseFloat(updatedGstSpec.value) || 18 : 18;
-    const cleanSpecs = specs.filter((s: any) => s.key !== 'showInDayPass' && s.key !== 'Show in Day Pass');
+
+    const totalUnitsSpec = specs.find((s: any) => s.key === 'totalUnits' || s.key === 'Total Units' || s.key === 'quantity' || s.key === 'inventory');
+    const totalUnitsValue = totalUnitsSpec ? Math.max(1, parseInt(totalUnitsSpec.value, 10) || 1) : 1;
+
+    const alertThresholdSpec = specs.find((s: any) => s.key === 'alertThreshold' || s.key === 'Alert Threshold' || s.key === 'lowStockLimit');
+    const alertThresholdValue = alertThresholdSpec ? Math.max(0, parseInt(alertThresholdSpec.value, 10) || 5) : 5;
+
+    const cleanSpecs = specs.filter((s: any) => 
+      s.key !== 'showInDayPass' && 
+      s.key !== 'Show in Day Pass' &&
+      s.key !== 'totalUnits' &&
+      s.key !== 'Total Units' &&
+      s.key !== 'alertThreshold' &&
+      s.key !== 'Alert Threshold'
+    );
 
     return NextResponse.json({
       success: true,
@@ -205,6 +253,8 @@ export async function PUT(
         ...updatedWorkspace,
         showInDayPass: isDayPass,
         gstPercent: updatedGstPercent,
+        totalUnits: totalUnitsValue,
+        alertThreshold: alertThresholdValue,
         specifications: cleanSpecs,
         mediaUrls: media,
       },

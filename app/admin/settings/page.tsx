@@ -113,9 +113,7 @@ export default function AdminSettingsPage() {
         <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#181F18]">
           Platform & Notification Settings
         </h1>
-        <p className="text-xs sm:text-sm text-[#5C665C]">
-          Configure admin email notification toggles, inspect live credentials from .env, and monitor Google SMTP health.
-        </p>
+       
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -305,7 +303,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* 5. Supabase Database Status */}
-        <div className="bg-white p-6 rounded-3xl border border-[#E5E1D8] shadow-sm space-y-4 md:col-span-2">
+        <div className="bg-white p-6 rounded-3xl border border-[#E5E1D8] shadow-sm space-y-4 md:col-span-2 hidden">
           <div className="flex items-center gap-3 pb-3 border-b border-[#E5E1D8]">
             <div className="w-9 h-9 rounded-xl bg-[#E3EBE3] text-[#2E7D32] flex items-center justify-center">
               <Database className="w-5 h-5" />

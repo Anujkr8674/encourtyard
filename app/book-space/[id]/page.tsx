@@ -42,8 +42,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
-import { checkWorkspaceAvailabilityDetailed, BookingSlot, hasValidPrice, calculateHourlyDuration } from '@/lib/availability';
-import { CountdownBadge } from '@/components/ui/CountdownBadge';
+import { checkWorkspaceAvailabilityDetailed, calculateWorkspaceInventory, BookingSlot, hasValidPrice, calculateHourlyDuration } from '@/lib/availability';
 
 interface SpecItem {
   key: string;
@@ -72,6 +71,8 @@ interface Workspace {
   badge?: string | null;
   order: number;
   isActive: boolean;
+  totalUnits?: number;
+  alertThreshold?: number;
   bookings?: BookingSlot[];
   maintenanceBlocks?: BookingSlot[];
 }
@@ -377,17 +378,19 @@ function WorkspaceDetailsContent() {
     }
   };
 
-  const { isAvailable, nextAvailableTimestamp } = React.useMemo(() => {
-    if (!workspace) return { isAvailable: true };
-    return checkWorkspaceAvailabilityDetailed(
-      workspace.bookings,
-      workspace.maintenanceBlocks,
+  const inventoryStatus = React.useMemo(() => {
+    if (!workspace) return { isAvailable: true, isLowStock: false, totalUnits: 1, bookedUnits: 0, availableUnits: 1, alertThreshold: 5 };
+    return calculateWorkspaceInventory(
+      workspace,
       startDate,
       startTime,
       (isHourlyWorkspace || isDayPassWorkspace) ? startDate : endDate,
       endTime
     );
   }, [workspace, startDate, startTime, endDate, endTime, isHourlyWorkspace, isDayPassWorkspace]);
+
+  const isAvailable = inventoryStatus.isAvailable;
+  const isLowStock = inventoryStatus.isLowStock;
 
   useEffect(() => {
     if (!id) return;
@@ -530,7 +533,15 @@ function WorkspaceDetailsContent() {
   const cleanCategoryName = rawCategory.replace(/confre?ence/gi, 'Conference');
 
   return (
-    <div className="bg-white text-[#181F18] min-h-screen">
+    <div
+      className="bg-white text-[#181F18] min-h-screen book-space-tahoma"
+      style={{ fontFamily: 'Tahoma, Segoe UI, Geneva, Verdana, sans-serif' }}
+    >
+      <style>{`
+        .book-space-tahoma, .book-space-tahoma * {
+          font-family: Tahoma, 'Segoe UI', Geneva, Verdana, sans-serif !important;
+        }
+      `}</style>
       
       {/* ========================================================================= */}
       {/* MAIN DETAILS & RESERVATION SECTION                                        */}
@@ -723,9 +734,15 @@ function WorkspaceDetailsContent() {
                   </span>
                 )}
 
-                {/* Availability / Status Indicator */}
+                {/* Availability / Status Indicator (Never shows countdown numbers to users, only Few Left or Sold Out) */}
                 {!isAvailable ? (
-                  <CountdownBadge targetTimestamp={nextAvailableTimestamp} />
+                  <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 border border-red-300 text-xs font-bold font-mono">
+                    Sold Out for this Date
+                  </span>
+                ) : isLowStock ? (
+                  <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold font-mono animate-pulse">
+                    ⚡ Few Left
+                  </span>
                 ) : workspace.badge ? (
                   <span className="px-3 py-1 rounded-full bg-[#E65100]/10 text-[#E65100] border border-[#E65100]/30 text-xs font-mono font-bold">
                     {workspace.badge}
@@ -933,13 +950,26 @@ function WorkspaceDetailsContent() {
                   INSTANT RESERVATION
                 </span>
                 {hasValidPrice(workspace.price) && (
-                  <div className="flex items-baseline justify-between">
-                    <h3 className="font-serif text-2xl font-bold text-[#181F18]">
-                      {workspace.price}
-                    </h3>
-                    <span className="text-xs text-[#5C665C] font-mono">
-                      All taxes incl.
-                    </span>
+                  <div>
+                    <div className="flex items-baseline justify-between">
+                      <h3 className="font-serif text-2xl font-bold text-[#181F18]">
+                        {isDayPassWorkspace ? (
+                          <>
+                            ₹ {numericPrice.toLocaleString('en-IN')} <span className="text-sm font-sans font-normal text-[#5C665C]">/ person</span>
+                          </>
+                        ) : (
+                          workspace.price
+                        )}
+                      </h3>
+                      <span className="text-xs text-[#5C665C] font-mono">
+                        All taxes incl.
+                      </span>
+                    </div>
+                    {isDayPassWorkspace && guestCount > 1 && (
+                      <p className="text-xs text-[#2E7D32] font-semibold mt-1">
+                        Total for {guestCount} Members: ₹ {(numericPrice * guestCount).toLocaleString('en-IN')}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -991,31 +1021,28 @@ function WorkspaceDetailsContent() {
                     </div>
 
                     <div className="space-y-1 text-left">
-                      <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-                        ACCESS HOURS
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-0.5">
-                          <span className="text-[10px] text-[#5C665C] font-medium block">Check-in</span>
-                          <MaterialTimePicker
-                            value={startTime}
-                            onChange={(newTime) => {
-                              setStartTime(newTime);
-                              setAvailabilityStatus('idle');
-                            }}
-                            align="left"
-                          />
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="text-xs font-semibold text-[#5C665C] block mb-1.5">
+                            Check-in
+                          </label>
+                          <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#E5E1D8] shadow-2xs flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                            <span className="text-xs sm:text-sm font-semibold font-mono text-[#7C3AED]">
+                              09:00 AM
+                            </span>
+                          </div>
                         </div>
-                        <div className="space-y-0.5">
-                          <span className="text-[10px] text-[#5C665C] font-medium block">Check-out</span>
-                          <MaterialTimePicker
-                            value={endTime}
-                            onChange={(newTime) => {
-                              setEndTime(newTime);
-                              setAvailabilityStatus('idle');
-                            }}
-                            align="right"
-                          />
+                        <div>
+                          <label className="text-xs font-semibold text-[#5C665C] block mb-1.5">
+                            Check-out
+                          </label>
+                          <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#E5E1D8] shadow-2xs flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                            <span className="text-xs sm:text-sm font-semibold font-mono text-[#7C3AED]">
+                              06:00 PM
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1255,6 +1282,33 @@ function WorkspaceDetailsContent() {
                         <span className="text-base text-[#2E7D32] font-bold">₹ {hourlyCalculatedTotal.toLocaleString('en-IN')}</span>
                       </div>
                     </>
+                  ) : isDayPassWorkspace ? (
+                    <>
+                      <div className="flex justify-between items-center pb-1.5 border-b border-[#E5E1D8]">
+                        <span className="font-semibold text-[#181F18]">Rate Per Person:</span>
+                        <span className="font-bold text-[#181F18]">₹ {numericPrice.toLocaleString('en-IN')} / person</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-[#E8F5E9] px-2 py-1 rounded-lg border border-[#C8E6C9]">
+                        <span className="font-semibold text-[#1B5E20]">Members Selected:</span>
+                        <span className="font-bold font-mono text-[#1B5E20]">{guestCount} Member{guestCount > 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Base Rate ({guestCount} Member{guestCount > 1 ? 's' : ''}):</span>
+                        <span className="font-semibold text-[#181F18]">₹ {(numericPrice * guestCount).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Botanical Concierge Service:</span>
+                        <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>High-Speed Fiber & Power Backup:</span>
+                        <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                      </div>
+                      <div style={{ fontFamily: 'Tahoma, sans-serif' }} className="pt-2 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]">
+                        <span>Total Estimated:</span>
+                        <span className="text-base text-[#2E7D32] font-bold">₹ {(numericPrice * guestCount).toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <div className="flex justify-between">
@@ -1280,6 +1334,12 @@ function WorkspaceDetailsContent() {
 
               {/* Direct Booking CTA */}
               <div className="space-y-3">
+                {isLowStock && isAvailable && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center gap-1.5 animate-pulse">
+                    <span>⚡ <strong>High Demand:</strong> Only a few spaces left for your selected date/time slot.</span>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   disabled={!isAvailable}
@@ -1290,7 +1350,7 @@ function WorkspaceDetailsContent() {
                       : 'bg-[#2E7D32] hover:bg-[#1B5E20] active:bg-[#16471A] hover:shadow-lg active:scale-[0.99] cursor-pointer'
                   }`}
                 >
-                  {isAvailable ? 'Book Now' : 'Not Available'}
+                  {isAvailable ? 'Book Now' : 'Sold Out'}
                 </button>
 
                 <a
@@ -1344,14 +1404,14 @@ function WorkspaceDetailsContent() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {relatedWorkspaces.map((rel) => {
-                const { isAvailable: isRelAvailable, nextAvailableTimestamp: relNextAvail } = checkWorkspaceAvailabilityDetailed(
-                  rel.bookings,
-                  rel.maintenanceBlocks,
+                const relInv = calculateWorkspaceInventory(
+                  rel,
                   startDate,
                   startTime,
                   endDate,
                   endTime
                 );
+                const isRelAvailable = relInv.isAvailable;
 
                 return (
                   <Link
@@ -1366,7 +1426,15 @@ function WorkspaceDetailsContent() {
                   >
                     {!isRelAvailable ? (
                       <div className="absolute top-3 right-3 z-10">
-                        <CountdownBadge targetTimestamp={relNextAvail} className="!text-[10px] !px-2.5 !py-0.5" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-mono font-bold shadow-sm select-none">
+                          Sold Out
+                        </span>
+                      </div>
+                    ) : relInv.isLowStock ? (
+                      <div className="absolute top-3 right-3 z-10">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm select-none animate-pulse">
+                          ⚡ Few Left
+                        </span>
                       </div>
                     ) : rel.badge ? (
                       <div className="absolute top-3 right-3 z-10">

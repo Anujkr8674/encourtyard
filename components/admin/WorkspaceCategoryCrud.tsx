@@ -30,10 +30,12 @@ import {
   Building2,
   Clock,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useFeedbackModal } from '@/context/FeedbackModalContext';
+import { calculateWorkspaceInventory } from '@/lib/availability';
 
 export interface CategoryOption {
   id: string;
@@ -70,6 +72,10 @@ export interface Workspace {
   order: number;
   isActive: boolean;
   showInDayPass?: boolean;
+  totalUnits?: number;
+  alertThreshold?: number;
+  bookings?: any[];
+  maintenanceBlocks?: any[];
   createdAt: string | Date;
 }
 
@@ -87,14 +93,14 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
         return {
           title: 'Day Pass & Single-Day Desks',
           tagline: 'DAY PASS INVENTORY',
-          description: 'Manage flexible day pass workspaces and drop-in desks. Day pass charges are calculated strictly on a per-day basis.',
+          description: 'Manage flexible day pass workspaces and drop-in desks. Day pass charges are calculated on a per-person daily basis.',
           icon: Sparkles,
           categoryQuery: 'day pass',
           targetCategoryName: 'Day Pass',
-          priceLabel: 'Price (Per Day) *',
-          pricePlaceholder: 'e.g. ₹599 / day',
-          priceHelper: 'Day pass charge according to per day',
-          badgeText: 'Per Day',
+          priceLabel: 'Price (Per Person) *',
+          pricePlaceholder: 'e.g. 500 / person',
+          priceHelper: 'Day pass charge according to per person / seat',
+          badgeText: 'Per Person',
           badgeStyle: 'bg-amber-50 text-amber-900 border-amber-200',
           addButtonText: 'Add New Day Pass',
           previewButtonText: 'Preview Public Workspaces',
@@ -194,7 +200,33 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
   const [formLocation, setFormLocation] = useState('');
   const [formBadge, setFormBadge] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
+  const [formTotalUnits, setFormTotalUnits] = useState<number>(1);
+  const [formAlertThreshold, setFormAlertThreshold] = useState<number>(5);
   const [specifications, setSpecifications] = useState<SpecItem[]>(config.defaultSpecs);
+
+  // Live Inventory Date Checker State (Default Today)
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+  const [inventoryCheckDate, setInventoryCheckDate] = useState<string>(todayStr);
+  const [selectedCheckDate, setSelectedCheckDate] = useState<string>(todayStr);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  // Compute workspaces with low availability or sold out for the selected date
+  const lowStockWorkspaces = useMemo(() => {
+    return workspaces
+      .filter((ws) => ws.isActive)
+      .map((ws) => {
+        const inv = calculateWorkspaceInventory(ws, inventoryCheckDate, '09:00 AM', inventoryCheckDate, '06:00 PM');
+        return { ws, inv };
+      })
+      .filter(({ inv }) => inv.isLowStock || inv.availableUnits === 0);
+  }, [workspaces, inventoryCheckDate]);
 
   // Media Upload State
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
@@ -464,8 +496,13 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
 
     // Clean price
     let finalPrice = formPrice.trim();
-    if (finalPrice && !finalPrice.includes('/')) {
-      finalPrice = `${finalPrice}${mode === 'day-pass' ? ' / day' : ' / hr'}`;
+    if (mode === 'day-pass') {
+      finalPrice = finalPrice.replace(/\/\s*day/gi, '/ person');
+      if (finalPrice && !finalPrice.includes('/')) {
+        finalPrice = `${finalPrice} / person`;
+      }
+    } else if (finalPrice && !finalPrice.includes('/')) {
+      finalPrice = `${finalPrice} / hr`;
     }
 
     const payload = {
@@ -479,6 +516,8 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
       capacity: formCapacity.trim() || null,
       location: formLocation.trim() || null,
       badge: formBadge.trim() || null,
+      totalUnits: Number(formTotalUnits) > 0 ? Number(formTotalUnits) : 1,
+      alertThreshold: Number(formAlertThreshold) >= 0 ? Number(formAlertThreshold) : 5,
       order: editingWorkspace ? editingWorkspace.order : workspaces.length + 1,
       isActive: formIsActive,
       showInDayPass: mode === 'day-pass',
@@ -536,6 +575,8 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
     setFormLocation('Maruthi Plaza, Khairatabad');
     setFormBadge('');
     setFormIsActive(true);
+    setFormTotalUnits(1);
+    setFormAlertThreshold(5);
     setSpecifications(config.defaultSpecs);
     setMediaList([]);
     setSelectedFiles([]);
@@ -560,6 +601,8 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
     setFormLocation(ws.location || '');
     setFormBadge(ws.badge || '');
     setFormIsActive(ws.isActive);
+    setFormTotalUnits(ws.totalUnits ?? 1);
+    setFormAlertThreshold(ws.alertThreshold ?? 5);
     setSpecifications(ws.specifications && ws.specifications.length > 0 ? ws.specifications : config.defaultSpecs);
     setMediaList(ws.mediaUrls || []);
     setSelectedFiles([]);
@@ -717,32 +760,254 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
         </div>
       </div>
 
-      {/* 2. Search & Toolbar Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-[#E0DCD3] shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-[#738273] absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title, price, location..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3] text-xs text-[#181F18] placeholder-[#8A968A] focus:outline-none focus:border-[#2E7D32] focus:bg-white"
-          />
+      {/* Low Inventory Alert Notification Banner for Admin */}
+      {lowStockWorkspaces.length > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5 animate-pulse text-amber-800" />
+            </div>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900 block">
+                ⚠️ Low Inventory Alert ({lowStockWorkspaces.length} Space{lowStockWorkspaces.length > 1 ? 's' : ''} on {inventoryCheckDate})
+              </span>
+              <span className="text-xs text-amber-800">
+                Some spaces have reached or dropped below their notification limit on {inventoryCheckDate}.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAlertModalOpen(true)}
+            className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>View Low Inventory Alert List ({lowStockWorkspaces.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* 2. Mobile Filter Toolbar (lg:hidden) - Row 1: Search + Filters btn, Row 2: Showing count + Refresh */}
+      <div className="lg:hidden bg-white p-3.5 rounded-2xl border border-[#E0DCD3] shadow-xs space-y-2.5">
+        {/* Row 1: Left search field, Right filter button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-[#738273] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by space name, category, or specs..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3] text-xs text-[#181F18] placeholder-[#738273] focus:outline-none focus:border-[#2E7D32]"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A968A] hover:text-[#181F18]"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileFilterOpen(true)}
+            className="px-3.5 py-2 bg-[#181F18] hover:bg-[#2E7D32] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-xs active:scale-95"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Filters</span>
+            {inventoryCheckDate !== todayStr && (
+              <span className="w-2 h-2 rounded-full bg-[#4ADE80] ring-2 ring-[#181F18] animate-pulse" />
+            )}
+          </button>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          <span className="text-xs text-[#5C665C] font-mono">
+        {/* Row 2: Showing message just below search and filter row btn */}
+        <div className="flex items-center justify-between pt-1 border-t border-[#E0DCD3]/60">
+          <span className="text-xs text-[#5C665C] font-mono font-medium">
             Showing {filteredWorkspaces.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + pageSize, filteredWorkspaces.length)} of {filteredWorkspaces.length}
           </span>
           <button
+            type="button"
             onClick={() => loadData()}
-            className="p-2 rounded-xl border border-[#E0DCD3] hover:border-[#2E7D32] text-[#181F18] hover:bg-[#FAF9F5] transition-colors"
+            className="p-1.5 rounded-xl border border-[#E0DCD3] hover:border-[#2E7D32] text-[#181F18] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
             title="Refresh list"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#2E7D32]' : ''}`} />
           </button>
         </div>
       </div>
+
+      {/* 2b. Desktop Search & Toolbar (hidden lg:flex) */}
+      <div className="hidden lg:flex flex-nowrap items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-[#E0DCD3] shadow-xs">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="relative w-72">
+            <Search className="w-4 h-4 text-[#738273] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by title, price, location..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#FAF9F5] border border-[#E0DCD3] text-xs text-[#181F18] placeholder-[#8A968A] focus:outline-none focus:border-[#2E7D32] focus:bg-white"
+            />
+          </div>
+
+          {/* Live Inventory Date Checker with Submit Button */}
+          <div className="flex items-center gap-1.5 bg-[#FAF9F5] border border-[#E0DCD3] rounded-xl px-2.5 py-1.5">
+            <Calendar className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
+            <span className="text-[10px] font-bold text-[#181F18] uppercase tracking-wider hidden sm:inline whitespace-nowrap">
+              Date:
+            </span>
+            <input
+              type="date"
+              value={selectedCheckDate}
+              onChange={(e) => setSelectedCheckDate(e.target.value || todayStr)}
+              className="text-xs font-mono font-bold text-[#181F18] bg-transparent outline-none cursor-pointer"
+            />
+            <button
+              type="button"
+              onClick={() => setInventoryCheckDate(selectedCheckDate)}
+              className="px-2.5 py-1 bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs font-bold rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap active:scale-95"
+              title="Apply date and show details"
+            >
+              <Check className="w-3 h-3 stroke-[3]" />
+              <span>Submit</span>
+            </button>
+            {(selectedCheckDate !== todayStr || inventoryCheckDate !== todayStr) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCheckDate(todayStr);
+                  setInventoryCheckDate(todayStr);
+                }}
+                className="text-[10px] text-[#2E7D32] hover:underline font-bold px-1 cursor-pointer whitespace-nowrap"
+                title="Reset to today"
+              >
+                Today
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Right Section: Showing Count + Refresh */}
+        <div className="flex items-center gap-2.5 shrink-0 whitespace-nowrap ml-auto">
+          <span className="text-xs text-[#5C665C] font-mono font-medium">
+            Showing {filteredWorkspaces.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + pageSize, filteredWorkspaces.length)} of {filteredWorkspaces.length}
+          </span>
+          <button
+            onClick={() => loadData()}
+            className="p-2 rounded-xl border border-[#E0DCD3] hover:border-[#2E7D32] text-[#181F18] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
+            title="Refresh list"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#2E7D32]' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* 2c. Mobile Filter Slide-Out Drawer from Right */}
+      {mobileFilterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileFilterOpen(false)}
+          />
+
+          {/* Right-Side Drawer Panel */}
+          <div className="fixed top-0 right-0 bottom-0 w-full max-w-xs sm:max-w-sm bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-300">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-[#E0DCD3] bg-[#FAF9F5] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#181F18] text-white flex items-center justify-center">
+                  <SlidersHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-[#181F18]">Filters &amp; Availability</h3>
+                  <p className="text-[11px] text-[#5C665C]">{config.title} date &amp; stock</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileFilterOpen(false)}
+                className="p-2 rounded-xl text-[#5C665C] hover:text-[#181F18] hover:bg-white border border-transparent hover:border-[#E0DCD3] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
+              {/* Check Date Filter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider">
+                    Check Date
+                  </label>
+                  {selectedCheckDate !== todayStr && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCheckDate(todayStr)}
+                      className="text-[11px] font-bold text-[#2E7D32] hover:underline cursor-pointer"
+                    >
+                      Reset to Today
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 bg-[#FAF9F5] border border-[#E0DCD3] p-2.5 rounded-xl">
+                  <Calendar className="w-4 h-4 text-[#2E7D32] shrink-0" />
+                  <input
+                    type="date"
+                    value={selectedCheckDate}
+                    onChange={(e) => setSelectedCheckDate(e.target.value || todayStr)}
+                    className="bg-transparent text-xs text-[#181F18] font-mono font-bold outline-none flex-1 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-[#738273]">
+                  Check live booked units and available capacity for this date.
+                </p>
+              </div>
+
+              {/* Active Date Summary */}
+              {inventoryCheckDate !== todayStr && (
+                <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+                  <span className="font-bold block">Active Date Filter:</span>
+                  <p className="text-[11px] text-emerald-800">
+                    Checking inventory for: <strong>{inventoryCheckDate}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-[#E0DCD3] bg-[#FAF9F5] flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCheckDate(todayStr);
+                  setInventoryCheckDate(todayStr);
+                  setMobileFilterOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#E0DCD3] hover:bg-white text-xs font-semibold text-[#5C665C] transition-colors cursor-pointer"
+              >
+                Reset to Today
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInventoryCheckDate(selectedCheckDate);
+                  setMobileFilterOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+              >
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Apply &amp; Submit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. Table of Spaces */}
       <div className="bg-white border border-[#E0DCD3] rounded-3xl overflow-hidden shadow-sm">
@@ -773,17 +1038,19 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#F7F5F0] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D2CBBF] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#2E7D32]">
+            <table className="w-full text-left text-xs border-collapse min-w-[1080px]">
               <thead>
                 <tr className="border-b border-[#E0DCD3] bg-[#FAF9F5] text-[#5C665C] font-mono text-[10px] uppercase tracking-wider">
-                  <th className="py-3.5 px-4 font-bold text-center w-16">Order</th>
-                  <th className="py-3.5 px-4 font-bold w-24">Media</th>
-                  <th className="py-3.5 px-4 font-bold">Space Heading</th>
-                  <th className="py-3.5 px-4 font-bold">{config.priceLabel.replace('*', '')}</th>
-                  <th className="py-3.5 px-4 font-bold">Specifications</th>
-                  <th className="py-3.5 px-4 font-bold text-center">Status</th>
-                  <th className="py-3.5 px-4 font-bold text-right pr-6">Actions</th>
+                  <th className="py-3.5 px-4 font-bold text-center w-16 whitespace-nowrap">Order</th>
+                  <th className="py-3.5 px-4 font-bold w-24 whitespace-nowrap">Media</th>
+                  <th className="py-3.5 px-4 font-bold min-w-[200px] whitespace-nowrap">Space Heading</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap">{config.priceLabel.replace('*', '')}</th>
+                  <th className="py-3.5 px-4 font-bold whitespace-nowrap">Specifications</th>
+                  <th className="py-3.5 px-4 font-bold text-center whitespace-nowrap">Total Inventory</th>
+                  <th className="py-3.5 px-4 font-bold text-center whitespace-nowrap">Available Units</th>
+                  <th className="py-3.5 px-4 font-bold text-center whitespace-nowrap">Status</th>
+                  <th className="py-3.5 px-4 font-bold text-right pr-6 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E0DCD3]/60">
@@ -797,8 +1064,8 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                   return (
                     <tr key={ws.id} className="hover:bg-[#FAF9F5]/70 transition-colors group">
                       {/* Order Controls */}
-                      <td className="py-3.5 px-4 text-center align-middle">
-                        <div className="inline-flex items-center gap-1 bg-[#FAF9F5] border border-[#E0DCD3] rounded-lg px-2 py-1">
+                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1 bg-[#FAF9F5] border border-[#E0DCD3] rounded-lg px-2 py-1 whitespace-nowrap">
                           <span className="font-mono text-xs font-bold text-[#181F18] min-w-[18px]">
                             {ws.order ?? currentIndex + 1}
                           </span>
@@ -830,11 +1097,11 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                       </td>
 
                       {/* Media Thumbnail */}
-                      <td className="py-3.5 px-4 align-middle">
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {primaryMedia ? (
                           <div
                             onClick={() => openLightbox(ws.mediaUrls, 0, ws.title)}
-                            className="relative w-16 h-12 rounded-xl overflow-hidden border border-[#E0DCD3] bg-[#EAE5DB] cursor-pointer group/img shadow-2xs hover:shadow-sm"
+                            className="relative w-16 h-12 rounded-xl overflow-hidden border border-[#E0DCD3] bg-[#EAE5DB] cursor-pointer group/img shadow-2xs hover:shadow-sm shrink-0"
                             title="Click to view all media in full screen"
                           >
                             {primaryMedia.type === 'video' ? (
@@ -855,77 +1122,147 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                             )}
                           </div>
                         ) : (
-                          <div className="w-16 h-12 rounded-xl border border-dashed border-[#E0DCD3] flex items-center justify-center text-[#8A968A]">
+                          <div className="w-16 h-12 rounded-xl border border-dashed border-[#E0DCD3] flex items-center justify-center text-[#8A968A] shrink-0">
                             <ImageIcon className="w-4 h-4" />
                           </div>
                         )}
                       </td>
 
                       {/* Space Heading & Description */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-0.5 max-w-xs sm:max-w-md">
-                          <div className="flex items-center gap-2">
-                            <span className="font-serif font-bold text-sm text-[#181F18] block group-hover:text-[#2E7D32] transition-colors">
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="space-y-0.5 min-w-[200px]">
+                          <div className="flex items-center gap-2 whitespace-nowrap">
+                            <span className="font-serif font-bold text-sm text-[#181F18] block group-hover:text-[#2E7D32] transition-colors whitespace-nowrap">
                               {ws.title}
                             </span>
                             {ws.badge && (
-                              <span className="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200 text-amber-900 font-mono text-[9px] font-bold">
+                              <span className="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200 text-amber-900 font-mono text-[9px] font-bold shrink-0 whitespace-nowrap">
                                 {ws.badge}
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-[#5C665C] line-clamp-1">
+                          <p className="text-[11px] text-[#5C665C] truncate max-w-[240px]" title={ws.shortDescription}>
                             {ws.shortDescription}
                           </p>
-                          <div className="flex items-center gap-2 text-[10px] text-[#738273] font-mono">
+                          <div className="flex items-center gap-2 text-[10px] text-[#738273] font-mono whitespace-nowrap">
                             {ws.capacity && <span>👥 {ws.capacity}</span>}
                             {ws.location && <span>📍 {ws.location}</span>}
                           </div>
                         </div>
                       </td>
 
-                      {/* Price Column */}
-                      <td className="py-3.5 px-4 align-middle">
+                      {/* Price Column - Single Line */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                         {ws.price ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-mono font-bold text-xs shadow-2xs">
-                            <IndianRupee className="w-3.5 h-3.5 text-[#2E7D32]" />
-                            <span>{ws.price}</span>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-mono font-bold text-xs shadow-2xs whitespace-nowrap">
+                            <IndianRupee className="w-3.5 h-3.5 text-[#2E7D32] shrink-0" />
+                            <span className="whitespace-nowrap">{ws.price}</span>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-[#8A968A] italic font-mono">
+                          <span className="text-[11px] text-[#8A968A] italic font-mono whitespace-nowrap">
                             Quote on request
                           </span>
                         )}
                       </td>
 
-                      {/* Specifications Summary */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex flex-wrap gap-1 max-w-xs">
+                      {/* Specifications Summary - Single Row Chips */}
+                      <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
                           {ws.specifications && ws.specifications.length > 0 ? (
                             ws.specifications.slice(0, 2).map((sp, sIdx) => (
                               <span
                                 key={sIdx}
-                                className="px-2 py-0.5 rounded-md bg-[#FAF9F5] border border-[#E0DCD3] text-[10px] text-[#304032] font-mono truncate max-w-[150px]"
+                                className="px-2 py-0.5 rounded-md bg-[#FAF9F5] border border-[#E0DCD3] text-[10px] text-[#304032] font-mono whitespace-nowrap"
                                 title={`${sp.key}: ${sp.value}`}
                               >
                                 <strong>{sp.key}:</strong> {sp.value}
                               </span>
                             ))
                           ) : (
-                            <span className="text-[10px] text-[#8A968A] font-mono italic">No specs added</span>
+                            <span className="text-[10px] text-[#8A968A] font-mono italic whitespace-nowrap">No specs added</span>
                           )}
                           {ws.specifications && ws.specifications.length > 2 && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-[#EAE5DB] text-[9px] font-mono font-bold text-[#5C665C]">
+                            <span className="px-1.5 py-0.5 rounded-md bg-[#EAE5DB] text-[9px] font-mono font-bold text-[#5C665C] whitespace-nowrap">
                               +{ws.specifications.length - 2} more
                             </span>
                           )}
                         </div>
                       </td>
 
+                      {/* Total Inventory / Allocation Column - Single Row */}
+                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                        {(() => {
+                          const inv = calculateWorkspaceInventory(
+                            ws,
+                            inventoryCheckDate,
+                            '09:00 AM',
+                            inventoryCheckDate,
+                            '06:00 PM'
+                          );
+                          return (
+                            <div className="inline-flex flex-col items-center gap-0.5 whitespace-nowrap">
+                              <span className="font-mono text-xs font-bold text-[#181F18] whitespace-nowrap">
+                                {inv.totalUnits} Unit{inv.totalUnits > 1 ? 's' : ''}
+                              </span>
+                              <span className="text-[10px] text-[#738273] font-mono whitespace-nowrap">
+                                {inv.bookedUnits} booked ({inventoryCheckDate})
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+
+                      {/* Dedicated Available Units Column - Single Horizontal Row */}
+                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
+                        {(() => {
+                          const inv = calculateWorkspaceInventory(
+                            ws,
+                            inventoryCheckDate,
+                            '09:00 AM',
+                            inventoryCheckDate,
+                            '06:00 PM'
+                          );
+                          return (
+                            <div className="inline-flex items-center gap-2 whitespace-nowrap justify-center">
+                              <div className="flex items-baseline gap-1 whitespace-nowrap bg-[#FAF9F5] px-2 py-1 rounded-lg border border-[#E0DCD3]">
+                                <span
+                                  className={`font-mono text-xs font-extrabold ${
+                                    inv.availableUnits === 0
+                                      ? 'text-red-600'
+                                      : inv.isLowStock
+                                      ? 'text-amber-700'
+                                      : 'text-[#2E7D32]'
+                                  }`}
+                                >
+                                  {inv.availableUnits}
+                                </span>
+                                <span className="text-[10px] font-mono text-[#5C665C]">
+                                  / {inv.totalUnits}
+                                </span>
+                              </div>
+
+                              {inv.availableUnits === 0 ? (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-red-100 text-red-800 border border-red-200 whitespace-nowrap">
+                                  ⛔ Sold Out
+                                </span>
+                              ) : inv.isLowStock ? (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-200 whitespace-nowrap animate-pulse">
+                                  ⚠️ Few Left (&le; {inv.alertThreshold})
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 whitespace-nowrap">
+                                  ● Available
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+
                       {/* Status */}
-                      <td className="py-3.5 px-4 text-center align-middle">
+                      <td className="py-3.5 px-4 text-center align-middle whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase whitespace-nowrap ${
                             ws.isActive
                               ? 'bg-emerald-50 border border-emerald-200 text-[#2E7D32]'
                               : 'bg-red-50 border border-red-200 text-red-700'
@@ -937,8 +1274,8 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right pr-6 align-middle">
-                        <div className="inline-flex items-center gap-1.5 justify-end">
+                      <td className="py-3.5 px-4 text-right pr-6 align-middle whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5 justify-end whitespace-nowrap">
                           <button
                             type="button"
                             onClick={() => {
@@ -1366,7 +1703,9 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                 <div className="p-3.5 rounded-2xl bg-white border border-[#E0DCD3] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
                   <div className="flex items-center gap-4 text-xs">
                     <div>
-                      <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Base Price</span>
+                      <span className="text-[10px] uppercase font-mono text-[#5C665C] block">
+                        {mode === 'day-pass' ? 'Base Price (Per Person)' : 'Base Price'}
+                      </span>
                       <strong className="text-[#181F18] text-sm">₹ {numericBasePrice.toLocaleString('en-IN')}</strong>
                     </div>
                     <span className="text-neutral-300 font-bold text-lg">+</span>
@@ -1379,7 +1718,7 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                   <div className="flex items-center gap-2.5 bg-[#E8F5E9] px-4 py-2 rounded-xl border border-[#C8E6C9] w-full sm:w-auto justify-between sm:justify-start">
                     <span className="text-[11px] font-bold text-[#2E7D32] uppercase tracking-wider">Total with GST:</span>
                     <strong className="font-serif text-base font-bold text-[#1E5C23]">
-                      ₹ {calculatedTotalAmount.toLocaleString('en-IN')} {mode === 'day-pass' ? '/ day' : '/ hr'}
+                      ₹ {calculatedTotalAmount.toLocaleString('en-IN')} {mode === 'day-pass' ? '/ person' : '/ hr'}
                     </strong>
                   </div>
                 </div>
@@ -1396,6 +1735,80 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                     onChange={(e) => setFormBadge(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#E0DCD3] bg-white text-xs text-[#181F18] outline-none focus:border-[#2E7D32]"
                   />
+                </div>
+              </div>
+
+              {/* INVENTORY TRACKING & MULTI-OFFICE ALLOCATION */}
+              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#2E7D32]" />
+                      <span>Inventory Tracking & Multi-Office Allocation</span>
+                    </h3>
+                    <p className="text-[11px] text-emerald-800 mt-0.5">
+                      Manage identical units ({mode === 'day-pass' ? 'e.g. 50 Day Pass Desks' : mode === 'meeting-rooms' ? 'e.g. 40 Meeting Rooms' : 'e.g. 10 Conference Halls'}) under this single listing.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    Live Tracking
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  {/* Total Units */}
+                  <div>
+                    <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
+                      Total Units / Quantity Available <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="5000"
+                        value={formTotalUnits}
+                        onChange={(e) => setFormTotalUnits(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#E0DCD3] bg-white text-xs text-[#181F18] font-bold outline-none focus:border-[#2E7D32]"
+                      />
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormTotalUnits((prev) => Math.max(1, prev - 1))}
+                          className="w-9 h-9 rounded-xl border border-[#E0DCD3] bg-white hover:bg-stone-50 font-bold text-sm text-[#181F18] flex items-center justify-center cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormTotalUnits((prev) => prev + 1)}
+                          className="w-9 h-9 rounded-xl border border-[#E0DCD3] bg-white hover:bg-stone-50 font-bold text-sm text-[#181F18] flex items-center justify-center cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-[#5C665C] font-mono block mt-1">
+                      Each approved booking on any date automatically reserves 1 unit from this pool.
+                    </span>
+                  </div>
+
+                  {/* Low Inventory Alert Threshold */}
+                  <div>
+                    <label className="block text-xs font-bold text-[#181F18] uppercase tracking-wider mb-1.5">
+                      Low Inventory Alert Limit (Popup Reminder) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      value={formAlertThreshold}
+                      onChange={(e) => setFormAlertThreshold(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E0DCD3] bg-white text-xs text-[#181F18] font-bold outline-none focus:border-[#2E7D32]"
+                    />
+                    <span className="text-[10px] text-amber-800 font-mono block mt-1">
+                      When available units drop to &le; {formAlertThreshold}, admin sees an alert popup and user sees &ldquo;Few Left&rdquo;.
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1655,6 +2068,102 @@ export default function WorkspaceCategoryCrud({ mode }: WorkspaceCategoryCrudPro
                 )}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Low Inventory Alert Reminder Popup Modal for Admin */}
+      {alertModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-amber-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="p-6 bg-amber-500/10 border-b border-amber-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-amber-700 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-amber-950">
+                    Low Inventory Reminder & Alert ({config.title})
+                  </h3>
+                  <p className="text-xs text-amber-800">
+                    Showing spaces at or below alert limit on {inventoryCheckDate}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAlertModalOpen(false)}
+                className="p-2 rounded-xl text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content List */}
+            <div className="p-6 overflow-y-auto space-y-3">
+              {lowStockWorkspaces.length === 0 ? (
+                <div className="p-8 text-center text-sm text-[#5C665C]">
+                  No spaces are low on stock for {inventoryCheckDate}. All inventory levels are healthy!
+                </div>
+              ) : (
+                lowStockWorkspaces.map(({ ws, inv }) => (
+                  <div
+                    key={ws.id}
+                    className="p-4 rounded-2xl border border-amber-200/90 bg-amber-50/40 flex items-center justify-between gap-4"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-[#181F18]">{ws.title}</span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                          {ws.price || 'Standard'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#5C665C] mt-1 flex items-center gap-3">
+                        <span>Total Units: <strong>{inv.totalUnits}</strong></span>
+                        <span>Booked: <strong className="text-amber-800">{inv.bookedUnits}</strong></span>
+                        <span>Available: <strong className={inv.availableUnits === 0 ? 'text-red-700' : 'text-amber-700'}>{inv.availableUnits}</strong></span>
+                        <span>Alert Limit: <strong>&le; {inv.alertThreshold}</strong></span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
+                          inv.availableUnits === 0
+                            ? 'bg-red-100 text-red-800 border border-red-200'
+                            : 'bg-amber-100 text-amber-800 border border-amber-200'
+                        }`}
+                      >
+                        {inv.availableUnits === 0 ? 'Sold Out' : `Only ${inv.availableUnits} Left`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAlertModalOpen(false);
+                          openEditModal(ws);
+                        }}
+                        className="px-3 py-1.5 bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                      >
+                        Adjust Capacity
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 px-6 bg-stone-50 border-t border-stone-200 flex items-center justify-between text-xs text-[#5C665C]">
+              <span>Tip: Set the alert limit to get notified before this space runs completely out of stock.</span>
+              <button
+                type="button"
+                onClick={() => setAlertModalOpen(false)}
+                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold rounded-xl cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

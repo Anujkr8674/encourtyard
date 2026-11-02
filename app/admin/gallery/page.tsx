@@ -635,34 +635,90 @@ export default function AdminGalleryPage() {
 
       {/* Global Loading Overlay for Upload/Delete */}
       {(isUploading || isDeleting) && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 select-none">
-          <div className="bg-white p-8 rounded-3xl max-w-sm w-full shadow-2xl animate-scaleUp">
-            <RefreshCw className="w-12 h-12 text-[#2E7D32] animate-spin mx-auto mb-4" />
-            <h3 className="text-xl font-bold font-serif text-[#181F18] mb-2 text-center">
-              {isUploading ? 'Uploading Images' : 'Deleting Image'}
-            </h3>
-            <p className="text-[#5C665C] text-sm text-center">
-              {isUploading 
-                ? 'Please wait while your images are safely uploaded to the server.' 
-                : 'Please wait while the image is being removed.'}
-            </p>
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 select-none overflow-y-auto">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl animate-scaleUp border border-[#E5E1D8]/70 flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)] my-auto overflow-hidden">
+            {/* Modal Header */}
+            <div className="shrink-0 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                <RefreshCw className="w-6 h-6 text-[#2E7D32] animate-spin" />
+              </div>
+              <h3 className="text-xl font-bold font-serif text-[#181F18] mb-1 text-center">
+                {isUploading ? 'Uploading Images' : 'Deleting Image'}
+              </h3>
+              <p className="text-[#5C665C] text-xs sm:text-sm text-center">
+                {isUploading 
+                  ? 'Please wait while your images are safely uploaded to the server.' 
+                  : 'Please wait while the image is being removed.'}
+              </p>
+
+              {/* Overall Progress Summary Bar if uploading multiple */}
+              {isUploading && uploadItems.length > 0 && (
+                <div className="mt-4 pt-3.5 border-t border-[#E5E1D8]/70 text-left">
+                  <div className="flex items-center justify-between text-xs text-[#5C665C] mb-1.5 font-medium">
+                    <span className="font-semibold text-[#181F18]">
+                      Overall Progress
+                    </span>
+                    <span className="font-mono font-bold text-[#2E7D32]">
+                      {uploadItems.filter(i => i.progress === 100).length} of {uploadItems.length} Uploaded
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-linear-to-r from-[#2E7D32] to-[#4ADE80] transition-all duration-300 ease-out rounded-full" 
+                      style={{ 
+                        width: `${Math.round(
+                          uploadItems.reduce((acc, curr) => acc + curr.progress, 0) / (uploadItems.length || 1)
+                        )}%` 
+                      }} 
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Scrollable File List */}
             {isUploading && uploadItems.length > 0 && (
-               <div className="mt-6 space-y-4">
-                  {uploadItems.map(item => (
-                    <div key={item.id} className="text-left text-xs">
-                       <div className="flex justify-between mb-1.5 text-[#5C665C]">
-                         <span className="truncate pr-2 font-medium">{item.file.name}</span>
-                         <span className="font-bold text-[#2E7D32]">{item.progress}%</span>
-                       </div>
-                       <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                         <div 
-                           className="h-full bg-[#4ADE80] transition-all duration-300 ease-out" 
-                           style={{ width: `${item.progress}%` }} 
-                         />
-                       </div>
+              <div className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 space-y-3 divide-y divide-[#E5E1D8]/50 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-[#F7F5F0] [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#D2CBBF] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#2E7D32]">
+                {uploadItems.map((item) => {
+                  const isDone = item.progress === 100;
+                  return (
+                    <div key={item.id} className="text-left text-xs pt-3 first:pt-0">
+                      <div className="flex items-center justify-between mb-1.5 gap-2 text-[#5C665C]">
+                        <span className="truncate font-medium text-[#181F18] text-xs" title={item.file.name}>
+                          {item.file.name}
+                        </span>
+                        <div className="shrink-0 flex items-center gap-1 font-mono text-[11px] font-bold">
+                          {isDone ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[#1E5C23] border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-[#2E7D32]" />
+                              <span>100%</span>
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded-full ${item.progress > 0 ? 'bg-emerald-50/80 text-[#2E7D32]' : 'bg-neutral-100 text-neutral-500'}`}>
+                              {item.progress}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-linear-to-r from-[#2E7D32] to-[#4ADE80] transition-all duration-300 ease-out rounded-full" 
+                          style={{ width: `${item.progress}%` }} 
+                        />
+                      </div>
                     </div>
-                  ))}
-               </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Modal Footer Note */}
+            {isUploading && (
+              <div className="shrink-0 mt-4 pt-3 border-t border-[#E5E1D8]/70 text-center">
+                <span className="text-[11px] font-mono text-[#738273]">
+                  Please keep this page open until all uploads finish
+                </span>
+              </div>
             )}
           </div>
         </div>

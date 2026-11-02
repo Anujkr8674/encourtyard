@@ -153,10 +153,10 @@ export const UserLoginForm: React.FC = () => {
                 Password
               </label>
               <Link
-                href="/about#visit-form"
-                className="text-xs text-[#6A806A] hover:text-[#263626] transition-colors"
+                href="/forgot-password"
+                className="text-xs text-[#2E7D32] hover:underline font-semibold transition-colors"
               >
-                Need Help?
+                Forgot Password?
               </Link>
             </div>
             <div className="relative">
@@ -221,7 +221,7 @@ export const UserLoginForm: React.FC = () => {
             </Link>
           </div>
 
-          <div className="pt-2">
+          {/* <div className="pt-2">
             <Link
               href="/admin/login"
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#FAF9F5] hover:bg-[#E3EBE3] border border-[#E5E1D8] text-xs font-semibold text-[#263626] transition-all group"
@@ -229,7 +229,7 @@ export const UserLoginForm: React.FC = () => {
               <Shield className="w-3.5 h-3.5 text-[#2E7D32] group-hover:scale-110 transition-transform" />
               <span>Switch to Administrator Portal</span>
             </Link>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

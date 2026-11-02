@@ -9,7 +9,12 @@ import {
   Zap,
   ShieldCheck,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Users,
+  Printer,
+  Mic,
+  Utensils,
+  UserCheck
 } from 'lucide-react';
 import { CIRCULAR_AMENITIES_DATA } from '@/lib/data';
 
@@ -25,7 +30,12 @@ export const AmenitiesSection: React.FC = () => {
     Monitor,
     Zap,
     ShieldCheck,
-    Sparkles
+    Sparkles,
+    Users,
+    Printer,
+    Mic,
+    Utensils,
+    UserCheck
   };
 
   const currentItem =
@@ -41,7 +51,7 @@ export const AmenitiesSection: React.FC = () => {
         {/* Elevated Architectural Alabaster Canvas */}
         <div className="relative rounded-[28px] sm:rounded-[36px] lg:rounded-[40px] bg-[#FAF9F5] border border-[#DDD7CA] shadow-[0_20px_50px_-15px_rgba(24,31,24,0.08),0_0_1px_1px_rgba(24,31,24,0.03)] overflow-hidden p-6 sm:p-8 lg:p-10 xl:p-12">
 
-          {/* Top Header Row with Cursive Accent */}
+          {/* Top Header Row with Cursive Accent & View All Button */}
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 lg:mb-12 gap-6 relative z-10">
             <div className="max-w-2xl text-left">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold mb-3">
@@ -55,10 +65,20 @@ export const AmenitiesSection: React.FC = () => {
               </p>
             </div>
 
-            <div className="hidden lg:block select-none">
-              <p className="font-handwriting text-2xl xl:text-3xl text-[#263626] rotate-[-3deg] drop-shadow-xs">
-                "More than amenities — It's a better way to work."
-              </p>
+            <div className="flex flex-col items-start md:items-end gap-3.5 shrink-0">
+              <Link
+                href="/amenities"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95 group cursor-pointer"
+              >
+                <span>View All Amenities</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+
+              <div className="hidden lg:block select-none">
+                <p className="font-handwriting text-2xl xl:text-3xl text-[#263626] rotate-[-3deg] drop-shadow-xs">
+                  "More than amenities — It's a better way to work."
+                </p>
+              </div>
             </div>
           </div>
 
@@ -67,7 +87,7 @@ export const AmenitiesSection: React.FC = () => {
 
             {/* Left: 6 Requested Amenities in 3x2 Grid */}
             <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-4">
-              {CIRCULAR_AMENITIES_DATA.map((item) => {
+              {CIRCULAR_AMENITIES_DATA.slice(0, 6).map((item) => {
                 const IconComp = iconComponents[item.iconName] || Sparkles;
                 const isActive = item.id === activeId || item.slug === activeId;
 

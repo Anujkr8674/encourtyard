@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { dispatchBookingCreatedEmails, BookingEmailData } from '@/lib/email';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
 import { assembleBookingNotes } from '@/lib/bookingNotes';
+import { generateBookingRef } from '@/lib/bookingRef';
 
 export async function POST(req: Request) {
   try {
@@ -60,8 +61,11 @@ export async function POST(req: Request) {
       ],
     });
 
+    const bookingRef = await generateBookingRef(new Date());
+
     const newBooking = await prisma.booking.create({
       data: {
+        bookingRef,
         userId: session.id,
         workspaceId: workspaceId || null,
         workspaceTitle: workspaceTitle || 'EnCourtyard Premium Workspace',
@@ -90,6 +94,7 @@ export async function POST(req: Request) {
 
     const emailData: BookingEmailData = {
       id: newBooking.id,
+      bookingRef: newBooking.bookingRef || newBooking.id,
       fullName: newBooking.fullName || '',
       companyName: newBooking.companyName,
       email: newBooking.email || '',

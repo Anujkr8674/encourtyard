@@ -271,6 +271,132 @@ export const AMENITIES_DATA: AmenityItem[] = [
         answer: 'Yes, our outdoor terrace gardens and indoor atriums are open 24/7 with comfortable shade and ambient evening lighting.'
       }
     ]
+  },
+  {
+    id: 'kitchen-facility',
+    slug: 'kitchen-facility',
+    title: 'Kitchen Facility',
+    subtitle: 'Fully equipped culinary pantry',
+    iconName: 'Utensils',
+    image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=85',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=85'
+    ],
+    tagline: 'Hygienic, fully equipped community pantry and kitchen facility with commercial microwaves, refrigerators, and dining spaces.',
+    description: 'Modern commercial kitchen pantry equipped with microwave ovens, industrial refrigerators, RO water, and clean dining areas.',
+    overviewParagraph1: 'Take relaxing meal breaks without leaving the building. EnCourtyard features a hygienic, modern kitchen and cafeteria facility designed for busy professionals, startups, and visiting corporate teams.',
+    overviewParagraph2: 'Equipped with multi-tier commercial microwave ovens, spacious double-door refrigerators for food storage, induction heating stations, and continuous multi-stage RO water purification, our pantry allows you to enjoy fresh meals and snacks in a clean, sanitized environment.',
+    highlights: [
+      'Commercial multi-tier microwave ovens for quick meal heating',
+      'Large double-door refrigerators for safe daily food & beverage storage',
+      'Multi-stage UV + RO purified mineral water and hot water dispensers',
+      'Spacious cafeteria dining counter and comfortable high-top bar seating',
+      'Continuous daily janitorial cleaning and food-grade hygiene standards',
+      'Complimentary sanitized cutlery, dishware, and glassware'
+    ],
+    specifications: [
+      { label: 'Kitchen Appliances', value: 'Commercial Microwaves, Refrigerators, Induction' },
+      { label: 'Water Purification', value: 'Multi-Stage RO + UV Essential Minerals' },
+      { label: 'Dining Capacity', value: 'Comfortable Seated Dining Counter & Bar Tables' },
+      { label: 'Hygiene Maintenance', value: 'Continuous Daily Deep Sanitization' },
+      { label: 'Accessibility', value: 'Open 24/7 for All EnCourtyard Members' },
+      { label: 'Dining Crockery', value: 'Provided Clean Plates, Bowls, Cutlery & Mugs' }
+    ],
+    faqs: [
+      {
+        question: 'Can members bring their own home-cooked meals?',
+        answer: 'Yes! All members have full access to our refrigerators, microwave ovens, and dining counters to store and enjoy their meals.'
+      },
+      {
+        question: 'Is the kitchen facility open during night shifts?',
+        answer: 'Yes, our kitchen facility and dining areas are accessible 24/7 with round-the-clock water, refrigeration, and microwave access.'
+      }
+    ]
+  },
+  {
+    id: 'printing-services',
+    slug: 'printing-services',
+    title: 'Printing & Business Concierge',
+    subtitle: 'Secure document hub & reception',
+    iconName: 'Printer',
+    image: 'https://images.unsplash.com/photo-1568992687947-868a62a9f521?auto=format&fit=crop&w=1200&q=85',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1568992687947-868a62a9f521?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1200&q=85'
+    ],
+    tagline: 'Commercial high-speed color printing, encrypted scanning, spiral binding, and professional postal mail handling.',
+    description: 'Enterprise multi-function laser printers, high-speed encrypted document scanning, laminating, and dedicated mail reception services.',
+    overviewParagraph1: 'Keep your physical business operations smooth without investing in expensive office machinery. EnCourtyard provides an enterprise-grade document hub with commercial Xerox and HP multi-function laser printers capable of high-volume color and monochrome printing.',
+    overviewParagraph2: 'Our front-desk concierge handles parcel deliveries, courier dispatch, and registered business mail with real-time digital notifications. Members also enjoy access to document shredding, thermal binding, laminating, and secure scan-to-cloud workflows.',
+    highlights: [
+      'Commercial laser printers with high-speed color and monochrome output',
+      'Secure badge-release printing protecting confidential agreements and records',
+      'High-resolution flatbed and feeder document scanning to cloud/email',
+      'Front-desk mail and parcel reception with automated Slack/WhatsApp alerts',
+      'Stationery supplies, thermal binding, laminating, and paper shredding',
+      'AirPrint and wireless driverless printing directly from iOS, Android, and PC'
+    ],
+    specifications: [
+      { label: 'Print Resolution', value: '1200 x 1200 DPI High-Definition Output' },
+      { label: 'Speed Capability', value: 'Up to 55 Pages Per Minute (Color & B/W)' },
+      { label: 'Paper Sizes', value: 'A4, A3, Legal, Heavyweight Cardstock, Envelopes' },
+      { label: 'Security Standard', value: 'Encrypted Pull-Print with Biometric/PIN Release' },
+      { label: 'Mail Handling', value: 'Registered Postal, Courier Reception & Storage' },
+      { label: 'Digital Scanning', value: '600 DPI Dual-Sided Scan-to-Email / Cloud' }
+    ],
+    faqs: [
+      {
+        question: 'How do I print from my laptop or smartphone?',
+        answer: 'You can print wirelessly via our secure member printing portal or AirPrint/WiFi Direct. Your job is held securely in the print queue until released at the printer.'
+      },
+      {
+        question: 'Can EnCourtyard receive postal mail and packages on my behalf?',
+        answer: 'Yes! Virtual office, dedicated desk, and private cabin members can use our Khairtabad address as their official business address for mail and package deliveries.'
+      }
+    ]
+  },
+  {
+    id: 'visitor-management',
+    slug: 'visitor-management',
+    title: 'Visitor Management',
+    subtitle: 'Smart digital guest reception',
+    iconName: 'UserCheck',
+    image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85',
+    galleryImages: [
+      'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85',
+      'https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1200&q=85'
+    ],
+    tagline: 'Seamless tablet-based guest check-in, real-time host notifications, and professional front-desk concierge reception.',
+    description: 'Streamlined digital visitor check-in with automated host SMS/WhatsApp alerts, badge printing, and executive lobby greeting.',
+    overviewParagraph1: 'Deliver a flawless first impression when clients, partners, or interview candidates visit your business. EnCourtyard provides an enterprise-grade digital visitor management system paired with warm, professional front-desk concierge support.',
+    overviewParagraph2: 'Upon arrival, guests check in effortlessly via touchscreen tablet kiosks or pre-invitation QR codes. Our system instantly alerts the host via WhatsApp and email, while front-desk staff greet your guests and usher them into our plush executive lounge with complimentary tea and coffee.',
+    highlights: [
+      'Touchscreen iPad/tablet digital check-in with QR code pre-registration',
+      'Instant automated host notifications via WhatsApp, SMS, and email',
+      'Professional front-desk concierge greeting and guest escorting',
+      'Secure digital visitor badge generation and timestamped entry logging',
+      'Executive waiting lounge with complimentary artisanal beverages',
+      'Instant one-click high-speed guest WiFi credential issuance'
+    ],
+    specifications: [
+      { label: 'Check-In Kiosk', value: 'Touchscreen Digital Tablet Kiosk & QR Pass' },
+      { label: 'Host Notification', value: 'Instant WhatsApp, SMS & Email Alerts' },
+      { label: 'Concierge Reception', value: 'Front-Desk Concierge Manned During Working Hours' },
+      { label: 'Guest Lounge', value: 'Executive Seating with Complimentary Coffee/Tea' },
+      { label: 'Security Logging', value: 'Encrypted Digital Sign-In Log & Badge Printing' },
+      { label: 'Guest Connectivity', value: 'Dedicated High-Speed Guest WiFi Portal' }
+    ],
+    faqs: [
+      {
+        question: 'How will I be notified when my visitor arrives?',
+        answer: 'The moment your guest checks in at the reception kiosk, an instant automated alert is dispatched to your WhatsApp and email.'
+      },
+      {
+        question: 'Can I pre-register clients or meeting guests in advance?',
+        answer: 'Yes! Members can easily generate digital guest passes with directions and fast-track QR codes for seamless entry.'
+      }
+    ]
   }
 ];
 
@@ -287,6 +413,18 @@ export function getAmenityBySlug(slug: string): AmenityItem | undefined {
       (normalized === 'relaxation' && item.slug === 'relaxing-zone') ||
       (normalized === 'relax' && item.slug === 'relaxing-zone') ||
       (normalized === 'computer' && item.slug === 'rental-computer') ||
-      (normalized === 'power' && item.slug === 'power-backup')
+      (normalized === 'power' && item.slug === 'power-backup') ||
+      (normalized === 'kitchen' && item.slug === 'kitchen-facility') ||
+      (normalized === 'kitchen-facility' && item.slug === 'kitchen-facility') ||
+      (normalized === 'cafeteria' && item.slug === 'kitchen-facility') ||
+      (normalized === 'pantry' && item.slug === 'kitchen-facility') ||
+      (normalized === 'dining' && item.slug === 'kitchen-facility') ||
+      (normalized === 'printing' && item.slug === 'printing-services') ||
+      (normalized === 'print' && item.slug === 'printing-services') ||
+      (normalized === 'visitor' && item.slug === 'visitor-management') ||
+      (normalized === 'visitors' && item.slug === 'visitor-management') ||
+      (normalized === 'visitor-management' && item.slug === 'visitor-management') ||
+      (normalized === 'guest' && item.slug === 'visitor-management') ||
+      (normalized === 'reception' && item.slug === 'visitor-management')
   );
 }

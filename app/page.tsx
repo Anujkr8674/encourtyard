@@ -70,9 +70,9 @@ export default function HomePage() {
       </ScrollReveal> */}
 
       {/* 7. Community Growth & Strategic Stats - Unique Vertical Expansive Reveal */}
-      <ScrollReveal animation="expand-y" duration={1250} threshold={0.06}>
+      {/* <ScrollReveal animation="expand-y" duration={1250} threshold={0.06}>
         <CommunityGrowthSection />
-      </ScrollReveal>
+      </ScrollReveal> */}
 
       {/* 8. Google Reviews & Testimonials Marquee - Atmospheric Luxury Blur-In */}
       {/* <ScrollReveal animation="blur-in" duration={1350} threshold={0.06}>

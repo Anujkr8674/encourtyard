@@ -66,6 +66,7 @@ model OtpVerification {
 
 model Booking {
   id              String        @id @default(uuid())
+  bookingRef      String?       @unique
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspaceId     String?
@@ -88,7 +89,10 @@ model Booking {
   totalAmount     Float?
   status          BookingStatus @default(PENDING)
   paymentStatus   PaymentStatus @default(PENDING)
-  adminNotes      String?
+  adminNotes              String?
+  cancellationRequested   Boolean       @default(false)
+  cancellationReason      String?
+  cancellationRequestedAt DateTime?
   statusUpdatedAt DateTime?
   notesUpdatedAt  DateTime?
   createdAt       DateTime      @default(now())
@@ -194,4 +198,23 @@ model MaintenanceBlock {
 
   @@index([workspaceId])
   @@map("maintenance_blocks")
+}
+
+model ContactInquiry {
+  id            String   @id @default(uuid())
+  fullName      String
+  email         String
+  phone         String?
+  company       String?
+  spaceInterest String?  @default("private-office")
+  tourDate      String?
+  message       String?
+  status        String   @default("PENDING") // PENDING, CONTACTED, RESOLVED, ARCHIVED
+  adminNotes    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_inquiries")
 }

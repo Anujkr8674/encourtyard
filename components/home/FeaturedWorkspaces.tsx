@@ -31,7 +31,7 @@ export const FeaturedWorkspaces: React.FC = () => {
 
           <div className="shrink-0">
             <Button
-              href="/workspaces"
+              href="/book-space"
               variant="outline"
               size="md"
               icon={<ArrowRight className="w-4 h-4" />}

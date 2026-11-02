@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Check,
   X,
@@ -57,8 +58,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   onClose,
   autoCloseMs,
 }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Auto-close handler if specified
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen || !autoCloseMs) return;
     const timer = setTimeout(() => {
       onClose();
@@ -66,7 +73,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     return () => clearTimeout(timer);
   }, [isOpen, autoCloseMs, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const isSuccess = type === 'success';
 
@@ -190,8 +197,8 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 select-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 select-none">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fadeIn"
@@ -199,7 +206,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       />
 
       {/* Modal Dialog Card */}
-      <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-center animate-scaleUp font-sans">
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-8 text-center animate-scaleUp font-sans my-auto">
         {/* Top-Right Close Button */}
         <button
           type="button"
@@ -257,6 +264,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

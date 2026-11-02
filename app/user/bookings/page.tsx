@@ -25,6 +25,7 @@ import { useRealtimeBookings } from '@/lib/realtimeBookings';
 
 interface BookingRecord {
   id: string;
+  bookingRef?: string | null;
   workspaceId?: string | null;
   workspaceTitle: string;
   categoryName?: string | null;
@@ -143,6 +144,7 @@ export default function UserBookingsPage() {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       (b.workspaceTitle && b.workspaceTitle.toLowerCase().includes(q)) ||
+      (b.bookingRef && b.bookingRef.toLowerCase().includes(q)) ||
       (b.id && b.id.toLowerCase().includes(q)) ||
       (b.startDate && b.startDate.includes(q)) ||
       (b.fullName && b.fullName.toLowerCase().includes(q));
@@ -500,7 +502,7 @@ export default function UserBookingsPage() {
                   return (
                     <Link
                       key={booking.id}
-                      href={`/user/bookings/${booking.id}`}
+                      href={`/user/bookings/${booking.bookingRef || booking.id}`}
                       className={`block bg-white rounded-2xl border transition-all p-4 sm:p-5 text-left group ${
                         isCancelled
                           ? 'border-rose-200 hover:border-rose-400 bg-rose-50/20'
@@ -540,7 +542,7 @@ export default function UserBookingsPage() {
                             </p>
 
                             <p className="text-[11px] text-[#717E71] font-mono">
-                              Date: {booking.startDate} {booking.endDate && booking.endDate !== booking.startDate ? `to ${booking.endDate}` : ''} • Ref: #{booking.id.slice(0, 8).toUpperCase()}
+                              Date: {booking.startDate} {booking.endDate && booking.endDate !== booking.startDate ? `to ${booking.endDate}` : ''} • Ref: #{booking.bookingRef || booking.id.slice(0, 8).toUpperCase()}
                             </p>
 
                             {/* Display Admin Note / Reason Snippet if present */}

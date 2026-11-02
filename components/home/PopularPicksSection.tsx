@@ -319,7 +319,7 @@ export const PopularPicksSection: React.FC = () => {
             </span>
 
             <Link
-              href="/workspaces"
+              href="/book-space"
               className="text-xs font-bold text-[#185ADB] hover:text-[#144BB8] flex items-center gap-1.5 transition-colors group mr-1"
             >
               <span>Explore All</span>
@@ -551,7 +551,7 @@ export const PopularPicksSection: React.FC = () => {
 
                 <div className="pt-6">
                   <Link
-                    href="/workspaces"
+                    href="/book-space"
                     className="w-full py-3 px-4 rounded-xl bg-[#185ADB] hover:bg-[#144BB8] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 group-hover:scale-102"
                   >
                     <span>View All Workspaces</span>

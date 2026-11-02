@@ -72,7 +72,7 @@ export const PresenceCitySection: React.FC = () => {
 
             <div className="flex items-center gap-3 sm:gap-4 shrink-0">
               <Link
-                href="/workspaces"
+                href="/book-space"
                 className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-[#181F18] hover:text-[#263626] group transition-colors mr-1"
               >
                 <span>View All Locations</span>
@@ -119,7 +119,7 @@ export const PresenceCitySection: React.FC = () => {
             {INDIAN_CITIES.map((city) => (
               <Link
                 key={city.id}
-                href={`/workspaces?location=${city.id}`}
+                href={`/book-space?location=${city.id}`}
                 className="group relative w-[185px] sm:w-[200px] lg:w-[215px] aspect-[3/4] rounded-2xl overflow-hidden shrink-0 snap-start shadow-warm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-[#DCD4C6] hover:border-[#263626]"
               >
                 {/* City Photo */}

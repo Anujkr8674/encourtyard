@@ -105,9 +105,9 @@ export const AdminLoginForm: React.FC = () => {
           <h1 className="font-serif text-3xl font-bold text-white tracking-tight">
             Admin Authentication
           </h1>
-          <p className="text-xs sm:text-sm text-[#E3EBE3]/75 mt-2 font-sans">
+          {/* <p className="text-xs sm:text-sm text-[#E3EBE3]/75 mt-2 font-sans">
             Secured management console for 79 coworking centres, revenue analytics, and member operations.
-          </p>
+          </p> */}
         </div>
 
         {error && (
@@ -121,7 +121,7 @@ export const AdminLoginForm: React.FC = () => {
           {/* Admin ID */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#E3EBE3] mb-1.5">
-              Admin Identifier / Username
+              Admin Identifier
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-[#4ADE80] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -139,7 +139,7 @@ export const AdminLoginForm: React.FC = () => {
           {/* Password */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#E3EBE3] mb-1.5">
-              Master Password
+              Password
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-[#4ADE80] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -155,7 +155,7 @@ export const AdminLoginForm: React.FC = () => {
           </div>
 
           {/* Development Quick Fill Hint */}
-          <div className="pt-1">
+          <div className="pt-1 hidden">
             <button
               type="button"
               onClick={handleFillDemoCredentials}

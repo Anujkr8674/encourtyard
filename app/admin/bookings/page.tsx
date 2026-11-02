@@ -28,7 +28,8 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 import { FeedbackModal } from '@/components/ui/FeedbackModal';
 import { BookingStatusTracker } from '@/components/user/BookingStatusTracker';
@@ -37,6 +38,7 @@ import { parseBookingNotes } from '@/lib/bookingNotes';
 
 interface BookingRecord {
   id: string;
+  bookingRef?: string | null;
   userId: string;
   userEmail?: string;
   userName?: string;
@@ -59,6 +61,9 @@ interface BookingRecord {
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED';
   adminNotes?: string | null;
+  cancellationRequested?: boolean;
+  cancellationReason?: string | null;
+  cancellationRequestedAt?: string | null;
   statusUpdatedAt?: string | null;
   notesUpdatedAt?: string | null;
   createdAt: string;
@@ -177,20 +182,23 @@ export default function AdminBookingsPage() {
         if (getBookingCategory(b) !== categoryTypeFilter) return false;
       }
       // Status filter
-      if (statusFilter !== 'ALL' && b.status !== statusFilter) {
+      if (statusFilter === 'CANCEL_REQUESTS') {
+        if (!b.cancellationRequested || b.status === 'CANCELLED') return false;
+      } else if (statusFilter !== 'ALL' && b.status !== statusFilter) {
         return false;
       }
       // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesId = b.id.toLowerCase().includes(q);
+        const matchesRef = b.bookingRef ? b.bookingRef.toLowerCase().includes(q) : false;
         const matchesName = b.fullName.toLowerCase().includes(q);
         const matchesEmail = b.email.toLowerCase().includes(q);
         const matchesCompany = b.companyName?.toLowerCase().includes(q);
         const matchesSpace = b.workspaceTitle.toLowerCase().includes(q);
         const matchesCategory = (b.categoryName || '').toLowerCase().includes(q);
         const matchesPhone = b.phone.toLowerCase().includes(q);
-        if (!matchesId && !matchesName && !matchesEmail && !matchesCompany && !matchesSpace && !matchesCategory && !matchesPhone) {
+        if (!matchesId && !matchesRef && !matchesName && !matchesEmail && !matchesCompany && !matchesSpace && !matchesCategory && !matchesPhone) {
           return false;
         }
       }
@@ -221,8 +229,55 @@ export default function AdminBookingsPage() {
       confirmed: list.filter((b) => b.status === 'CONFIRMED').length,
       completed: list.filter((b) => b.status === 'COMPLETED').length,
       cancelled: list.filter((b) => b.status === 'CANCELLED').length,
+      cancelRequests: list.filter((b) => b.cancellationRequested && b.status !== 'CANCELLED').length,
     };
   }, [bookings, categoryTypeFilter]);
+
+  // Decline user cancellation request directly
+  const handleRejectCancellationRequest = async (bookingId: string) => {
+    if (!confirm('Decline this cancellation request and keep the reservation active?')) return;
+    try {
+      setIsUpdating(true);
+      const res = await fetch(`/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cancellationRequested: false,
+          adminNotes: adminNotesInput.trim()
+            ? `${adminNotesInput.trim()}\nCancellation request declined by admin.`
+            : 'Cancellation request reviewed and declined by admin; reservation kept active.',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setBookings((prev) => prev.map((b) => (b.id === bookingId ? data.booking : b)));
+        notifyBookingChange();
+        setEditingBooking(null);
+        setFeedback({
+          isOpen: true,
+          type: 'success',
+          title: 'Cancellation Request Declined',
+          message: 'The cancellation request has been declined. The reservation remains active.',
+        });
+      } else {
+        setFeedback({
+          isOpen: true,
+          type: 'error',
+          title: 'Operation Failed',
+          message: data.error || 'Failed to decline cancellation request.',
+        });
+      }
+    } catch {
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Network Error',
+        message: 'Could not contact server to decline request.',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Open Edit Status Modal
   const handleOpenEdit = (bk: BookingRecord) => {
@@ -271,12 +326,13 @@ export default function AdminBookingsPage() {
         );
         // Instant cross-tab and WebSocket dispatch to notify user & admin
         notifyBookingChange();
+        const displayRef = data.booking?.bookingRef || editingBooking.bookingRef || editingBooking.id;
         setEditingBooking(null);
         setFeedback({
           isOpen: true,
           type: 'success',
           title: 'Booking Status Updated',
-          message: `Booking ${editingBooking.id} is now ${selectedStatus}. Notification emails dispatched.`,
+          message: `Booking ${displayRef} is now ${selectedStatus}. Notification emails dispatched.`,
         });
       } else {
         setFeedback({
@@ -440,6 +496,36 @@ export default function AdminBookingsPage() {
         </button>
       </div>
 
+      {/* Cancellation Requests Notification Banner */}
+      {counts.cancelRequests > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-amber-800" />
+            </div>
+            <div>
+              <h4 className="font-bold text-xs sm:text-sm text-amber-950">
+                Action Required: {counts.cancelRequests} Member Cancellation Request{counts.cancelRequests > 1 ? 's' : ''}
+              </h4>
+              <p className="text-[11px] text-amber-800">
+                Members have submitted cancellation requests with reasons. Review each request to approve or decline.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'CANCEL_REQUESTS' ? 'ALL' : 'CANCEL_REQUESTS')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              statusFilter === 'CANCEL_REQUESTS'
+                ? 'bg-amber-900 text-white'
+                : 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+            }`}
+          >
+            {statusFilter === 'CANCEL_REQUESTS' ? 'Showing Cancellation Requests (Click to Clear)' : `Review ${counts.cancelRequests} Request${counts.cancelRequests > 1 ? 's' : ''}`}
+          </button>
+        </div>
+      )}
+
       {/* 3. Search & Quick Filters Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-[#E5E1D8] shadow-xs">
         <div className="relative w-full sm:w-80">
@@ -510,14 +596,14 @@ export default function AdminBookingsPage() {
                     <td className="py-3.5 px-4 whitespace-nowrap min-w-[280px] align-top">
                       <div className="flex items-center gap-1.5 font-bold text-[#181F18] whitespace-nowrap">
                         <span className="whitespace-nowrap select-all tracking-tight text-xs font-mono inline-block">
-                          {bk.id}
+                          {bk.bookingRef || bk.id}
                         </span>
                         <button
-                          onClick={() => handleCopy(bk.id)}
+                          onClick={() => handleCopy(bk.bookingRef || bk.id)}
                           className="text-[#738273] hover:text-[#2E7D32] transition-colors cursor-pointer shrink-0 p-1 rounded hover:bg-neutral-100"
-                          title="Copy Booking ID"
+                          title="Copy Booking Reference"
                         >
-                          {copiedId === bk.id ? <Check className="w-3.5 h-3.5 text-[#2E7D32]" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedId === (bk.bookingRef || bk.id) ? <Check className="w-3.5 h-3.5 text-[#2E7D32]" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                       <span className="text-[10px] text-[#738273] block mt-0.5 whitespace-nowrap">
@@ -600,7 +686,7 @@ export default function AdminBookingsPage() {
                     </td>
 
                     {/* Status Badge */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider ${
                           bk.status === 'CONFIRMED'
@@ -618,6 +704,20 @@ export default function AdminBookingsPage() {
                         {bk.status === 'CANCELLED' && <XCircle className="w-3 h-3" />}
                         <span>{bk.status}</span>
                       </span>
+
+                      {bk.cancellationRequested && bk.status !== 'CANCELLED' && (
+                        <div className="mt-1.5 space-y-0.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            <AlertTriangle className="w-3 h-3 text-amber-700" />
+                            <span>Cancel Requested</span>
+                          </span>
+                          {bk.cancellationReason && (
+                            <span className="block text-[10px] text-amber-900 font-medium italic truncate max-w-[170px]" title={bk.cancellationReason}>
+                              &ldquo;{bk.cancellationReason}&rdquo;
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     {/* Admin Notes & Timestamp */}
@@ -794,7 +894,7 @@ export default function AdminBookingsPage() {
                   MANAGE RESERVATION STATUS
                 </span>
                 <h3 className="font-serif text-xl font-bold text-[#181F18] pr-4">
-                  Update Status for <span className="font-sans font-medium text-lg tracking-wide break-all">{editingBooking.id}</span>
+                  Update Status for <span className="font-sans font-medium text-lg tracking-wide break-all">{editingBooking.bookingRef || editingBooking.id}</span>
                 </h3>
                 <p className="text-xs text-[#5C665C] mt-0.5">
                   Host: <strong>{editingBooking.fullName}</strong> • Space: {editingBooking.workspaceTitle}
@@ -804,6 +904,57 @@ export default function AdminBookingsPage() {
 
             <div className="space-y-4 py-5 text-xs">
               
+              {/* Member Cancellation Request Review Box */}
+              {editingBooking.cancellationRequested && editingBooking.status !== 'CANCELLED' && (
+                <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-2.5 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5 font-mono">
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      <span>User Cancellation Request</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-800">
+                      {editingBooking.cancellationRequestedAt
+                        ? new Date(editingBooking.cancellationRequestedAt).toLocaleDateString()
+                        : 'Recent'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900">
+                    The member has requested to cancel this reservation. You can approve and mark it as CANCELLED or decline the request to keep it active.
+                  </p>
+                  <div className="bg-white p-3 rounded-xl border border-amber-200 text-xs">
+                    <span className="text-[10px] uppercase font-mono text-amber-800 font-bold block mb-0.5">
+                      User Reason for Cancellation:
+                    </span>
+                    <p className="italic text-neutral-800 font-medium pl-1">
+                      &ldquo;{editingBooking.cancellationReason || 'No reason specified by user'}&rdquo;
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStatus('CANCELLED');
+                        setAdminNotesInput((prev) =>
+                          prev
+                            ? `${prev}\nCancellation request approved by admin.`
+                            : 'Cancellation request approved by admin.'
+                        );
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+                    >
+                      Approve & Mark CANCELLED
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRejectCancellationRequest(editingBooking.id)}
+                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-neutral-100 text-neutral-800 border border-neutral-300 font-semibold text-xs cursor-pointer transition-colors"
+                    >
+                      Decline Request (Keep Active)
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Status Radio Tiles */}
               <div className="space-y-1.5">
                 <label className="font-bold text-[#181F18] block">
@@ -983,7 +1134,7 @@ export default function AdminBookingsPage() {
                   RESERVATION DOSSIER
                 </span>
                 <h3 className="font-serif text-2xl font-bold text-[#181F18]">
-                  Booking {viewingBooking.id}
+                  Booking {viewingBooking.bookingRef || viewingBooking.id}
                 </h3>
               </div>
 
@@ -997,6 +1148,34 @@ export default function AdminBookingsPage() {
 
             <div className="space-y-4 py-5 text-xs">
               
+              {/* Cancellation Request Notice */}
+              {viewingBooking.cancellationRequested && viewingBooking.status !== 'CANCELLED' && (
+                <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-900 flex items-center gap-1.5 font-mono text-[11px] uppercase">
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      <span>Member Cancellation Request Pending Review</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-800">
+                      {viewingBooking.cancellationRequestedAt
+                        ? new Date(viewingBooking.cancellationRequestedAt).toLocaleString()
+                        : 'Recent'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900">
+                    The member submitted a cancellation request for this booking.
+                  </p>
+                  <div className="bg-white p-2.5 rounded-xl border border-amber-200">
+                    <span className="text-[10px] uppercase font-mono text-amber-800 font-bold block mb-0.5">
+                      Reason Given:
+                    </span>
+                    <p className="italic font-medium text-neutral-800">
+                      &ldquo;{viewingBooking.cancellationReason || 'No reason specified'}&rdquo;
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Workspace Snapshot */}
               <div className="p-4 rounded-2xl bg-[#FAF9F5] border border-[#E5E1D8] space-y-1.5">
                 <span className="text-[10px] uppercase font-mono text-[#5C665C] block">Workspace Property</span>

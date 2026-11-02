@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { dispatchBookingCreatedEmails, BookingEmailData } from '@/lib/email';
 import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { generateBookingRef } from '@/lib/bookingRef';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
 
     if (query) {
       whereClause.OR = [
+        { bookingRef: { contains: query, mode: 'insensitive' } },
         { id: { contains: query, mode: 'insensitive' } },
         { fullName: { contains: query, mode: 'insensitive' } },
         { email: { contains: query, mode: 'insensitive' } },
@@ -46,9 +48,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const bookingRef = await generateBookingRef(new Date());
 
     const newBooking = await prisma.booking.create({
       data: {
+        bookingRef,
         userId: body.userId || 'admin-manual',
         workspaceId: body.workspaceId,
         workspaceTitle: body.workspaceTitle || 'EnCourtyard Workspace',
@@ -76,6 +80,7 @@ export async function POST(req: Request) {
 
     const emailData: BookingEmailData = {
       id: newBooking.id,
+      bookingRef: newBooking.bookingRef || newBooking.id,
       fullName: newBooking.fullName || '',
       companyName: newBooking.companyName,
       email: newBooking.email || '',

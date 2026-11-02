@@ -12,9 +12,16 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await req.json();
-    const { status, adminNotes, paymentStatus, completionType } = body;
+    const { status, adminNotes, paymentStatus, completionType, cancellationRequested } = body;
 
-    const existing = await prisma.booking.findUnique({ where: { id } });
+    const existing = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { id },
+          { bookingRef: id },
+        ],
+      },
+    });
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Booking record not found' },
@@ -69,11 +76,17 @@ export async function PATCH(
     const isNotesChanging = finalAdminNotes !== existing.adminNotes;
 
     const updated = await prisma.booking.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         status: newStatus,
         paymentStatus: paymentStatus ? (paymentStatus as PaymentStatus) : existing.paymentStatus,
         adminNotes: finalAdminNotes,
+        cancellationRequested:
+          cancellationRequested !== undefined
+            ? cancellationRequested
+            : newStatus === 'CANCELLED'
+            ? false
+            : existing.cancellationRequested,
         statusUpdatedAt: isStatusChanging ? now : existing.statusUpdatedAt,
         notesUpdatedAt: isNotesChanging ? now : existing.notesUpdatedAt,
       }
@@ -117,6 +130,7 @@ export async function PATCH(
     if (isStatusChanging || isNotesChanging) {
       const emailData: BookingEmailData = {
         id: updated.id,
+        bookingRef: updated.bookingRef,
         fullName: updated.fullName || '',
         companyName: updated.companyName,
         email: updated.email || '',
@@ -163,11 +177,24 @@ export async function DELETE(
   try {
     const { id } = await params;
     
-    await prisma.booking.delete({ where: { id } });
+    const existing = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { id },
+          { bookingRef: id },
+        ],
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
+    }
+
+    await prisma.booking.delete({ where: { id: existing.id } });
 
     return NextResponse.json({
       success: true,
-      message: `Booking ${id} deleted successfully`,
+      message: `Booking ${existing.bookingRef || existing.id} deleted successfully`,
     });
   } catch (error: unknown) {
     const errMessage = error instanceof Error ? error.message : 'Failed to delete booking';

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -86,7 +87,36 @@ function PaymentPageContent() {
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
   const [copiedBookingId, setCopiedBookingId] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(899); // 15:00 countdown timer
+  
+  // 15-minute checkout timer (scoped to current workspace intent)
+  const SESSION_DURATION_SECONDS = 900; // 15:00
+  const workspaceParam = searchParams.get('workspace') || 'general';
+  const SESSION_STORAGE_KEY = `encourtyard_payment_session_expiry_${workspaceParam}`;
+
+  const [mounted, setMounted] = useState(false);
+  const [expiryTimestamp, setExpiryTimestamp] = useState<number>(() => {
+    if (typeof window === 'undefined') return Date.now() + SESSION_DURATION_SECONDS * 1000;
+    try {
+      const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        // ONLY reuse if not expired yet (still in the future)
+        if (!isNaN(parsed) && parsed > Date.now()) {
+          return parsed;
+        }
+      }
+      // If none or already expired in the past, initialize a fresh 15-minute window!
+      const fresh = Date.now() + SESSION_DURATION_SECONDS * 1000;
+      sessionStorage.setItem(SESSION_STORAGE_KEY, String(fresh));
+      return fresh;
+    } catch {
+      return Date.now() + SESSION_DURATION_SECONDS * 1000;
+    }
+  });
+
+  const [timeLeft, setTimeLeft] = useState<number>(SESSION_DURATION_SECONDS);
+  const [sessionExpired, setSessionExpired] = useState<boolean>(false);
+  const [showExpiredModal, setShowExpiredModal] = useState<boolean>(false);
   const [generatedQrDataUrl, setGeneratedQrDataUrl] = useState<string>('');
   const [qrViewMode, setQrViewMode] = useState<'amount' | 'flyer'>('amount');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +132,10 @@ function PaymentPageContent() {
     title: '',
     message: '',
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Read cached active QR config from localStorage to eliminate 1ms flash on reload
   useEffect(() => {
@@ -132,13 +166,40 @@ function PaymentPageContent() {
     }
   }, [confirmedBookingId]);
 
-  // Countdown timer for session
+  // Persistent countdown timer that continues across page refresh and updates cleanly on renew
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
+    const checkTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((expiryTimestamp - now) / 1000));
+      setTimeLeft(remaining);
+
+      if (remaining <= 0) {
+        setSessionExpired(true);
+        setShowExpiredModal(true);
+      } else {
+        setSessionExpired(false);
+      }
+    };
+
+    // Calculate immediately on mount / change
+    checkTimer();
+
+    const timer = setInterval(checkTimer, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [expiryTimestamp]);
+
+  // Renew / Please Try Again handler: cleanly starts a brand new 15-minute session
+  const handleResetSession = () => {
+    const newExpiry = Date.now() + SESSION_DURATION_SECONDS * 1000;
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, String(newExpiry));
+      sessionStorage.setItem('encourtyard_payment_session_expiry', String(newExpiry));
+    } catch {}
+    setExpiryTimestamp(newExpiry);
+    setTimeLeft(SESSION_DURATION_SECONDS);
+    setSessionExpired(false);
+    setShowExpiredModal(false);
+  };
 
   const formatTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -212,7 +273,7 @@ function PaymentPageContent() {
               });
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     }
 
@@ -326,6 +387,11 @@ function PaymentPageContent() {
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (sessionExpired || timeLeft <= 0) {
+      setShowExpiredModal(true);
+      return;
+    }
+
     if (!utrNumber.trim()) {
       setFeedback({
         isOpen: true,
@@ -406,13 +472,14 @@ function PaymentPageContent() {
       setUploadProgress(100);
 
       if (res.ok && data.success) {
-        const bookingId = data.booking?.id || 'BK-CONFIRMED';
+        const bookingId = data.booking?.bookingRef || data.booking?.id || 'BK-CONFIRMED';
         // Notify realtime websockets/broadcast so admin and user booking pages update instantly
         notifyBookingChange();
         window.scrollTo({ top: 0, behavior: 'instant' });
         setConfirmedBookingId(bookingId);
         try {
           sessionStorage.removeItem('pending_booking_intent');
+          sessionStorage.removeItem(SESSION_STORAGE_KEY);
         } catch {
           // ignore
         }
@@ -436,54 +503,61 @@ function PaymentPageContent() {
       style={{ fontFamily: "Tahoma, Verdana, Segoe UI, sans-serif" }}
       className="bg-[#F4F6F4] min-h-screen text-[#181F18] pb-24 select-none"
     >
-      
-      {/* 1. Trusted Fintech Checkout Navbar / Topbar (Only shown during active checkout, hidden on confirmation) */}
-      {!confirmedBookingId && (
-        <section className="bg-white border-b border-[#E2E8E2] pt-24 pb-6 sm:pt-28 sm:pb-8 shadow-xs">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <Link
-                  href="/book"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#556955] hover:text-[#1B5E20] transition-colors mb-2 cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Return to Workspace Booking</span>
-                </Link>
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]">
-                    <QrCode className="w-6 h-6 text-[#1B5E20]" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#142314] tracking-tight">
-                      EnCourtyard UPI Instant Checkout
-                    </h1>
-                    <p className="text-xs text-[#556955] mt-0.5">
-                      Official PCI-DSS compliant direct UPI payment settlement gateway
-                    </p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Session Timer & Security Badge */}
-              <div className="flex items-center gap-2 self-start sm:self-center">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-mono font-bold">
-                  <Timer className="w-3.5 h-3.5 text-amber-700 animate-pulse" />
-                  <span>Session: {formatTimer(timeLeft)}</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#1B5E20]">
-                  <ShieldCheck className="w-4 h-4 text-[#2E7D32]" />
-                  <span>256-Bit Encrypted</span>
-                </div>
+      {/* Main Checkout Grid & Payment Features */}
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-28 md:pt-36 lg:pt-40 pb-16">
+
+        {/* Compact Navigation & Session Status - Single Row on Mobile & Desktop */}
+        {!confirmedBookingId && (
+          <div className="flex flex-row items-center justify-between gap-1.5 sm:gap-3 mt-4 sm:mt-0 mb-4 sm:mb-6">
+            <Link
+              href="/book"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs font-bold text-[#556955] hover:text-[#1B5E20] transition-colors cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span>Return<span className="hidden min-[400px]:inline"> to Booking</span></span>
+            </Link>
+
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-mono font-bold shadow-xs transition-colors ${
+                  sessionExpired || timeLeft <= 60
+                    ? 'bg-red-50 border-red-200 text-red-700 animate-pulse'
+                    : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}
+              >
+                <Timer className={`w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 ${sessionExpired ? 'text-red-600' : timeLeft <= 60 ? 'text-red-600 animate-ping' : 'text-amber-700 animate-pulse'}`} />
+                <span>Session: {formatTimer(timeLeft)}</span>
+              </div>
+              <div className="inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-lg sm:rounded-xl bg-emerald-50 border border-emerald-200 text-[10px] sm:text-xs font-bold text-[#1B5E20] shadow-xs shrink-0">
+                <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#2E7D32] shrink-0" />
+                <span><span className="hidden min-[460px]:inline">256-Bit </span>Encrypted</span>
               </div>
             </div>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* 2. Main Checkout Grid */}
-      <main className={`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 ${confirmedBookingId ? 'pt-24 sm:pt-28 pb-12' : 'py-8'}`}>
-        
+        {/* Session Expired In-Page Alert Banner */}
+        {!confirmedBookingId && sessionExpired && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 border border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-red-800 text-xs animate-fadeIn shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <div>
+                <strong className="block font-bold">Payment Session Expired (00:00)</strong>
+                <span className="text-[11px] text-red-700">Your 15-minute checkout session has ended. Please click Try Again to renew and proceed.</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetSession}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs shrink-0 transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Please Try Again</span>
+            </button>
+          </div>
+        )}
+
         {/* If successfully confirmed - Direct confirmation card */}
         {confirmedBookingId ? (
           <div
@@ -553,12 +627,12 @@ function PaymentPageContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
+
             {/* ========================================================================= */}
             {/* LEFT COLUMN: ORDER SUMMARY & BILLING SPECIFICATION (5 COLS)               */}
             {/* ========================================================================= */}
             <div className="lg:col-span-5 space-y-5">
-              
+
               {/* Order Dossier Card */}
               <div className="bg-white border border-[#D5DDD5] rounded-3xl p-6 shadow-sm space-y-4 text-left">
                 <div className="flex items-center justify-between">
@@ -660,9 +734,9 @@ function PaymentPageContent() {
             {/* RIGHT COLUMN: PROFESSIONAL PAYMENT SYSTEM INTERFACE (7 COLS)              */}
             {/* ========================================================================= */}
             <div className="lg:col-span-7 space-y-6">
-              
+
               <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                
+
                 {/* STEP 1: Official Dynamic Amount QR Code Box */}
                 <div className="bg-white border border-[#D5DDD5] rounded-3xl p-6 sm:p-8 shadow-sm text-center space-y-5">
                   <div>
@@ -688,22 +762,20 @@ function PaymentPageContent() {
                       <button
                         type="button"
                         onClick={() => setQrViewMode('amount')}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          qrViewMode === 'amount'
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${qrViewMode === 'amount'
                             ? 'bg-white text-[#1B5E20] shadow-xs'
                             : 'text-[#556955] hover:text-[#142314]'
-                        }`}
+                          }`}
                       >
                         ⚡ Amount QR (₹ {numericTotal.toLocaleString('en-IN')})
                       </button>
                       <button
                         type="button"
                         onClick={() => setQrViewMode('flyer')}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          qrViewMode === 'flyer'
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${qrViewMode === 'flyer'
                             ? 'bg-white text-[#1B5E20] shadow-xs'
                             : 'text-[#556955] hover:text-[#142314]'
-                        }`}
+                          }`}
                       >
                         📷 Merchant Flyer
                       </button>
@@ -844,7 +916,7 @@ function PaymentPageContent() {
                     <label className="block text-xs font-bold text-[#142314] uppercase tracking-wider">
                       Upload Payment Proof Screenshot <span className="text-red-500">*</span>
                     </label>
-                    
+
                     {!proofPreviewUrl ? (
                       <div
                         onClick={() => fileInputRef.current?.click()}
@@ -906,7 +978,7 @@ function PaymentPageContent() {
                   {submitting && (
                     <div className="p-3.5 rounded-xl bg-[#E8F5E9] border border-[#C8E6C9] space-y-1.5 animate-fadeIn">
                       <div className="flex items-center justify-between text-xs font-bold text-[#1B5E20]">
-                        <span>Uploading screenshot to Supabase Storage & creating booking...</span>
+                        <span>Uploading screenshot & creating booking...</span>
                         <span className="font-mono">{uploadProgress}%</span>
                       </div>
                       <div className="w-full h-2 bg-[#C8E6C9] rounded-full overflow-hidden">
@@ -922,10 +994,25 @@ function PaymentPageContent() {
                   <div className="pt-4 border-t border-[#E2E8E2]">
                     <button
                       type="submit"
-                      disabled={submitting}
-                      className="w-full py-4 px-6 rounded-2xl bg-[#1B5E20] hover:bg-[#154D1A] active:bg-[#0D3611] text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      disabled={submitting || sessionExpired}
+                      onClick={(e) => {
+                        if (sessionExpired) {
+                          e.preventDefault();
+                          setShowExpiredModal(true);
+                        }
+                      }}
+                      className={`w-full py-4 px-6 rounded-2xl font-bold text-sm sm:text-base shadow-md transition-all flex items-center justify-center gap-2 ${
+                        sessionExpired
+                          ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer shadow-red-200'
+                          : 'bg-[#1B5E20] hover:bg-[#154D1A] active:bg-[#0D3611] text-white hover:shadow-lg active:scale-[0.99] cursor-pointer disabled:opacity-60'
+                      }`}
                     >
-                      {submitting ? (
+                      {sessionExpired ? (
+                        <>
+                          <AlertCircle className="w-4 h-4 animate-bounce" />
+                          <span>Session Expired · Please Try Again</span>
+                        </>
+                      ) : submitting ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
                           <span>Verifying Payment Proof...</span>
@@ -953,6 +1040,59 @@ function PaymentPageContent() {
         )}
 
       </main>
+
+      {/* Session Expired Alert Modal Dialog */}
+      {showExpiredModal && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn select-none">
+          <div className="w-full max-w-md bg-white border border-red-200 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-5 animate-scaleUp my-auto">
+            <div className="w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 text-red-600 flex items-center justify-center mx-auto shadow-sm">
+              <Timer className="w-8 h-8 text-red-600 animate-pulse" />
+            </div>
+            
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 text-[11px] font-mono font-bold uppercase tracking-wider inline-block">
+                Session Expired · 00:00
+              </span>
+              <h3 className="text-xl sm:text-2xl font-bold text-[#142314]">
+                Payment Session Expired
+              </h3>
+              <p className="text-xs sm:text-sm text-[#556955] leading-relaxed">
+                Your 15-minute checkout window has timed out to prevent double-booking and secure workspace availability. Please click below to renew your session.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={handleResetSession}
+                className="w-full py-3.5 px-4 rounded-xl bg-[#1B5E20] hover:bg-[#154D1A] text-white text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Please Try Again (Renew Session)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+                    sessionStorage.removeItem('encourtyard_payment_session_expiry');
+                  } catch {}
+                  if (typeof window !== 'undefined' && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push('/book');
+                  }
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#F4F6F4] hover:bg-[#E5EBE5] text-[#556955] hover:text-[#142314] text-xs font-bold transition-all text-center border border-[#D5DDD5] cursor-pointer"
+              >
+                Return to Workspace Booking
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Feedback Modal */}
       <FeedbackModal

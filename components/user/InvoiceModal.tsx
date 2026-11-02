@@ -17,6 +17,7 @@ import {
 
 interface InvoiceBooking {
   id: string;
+  bookingRef?: string;
   workspaceTitle: string;
   workspaceType: string;
   bookingType: string;
@@ -38,7 +39,7 @@ interface InvoiceModalProps {
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) => {
-  const invoiceNumber = `INV-${booking.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+  const invoiceNumber = `INV-${(booking.bookingRef || booking.id.replace(/-/g, '').slice(0, 8)).toUpperCase()}`;
   const invoiceDate = new Date(booking.createdAt || Date.now()).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'long',
@@ -169,7 +170,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose }) 
               </p>
               <p className="text-[#5C665C]">
                 Booking Reference:{' '}
-                <span className="font-mono text-[#181F18]">{booking.id.slice(0, 8)}</span>
+                <span className="font-mono text-[#181F18]">{booking.bookingRef || booking.id.slice(0, 8)}</span>
               </p>
             </div>
           </div>

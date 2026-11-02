@@ -203,10 +203,37 @@ function BookPageContent() {
     return hourlyBaseAmount + hourlyGstAmount;
   }, [hourlyBaseAmount, hourlyGstAmount]);
 
+  // Day Pass dynamic pricing based on guestCount
+  const dayPassBaseAmount = useMemo(() => {
+    return numericPrice * guestCount;
+  }, [numericPrice, guestCount]);
+
+  const dayPassGstAmount = useMemo(() => {
+    return Math.round((dayPassBaseAmount * gstPercent) / 100);
+  }, [dayPassBaseAmount, gstPercent]);
+
+  const dayPassTotalWithGst = useMemo(() => {
+    return dayPassBaseAmount + dayPassGstAmount;
+  }, [dayPassBaseAmount, dayPassGstAmount]);
+
   // Active pricing values based on workspace type
-  const activeBaseAmount = isHourlyWorkspace ? hourlyBaseAmount : numericPrice;
-  const activeGstAmount = isHourlyWorkspace ? hourlyGstAmount : gstAmount;
-  const activeGrandTotal = isHourlyWorkspace ? hourlyTotalWithGst : totalPerUnitWithGst;
+  const activeBaseAmount = isHourlyWorkspace
+    ? hourlyBaseAmount
+    : isDayPassWorkspace
+    ? dayPassBaseAmount
+    : numericPrice;
+
+  const activeGstAmount = isHourlyWorkspace
+    ? hourlyGstAmount
+    : isDayPassWorkspace
+    ? dayPassGstAmount
+    : gstAmount;
+
+  const activeGrandTotal = isHourlyWorkspace
+    ? hourlyTotalWithGst
+    : isDayPassWorkspace
+    ? dayPassTotalWithGst
+    : totalPerUnitWithGst;
 
   // Synchronize single-day date lock for Hourly and Day Pass workspaces
   useEffect(() => {
@@ -659,6 +686,42 @@ function BookPageContent() {
                             </span>
                           </div>
                         </>
+                      ) : isDayPassWorkspace ? (
+                        <>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-[#E5E1D8]">
+                            <span className="font-semibold text-[#181F18]">Rate Per Person:</span>
+                            <span className="font-bold text-[#181F18]">₹ {numericPrice.toLocaleString('en-IN')} / person</span>
+                          </div>
+                          <div className="flex justify-between items-center bg-[#E8F5E9] px-2 py-1 rounded-lg border border-[#C8E6C9]">
+                            <span className="font-semibold text-[#1B5E20]">Members Allocated:</span>
+                            <span className="font-bold font-mono text-[#1B5E20]">{guestCount} Member{guestCount > 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Base Rate ({guestCount} Pax):</span>
+                            <span className="font-semibold text-[#181F18]">
+                              ₹ {dayPassBaseAmount.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>GST ({gstPercent}%):</span>
+                            <span className="font-semibold text-amber-800">
+                              + ₹ {dayPassGstAmount.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Botanical Concierge Service:</span>
+                            <span className="text-[#2E7D32] font-semibold">Included Free</span>
+                          </div>
+                          <div
+                            style={{ fontFamily: 'Tahoma, sans-serif' }}
+                            className="pt-2.5 border-t border-[#E5E1D8] flex justify-between font-bold text-sm text-[#181F18]"
+                          >
+                            <span>Total Estimated:</span>
+                            <span className="text-base text-[#2E7D32] font-bold">
+                              ₹ {dayPassTotalWithGst.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </>
                       ) : (
                         <>
                           <div className="flex justify-between">
@@ -925,22 +988,24 @@ function BookPageContent() {
                           />
                         </div>
 
-                        {/* Timing Slots */}
+                        {/* Access Hours Matching Reference Box */}
                         <div className="space-y-1.5 text-left">
-                          <label className="text-[11px] font-semibold text-[#5C665C]">
+                          <label className="text-[11px] font-semibold text-[#5C665C] block">
                             Access Hours <span className="text-red-500">*</span>
                           </label>
                           <div className="grid grid-cols-2 gap-2">
-                            <MaterialTimePicker
-                              value={startTime}
-                              onChange={(newTime) => setStartTime(newTime)}
-                              align="left"
-                            />
-                            <MaterialTimePicker
-                              value={endTime}
-                              onChange={(newTime) => setEndTime(newTime)}
-                              align="right"
-                            />
+                            <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#E5E1D8] shadow-2xs flex items-center justify-center sm:justify-start gap-2">
+                              <Clock className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                              <span className="text-xs sm:text-sm font-semibold font-mono text-[#7C3AED]">
+                                09:00 AM
+                              </span>
+                            </div>
+                            <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#E5E1D8] shadow-2xs flex items-center justify-center sm:justify-start gap-2">
+                              <Clock className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                              <span className="text-xs sm:text-sm font-semibold font-mono text-[#7C3AED]">
+                                06:00 PM
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>

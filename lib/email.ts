@@ -157,6 +157,7 @@ export async function sendOtpEmail({
 // ============================================================================
 export interface BookingEmailData {
   id: string;
+  bookingRef?: string | null;
   fullName: string;
   companyName?: string | null;
   email: string;
@@ -358,10 +359,11 @@ export async function sendBookingConfirmationEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
   const details = formatBookingDetailsForEmail(booking);
+  const displayRef = booking.bookingRef || booking.id;
 
   console.log('\n======================================================');
   console.log(`🌿 [EnCourtyard Booking] CONFIRMATION DISPATCH TO: ${toEmail} (${recipientLabel || 'User'})`);
-  console.log(`📋 BOOKING REF: ${booking.id} | SPACE: ${booking.workspaceTitle}`);
+  console.log(`📋 BOOKING REF: ${displayRef} | SPACE: ${booking.workspaceTitle}`);
   console.log(`📅 PLAN: ${details.displayPlan} | SCHEDULE: ${details.scheduleSummary}`);
   console.log('======================================================\n');
 
@@ -375,7 +377,7 @@ export async function sendBookingConfirmationEmail(
     const normalizedStatus = (booking.status || 'PENDING').toUpperCase().trim();
 
     // Status-specific template configuration for booking creation email
-    let emailSubject = `EnCourtyard Booking Created: ${booking.workspaceTitle} (Status: Pending) - ${booking.id}`;
+    let emailSubject = `EnCourtyard Booking Created: ${booking.workspaceTitle} (Status: Pending) - ${displayRef}`;
     let statusBadge = `BOOKING CREATED • PENDING`;
     let badgeBg = '#FFF8E1';
     let badgeTextColor = '#B78103';
@@ -393,7 +395,7 @@ export async function sendBookingConfirmationEmail(
     `;
 
     if (normalizedStatus === 'CONFIRMED') {
-      emailSubject = `✅ EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `✅ EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${displayRef})`;
       statusBadge = `BOOKING CONFIRMED`;
       badgeBg = '#E8F5E9';
       badgeTextColor = '#1B5E20';
@@ -408,12 +410,12 @@ export async function sendBookingConfirmationEmail(
         </div>
       `;
     } else if (normalizedStatus === 'COMPLETED' || normalizedStatus === 'COMPLETE') {
-      emailSubject = `✨ EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `✨ EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${displayRef})`;
       statusBadge = `BOOKING COMPLETED`;
       badgeBg = '#EFF6FF';
       badgeTextColor = '#1E40AF';
       badgeBorderColor = '#3B82F6';
-      introMessage = `Your reservation for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) is marked as <strong>Completed</strong>. Thank you for choosing EnCourtyard.`;
+      introMessage = `Your reservation for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) is marked as <strong>Completed</strong>. Thank you for choosing EnCourtyard.`;
       nextStepsHtml = `
         <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #0369A1; line-height: 1.6;">
           <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0C4A6E; margin-bottom: 6px;">✨ Thank You for Working at EnCourtyard:</strong>
@@ -421,12 +423,12 @@ export async function sendBookingConfirmationEmail(
         </div>
       `;
     } else if (normalizedStatus === 'CANCELLED' || normalizedStatus === 'CANCELED') {
-      emailSubject = `⚠️ EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `⚠️ EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${displayRef})`;
       statusBadge = `BOOKING CANCELLED`;
       badgeBg = '#FEF2F2';
       badgeTextColor = '#B91C1C';
       badgeBorderColor = '#EF4444';
-      introMessage = `This is to inform you that your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) has been <strong>Cancelled</strong>.`;
+      introMessage = `This is to inform you that your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) has been <strong>Cancelled</strong>.`;
       nextStepsHtml = `
         <div style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
           <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 6px;">⚠️ Important Notice:</strong>
@@ -477,7 +479,7 @@ export async function sendBookingConfirmationEmail(
 
             <div style="text-align: center; margin: 20px 0;">
               <span style="font-size: 11px; text-transform: uppercase; color: #738273; display: block; margin-bottom: 4px; font-weight: 600;">Booking Reference</span>
-              <span class="ref-pill">${booking.id}</span>
+              <span class="ref-pill">${displayRef}</span>
             </div>
 
             <div class="summary-card">
@@ -524,7 +526,7 @@ export async function sendBookingConfirmationEmail(
       from: cfg.from,
       to: toEmail,
       subject: emailSubject,
-      text: `Your EnCourtyard booking (${booking.id}) for "${booking.workspaceTitle}" has been received. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}. Total: ${booking.totalAmount || 'Flexible'}.`,
+      text: `Your EnCourtyard booking (${displayRef}) for "${booking.workspaceTitle}" has been received. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}. Total: ${booking.totalAmount || 'Flexible'}.`,
       html: htmlContent,
     });
 
@@ -544,10 +546,12 @@ export async function sendAdminNewBookingNotification(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
   const details = formatBookingDetailsForEmail(booking);
+  const displayRef = booking.bookingRef || booking.id;
 
   console.log('\n======================================================');
   console.log(`🚨 [EnCourtyard Admin Alert] NEW BOOKING CREATED`);
   console.log(`📬 SENDING ADMIN NOTIFICATION TO: ${cfg.adminEmail}`);
+  console.log(`📋 BOOKING REF: ${displayRef}`);
   console.log(`👤 HOST: ${booking.fullName} | COMPANY: ${booking.companyName || 'N/A'}`);
   console.log(`📞 PHONE: ${booking.phone} | EMAIL: ${booking.email}`);
   console.log(`🏢 WORKSPACE: ${booking.workspaceTitle} (${details.displayPlan})`);
@@ -589,7 +593,7 @@ export async function sendAdminNewBookingNotification(
           </div>
           <div class="content">
             <p style="font-size: 14px; margin-top: 0;">
-              <strong>Booking Reference:</strong> <span style="font-family: monospace; background: #E3EBE3; padding: 2px 8px; border-radius: 6px; font-weight: bold;">${booking.id}</span>
+              <strong>Booking Reference:</strong> <span style="font-family: monospace; background: #E3EBE3; padding: 2px 8px; border-radius: 6px; font-weight: bold;">${displayRef}</span>
             </p>
 
             <div class="card">
@@ -620,8 +624,8 @@ export async function sendAdminNewBookingNotification(
     const info = await transporter.sendMail({
       from: cfg.from,
       to: cfg.adminEmail,
-      subject: `🚨 [New Booking - ${booking.status || 'PENDING'}] ${booking.workspaceTitle} - ${booking.fullName} (${booking.id})`,
-      text: `New reservation placed: ${booking.id} by ${booking.fullName} (${booking.email}, ${booking.phone}) for ${booking.workspaceTitle}. Plan: ${details.displayPlan}. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}.`,
+      subject: `🚨 [New Booking - ${booking.status || 'PENDING'}] ${booking.workspaceTitle} - ${booking.fullName} (${displayRef})`,
+      text: `New reservation placed: ${displayRef} by ${booking.fullName} (${booking.email}, ${booking.phone}) for ${booking.workspaceTitle}. Plan: ${details.displayPlan}. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}.`,
       html: htmlContent,
     });
 
@@ -643,10 +647,11 @@ export async function sendStatusUpdateEmail(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
   const details = formatBookingDetailsForEmail(booking);
+  const displayRef = booking.bookingRef || booking.id;
 
   console.log('\n======================================================');
   console.log(`🌿 [EnCourtyard Status Update] DISPATCH TO: ${toEmail} (${recipientLabel || 'User'})`);
-  console.log(`📋 BOOKING REF: ${booking.id} | NEW STATUS: >>> ${booking.status} <<<`);
+  console.log(`📋 BOOKING REF: ${displayRef} | NEW STATUS: >>> ${booking.status} <<<`);
   console.log(`📝 ADMIN NOTES: ${booking.adminNotes || 'None'}`);
   console.log('======================================================\n');
 
@@ -664,9 +669,9 @@ export async function sendStatusUpdateEmail(
     let statusBg = '#E8F5E9';
     let statusTextColor = '#2E7D32';
     let statusBorderColor = '#4ADE80';
-    let emailSubject = `EnCourtyard Booking Status Updated: ${booking.id} is now ${booking.status}`;
+    let emailSubject = `EnCourtyard Booking Status Updated: ${displayRef} is now ${booking.status}`;
     let headline = `Hello, ${booking.fullName}!`;
-    let statusMessage = `The status of your reservation <strong>${booking.id}</strong> for <strong>${booking.workspaceTitle}</strong> has been updated to <strong>${booking.status}</strong>.`;
+    let statusMessage = `The status of your reservation <strong>${displayRef}</strong> for <strong>${booking.workspaceTitle}</strong> has been updated to <strong>${booking.status}</strong>.`;
     let nextStepsBox = '';
 
     if (normalizedStatus === 'CONFIRMED') {
@@ -674,9 +679,9 @@ export async function sendStatusUpdateEmail(
       statusBg = '#E8F5E9';
       statusTextColor = '#1B5E20';
       statusBorderColor = '#2E7D32';
-      emailSubject = `EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${displayRef})`;
       headline = 'Your Workspace Reservation is Officially Confirmed!';
-      statusMessage = `Great news! Your booking for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) has been approved and confirmed by the EnCourtyard team. Your workspace will be fully prepared for your arrival.`;
+      statusMessage = `Great news! Your booking for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) has been approved and confirmed by the EnCourtyard team. Your workspace will be fully prepared for your arrival.`;
       nextStepsBox = `
         <div style="background: #F1F8E9; border: 1px solid #C5E1A5; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #2E7D32; line-height: 1.6;">
           <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #1B5E20; margin-bottom: 6px;">Check-In & Arrival Guidelines:</strong>
@@ -690,9 +695,9 @@ export async function sendStatusUpdateEmail(
       statusBg = '#FFF8E1';
       statusTextColor = '#B78103';
       statusBorderColor = '#F59E0B';
-      emailSubject = `EnCourtyard Booking Pending: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `EnCourtyard Booking Pending: ${booking.workspaceTitle} (${displayRef})`;
       headline = 'Your Reservation Request is Under Review';
-      statusMessage = `Thank you for choosing EnCourtyard. Your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${booking.id}</strong>) is currently in <strong>Pending</strong> status while our concierge team verifies scheduling and seat allocation.`;
+      statusMessage = `Thank you for choosing EnCourtyard. Your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) is currently in <strong>Pending</strong> status while our concierge team verifies scheduling and seat allocation.`;
       nextStepsBox = `
         <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
           <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 6px;">What to Expect Next:</strong>
@@ -706,9 +711,9 @@ export async function sendStatusUpdateEmail(
       statusBg = '#EFF6FF';
       statusTextColor = '#1E40AF';
       statusBorderColor = '#3B82F6';
-      emailSubject = `EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${displayRef})`;
       headline = 'Thank You for Working at EnCourtyard!';
-      statusMessage = `Your workspace session for booking <strong>${booking.id}</strong> (<strong>${booking.workspaceTitle}</strong>) has been marked as <strong>Completed</strong>. We truly hope you had a productive, inspiring, and comfortable work session.`;
+      statusMessage = `Your workspace session for booking <strong>${displayRef}</strong> (<strong>${booking.workspaceTitle}</strong>) has been marked as <strong>Completed</strong>. We truly hope you had a productive, inspiring, and comfortable work session.`;
       nextStepsBox = `
         <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #0369A1; line-height: 1.6;">
           <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0C4A6E; margin-bottom: 6px;">We Look Forward to Seeing You Again:</strong>
@@ -721,9 +726,9 @@ export async function sendStatusUpdateEmail(
       statusBg = '#FEF2F2';
       statusTextColor = '#B91C1C';
       statusBorderColor = '#EF4444';
-      emailSubject = `EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${booking.id})`;
+      emailSubject = `EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${displayRef})`;
       headline = 'Your Workspace Reservation Has Been Cancelled';
-      statusMessage = `This is to notify you that your booking <strong>${booking.id}</strong> for <strong>${booking.workspaceTitle}</strong> scheduled for <strong>${booking.startDate}</strong> has been <strong>Cancelled</strong>.`;
+      statusMessage = `This is to notify you that your booking <strong>${displayRef}</strong> for <strong>${booking.workspaceTitle}</strong> scheduled for <strong>${booking.startDate}</strong> has been <strong>Cancelled</strong>.`;
       nextStepsBox = `
         <div style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
           <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 6px;">Important Information:</strong>
@@ -781,7 +786,7 @@ export async function sendStatusUpdateEmail(
             ${nextStepsBox}
 
             <div class="summary-card">
-              <div class="row"><span><strong>Booking Reference:</strong></span><span>${booking.id}</span></div>
+              <div class="row"><span><strong>Booking Reference:</strong></span><span>${displayRef}</span></div>
               <div class="row"><span><strong>Workspace:</strong></span><span>${booking.workspaceTitle}</span></div>
               <div class="row"><span><strong>Rental Plan:</strong></span><span style="font-weight: 600;">${details.displayPlan}</span></div>
               <div class="row"><span><strong>Schedule:</strong></span><span>${details.scheduleSummary}</span></div>
@@ -802,7 +807,7 @@ export async function sendStatusUpdateEmail(
       </html>
     `;
 
-    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking ID: ${booking.id}\nWorkspace: ${booking.workspaceTitle}\nRental Plan: ${details.displayPlan}\nSchedule: ${details.scheduleSummary}\nSeats: ${booking.guests}\n\n${booking.adminNotes ? `Admin Notes: ${booking.adminNotes}\n\n` : ''}Contact Concierge: support@encourtyard.com | +91 99082 09993`;
+    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking Reference: ${displayRef}\nWorkspace: ${booking.workspaceTitle}\nRental Plan: ${details.displayPlan}\nSchedule: ${details.scheduleSummary}\nSeats: ${booking.guests}\n\n${booking.adminNotes ? `Admin Notes: ${booking.adminNotes}\n\n` : ''}Contact Concierge: support@encourtyard.com | +91 99082 09993`;
 
     const info = await transporter.sendMail({
       from: cfg.from,
@@ -827,6 +832,7 @@ export async function sendAdminStatusUpdateNotification(
   booking: BookingEmailData
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
+  const displayRef = booking.bookingRef || booking.id;
 
   if (!cfg.isConfigured) return { success: true };
 
@@ -835,8 +841,8 @@ export async function sendAdminStatusUpdateNotification(
     const info = await transporter.sendMail({
       from: cfg.from,
       to: cfg.adminEmail,
-      subject: `ℹ️ [Status Changed] Booking ${booking.id} updated to ${booking.status}`,
-      text: `Booking ${booking.id} (${booking.fullName} - ${booking.workspaceTitle}) status updated to ${booking.status}. Notes: ${booking.adminNotes || 'None'}.`,
+      subject: `ℹ️ [Status Changed] Booking ${displayRef} updated to ${booking.status}`,
+      text: `Booking ${displayRef} (${booking.fullName} - ${booking.workspaceTitle}) status updated to ${booking.status}. Notes: ${booking.adminNotes || 'None'}.`,
     });
     return { success: true, messageId: info.messageId };
   } catch (error: unknown) {

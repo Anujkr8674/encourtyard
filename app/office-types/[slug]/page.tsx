@@ -25,6 +25,31 @@ export default function OfficeTypeDetailPage() {
   // Retrieve matching office data (supporting aliases like hot-desk, team-space)
   const office: OfficeTypeItem = getOfficeTypeBySlug(slug) || OFFICE_TYPES[0];
 
+  // Dedicated destination page resolution
+  const bookingDestinationUrl = React.useMemo(() => {
+    const s = (office.slug || office.id || '').toLowerCase().trim();
+    const c = (office.categoryName || '').toLowerCase().trim();
+    const combined = `${s} ${c}`;
+
+    // 1. Meeting Rooms dedicated dynamic page
+    if (combined.includes('meeting') || combined.includes('boardroom')) {
+      return '/meeting-rooms';
+    }
+
+    // 2. Conference Hall dedicated dynamic page
+    if (combined.includes('confr') || combined.includes('conference')) {
+      return '/conference-hall';
+    }
+
+    // 3. Day Pass dedicated route
+    if (combined.includes('day pass') || combined.includes('day-pass')) {
+      return '/book-space?plan=day-pass';
+    }
+
+    // 4. Default categories -> /book-space with filtered category
+    return `/book-space?category=${encodeURIComponent(office.categoryName)}`;
+  }, [office]);
+
   // Accordion state: only one menu expanded at a time (default open 'advantages')
   const [openSection, setOpenSection] = useState<string | null>('advantages');
 
@@ -137,9 +162,9 @@ export default function OfficeTypeDetailPage() {
                 <span>Contact Us</span>
               </Link>
 
-              {/* Button 2: Enquiry Now / Direct Booking Linked with matching Category */}
+              {/* Button 2: Enquiry Now / Direct Booking Linked to dedicated page (e.g. /meeting-rooms) */}
               <Link
-                href={`/book-space?category=${encodeURIComponent(office.categoryName)}`}
+                href={bookingDestinationUrl}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 border-[#2E7D32] text-white bg-[#2E7D32] hover:bg-[#1E5C23] hover:border-[#1E5C23] text-sm font-bold transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <Send className="w-4 h-4" />
@@ -310,7 +335,7 @@ export default function OfficeTypeDetailPage() {
 
           <div className="flex items-center gap-3 shrink-0">
             <Link
-              href={`/book-space?category=${encodeURIComponent(office.categoryName)}`}
+              href={bookingDestinationUrl}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all duration-200"
             >
               <Calendar className="w-4 h-4 text-[#86EFAC]" />

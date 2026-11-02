@@ -61,10 +61,18 @@ export default function HyderabadPage() {
   ];
 
   return (
-    <div className="flex flex-col w-full max-w-full overflow-x-hidden min-h-screen bg-white font-sans">
+    <div
+      style={{ fontFamily: 'Tahoma, Verdana, Segoe UI, sans-serif' }}
+      className="flex flex-col w-full max-w-full overflow-x-hidden min-h-screen bg-white hyderabad-tahoma"
+    >
+      <style>{`
+        .hyderabad-tahoma, .hyderabad-tahoma * {
+          font-family: Tahoma, Verdana, 'Segoe UI', sans-serif !important;
+        }
+      `}</style>
       
       {/* 1. HERO SECTION (80vh) */}
-      <section className="relative h-[80vh] min-h-[580px] max-h-[800px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
+      <section className="relative h-[80vh] min-h-[580px] max-h-[800px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden hidden">
         {/* Background Image / Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/50 via-[#0E170E]/25 to-[#0E170E]/60 z-10" />
@@ -81,12 +89,12 @@ export default function HyderabadPage() {
           
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-xs font-semibold text-white mb-6">
             <MapPin className="w-3.5 h-3.5 text-[#4ADE80]" />
-            <span className="tracking-widest uppercase font-mono text-[11px]">KHAIRTABAD, HYDERABAD</span>
+            <span className="tracking-widest uppercase text-[11px] font-semibold">KHAIRTABAD, HYDERABAD</span>
           </div>
 
           <div className="flex justify-center mb-6">
             <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-3xl bg-white/50 hover:bg-white/65 backdrop-blur-md border border-white/60 shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-colors">
-              <h1 className="font-serif text-xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#141F14] leading-[1.15] text-center">
+              <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#141F14] leading-[1.15] text-center">
                 {typedHeading}
                 <span className="inline-block w-1 sm:w-1.5 h-6 sm:h-9 bg-[#2E7D32] ml-1 align-middle animate-pulse" />
               </h1>
@@ -94,7 +102,7 @@ export default function HyderabadPage() {
           </div>
           
           <div className="flex justify-center max-w-2xl px-2">
-            <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/50 hover:bg-white/65 backdrop-blur-md border border-white/60 text-xs sm:text-sm md:text-base text-[#181F18] font-sans shadow-[0_8px_25px_rgba(0,0,0,0.1)] leading-relaxed text-center font-medium">
+            <div className="inline-block px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl bg-white/50 hover:bg-white/65 backdrop-blur-md border border-white/60 text-xs sm:text-sm md:text-base text-[#181F18] shadow-[0_8px_25px_rgba(0,0,0,0.1)] leading-relaxed text-center font-medium">
               Located in Khairtabad, Encourtyard Workspaces offers a professional and accessible workspace for individuals, teams, and businesses across Hyderabad.
             </div>
           </div>
@@ -123,23 +131,23 @@ export default function HyderabadPage() {
       </section>
 
       {/* 2. SECTION 13: LOCATION (Work from the Heart of Hyderabad) */}
-      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#E5E1D8]">
+      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#E5E1D8] pt-28 sm:pt-32 lg:pt-36 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
           
           <div className="lg:col-span-6 space-y-6 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold">
+            {/* <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold">
               LOCATION
-            </div>
+            </div> */}
 
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] leading-tight">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] leading-tight">
               Work from the Heart of Hyderabad.
             </h2>
 
             <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF9F5] border border-[#DDD7CA] space-y-1">
-              <span className="text-xs font-mono uppercase tracking-wider text-[#738273] font-semibold block">
+              <span className="text-xs uppercase tracking-wider text-[#738273] font-semibold block">
                 PRIME ADDRESS
               </span>
-              <p className="font-serif text-lg sm:text-xl font-bold text-[#181F18]">
+              <p className="text-lg sm:text-xl font-bold text-[#181F18]">
                 Location: Khairtabad, Hyderabad
               </p>
               <p className="text-xs text-[#5C665C]">
@@ -195,7 +203,7 @@ export default function HyderabadPage() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono uppercase text-[#738273] font-semibold block">Transit Hub</span>
+                  <span className="text-[10px] uppercase text-[#738273] font-semibold block">Transit Hub</span>
                   <p className="text-xs font-bold text-[#181F18]">Minutes from Khairtabad Metro & Lakdi-ka-pul</p>
                 </div>
               </div>
@@ -222,15 +230,15 @@ export default function HyderabadPage() {
             </div>
 
             <div className="lg:col-span-7 space-y-5 text-left order-1 lg:order-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] uppercase tracking-widest text-[#1B5E20] font-bold">
                 A PROFESSIONAL ADDRESS FOR YOUR BUSINESS
               </div>
 
-              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] leading-tight">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] leading-tight">
                 Make the Right Impression.
               </h2>
               
-              <p className="text-base text-[#2E7D32] font-medium font-serif">
+              <p className="text-base text-[#2E7D32] font-medium">
                 Your workspace is more than where you sit.
               </p>
 
@@ -258,7 +266,7 @@ export default function HyderabadPage() {
               </p>
 
               <div className="pt-2">
-                <div className="inline-block px-5 py-3 rounded-xl bg-white border border-[#DDD7CA] text-xs sm:text-sm font-bold text-[#181F18] font-serif shadow-xs">
+                <div className="inline-block px-5 py-3 rounded-xl bg-white border border-[#DDD7CA] text-xs sm:text-sm font-bold text-[#181F18] shadow-xs">
                   Look professional. Work comfortably. Grow confidently.
                 </div>
               </div>
@@ -274,15 +282,15 @@ export default function HyderabadPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           
           <div className="lg:col-span-7 space-y-5 text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] font-mono uppercase tracking-widest text-[#1B5E20] font-bold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[11px] uppercase tracking-widest text-[#1B5E20] font-bold">
               WORK ON YOUR TERMS
             </div>
 
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] leading-tight">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18] leading-tight">
               Your Office Doesn’t Have a Closing Time.
             </h2>
 
-            <p className="text-base sm:text-lg text-[#2E7D32] font-medium font-serif">
+            <p className="text-base sm:text-lg text-[#2E7D32] font-medium">
               Your work doesn’t always happen between 9 and 6. That’s why Encourtyard is open 24/7.
             </p>
 
@@ -312,7 +320,7 @@ export default function HyderabadPage() {
               </div>
             </div>
 
-            <p className="text-xs sm:text-sm font-bold text-[#181F18] pt-1 font-serif">
+            <p className="text-xs sm:text-sm font-bold text-[#181F18] pt-1">
               At Encourtyard, you work according to your schedule.
             </p>
           </div>
@@ -326,8 +334,8 @@ export default function HyderabadPage() {
                   <Clock className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#4ADE80] block font-bold">24/7/365 HYDERABAD ACCESS</span>
-                  <h3 className="font-serif text-xl font-bold text-white">Full Security & Power</h3>
+                  <span className="text-[11px] uppercase tracking-wider text-[#4ADE80] block font-bold">24/7/365 HYDERABAD ACCESS</span>
+                  <h3 className="text-xl font-bold text-white">Full Security & Power</h3>
                 </div>
               </div>
 
@@ -364,10 +372,10 @@ export default function HyderabadPage() {
       {/* 5. SECTION 11: THE ENCOURTYARD EXPERIENCE */}
       <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-b border-[#E5E1D8]">
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-[11px] font-mono uppercase tracking-widest text-[#2E7D32] font-bold block mb-2">
+          <span className="text-[11px] uppercase tracking-widest text-[#2E7D32] font-bold block mb-2">
             DAILY FLOW AT ENCOURTYARD
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18]">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#181F18]">
             Come for the Space. Stay for the Experience.
           </h2>
           <p className="text-sm sm:text-base text-[#4A574A] mt-3">
@@ -383,14 +391,14 @@ export default function HyderabadPage() {
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-xs font-bold text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-bold text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded-md">
                     Step {step.step}
                   </span>
                   <div className="w-7 h-7 rounded-lg bg-[#FAF9F5] border border-[#E5E1D8] flex items-center justify-center">
                     {step.icon}
                   </div>
                 </div>
-                <h4 className="font-serif font-bold text-base text-[#181F18] mb-1.5 leading-snug">
+                <h4 className="font-bold text-base text-[#181F18] mb-1.5 leading-snug">
                   {step.title}
                 </h4>
                 <p className="text-xs text-[#5C665C] leading-relaxed">

@@ -230,39 +230,61 @@ export default function GalleryPage() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-6 mt-16 pt-8 border-t border-[#E5E1D8]">
-                <Button 
-                  variant="outline" 
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => p - 1)}
-                  className="border-[#E5E1D8] text-[#5C665C] hover:bg-[#F7F5F0] rounded-full px-6"
-                >
-                  <ChevronLeft className="w-5 h-5 mr-2" /> Previous
-                </Button>
-                
-                <div className="flex gap-2">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                        currentPage === i + 1 
-                          ? 'bg-[#2E7D32] w-6' 
-                          : 'bg-[#C5D5C5] hover:bg-[#2E7D32]/50'
-                      }`}
-                      aria-label={`Page ${i + 1}`}
-                    />
-                  ))}
+              <div className="flex flex-col items-center gap-3 mt-16 pt-8 border-t border-[#E5E1D8]">
+                <div className="inline-flex items-center gap-2 sm:gap-3 bg-[#FAF9F5] border border-[#E5E1D8] p-1.5 sm:p-2 rounded-2xl shadow-xs">
+                  {/* Previous Button */}
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-[#181F18] bg-white border border-[#E5E1D8] hover:border-[#2E7D32] hover:bg-[#2E7D32] hover:text-white transition-all duration-200 shadow-2xs hover:shadow-md disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-[#181F18] disabled:hover:border-[#E5E1D8] disabled:cursor-not-allowed cursor-pointer whitespace-nowrap active:scale-95 group"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+                    <span>Previous</span>
+                  </button>
+
+                  {/* Page Indicator Pills / Numbers */}
+                  <div className="flex items-center gap-1.5 px-1 sm:px-2">
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const pageNum = i + 1;
+                      const isActive = currentPage === pageNum;
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`min-w-[34px] sm:min-w-[38px] h-9 px-2 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                            isActive
+                              ? 'bg-[#2E7D32] text-white shadow-sm scale-105'
+                              : 'bg-transparent hover:bg-white text-[#5C665C] hover:text-[#181F18] border border-transparent hover:border-[#E5E1D8]'
+                          }`}
+                          aria-label={`Go to page ${pageNum}`}
+                          aria-current={isActive ? 'page' : undefined}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-[#181F18] bg-white border border-[#E5E1D8] hover:border-[#2E7D32] hover:bg-[#2E7D32] hover:text-white transition-all duration-200 shadow-2xs hover:shadow-md disabled:opacity-35 disabled:hover:bg-white disabled:hover:text-[#181F18] disabled:hover:border-[#E5E1D8] disabled:cursor-not-allowed cursor-pointer whitespace-nowrap active:scale-95 group"
+                    aria-label="Next page"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                  </button>
                 </div>
 
-                <Button 
-                  variant="outline" 
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="border-[#E5E1D8] text-[#5C665C] hover:bg-[#F7F5F0] rounded-full px-6"
-                >
-                  Next <ChevronRight className="w-5 h-5 ml-2" />
-                </Button>
+                {/* Subtitle Counter */}
+                <p className="text-xs font-mono text-[#738273]">
+                  Showing Page <strong className="text-[#181F18]">{currentPage}</strong> of <strong className="text-[#181F18]">{totalPages}</strong> ({images.length} collection photographs)
+                </p>
               </div>
             )}
           </>

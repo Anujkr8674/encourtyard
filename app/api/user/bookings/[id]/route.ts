@@ -17,8 +17,13 @@ export async function GET(
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id },
+    const booking = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { id },
+          { bookingRef: id },
+        ],
+      },
     });
 
     if (!booking) {

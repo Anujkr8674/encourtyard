@@ -311,7 +311,7 @@ export default function AdminQrCodePage() {
             QR Code & UPI Gateway
           </h1>
           <p className="text-xs sm:text-sm text-[#5C665C] mt-0.5">
-            Upload merchant QR codes directly to Supabase storage (<code className="font-mono text-[#2E7D32]">encourtyard-upload/qr-code</code>), view configured payment methods table, and manage active checkout.
+            Upload merchant QR codes directly to  storage view configured payment methods table, and manage active checkout.
           </p>
         </div>
 
@@ -678,13 +678,13 @@ export default function AdminQrCodePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E1D8]">
               <div>
                 <span className="text-xs uppercase font-mono font-bold text-[#2E7D32] block mb-0.5">
-                  DATABASE RECORDS · SUPABASE STORAGE
+                  DATABASE RECORDS 
                 </span>
                 <h3 className="font-serif text-xl font-bold text-[#181F18]">
                   Configured QR Code Payment Methods
                 </h3>
                 <p className="text-xs text-[#5C665C]">
-                  All uploaded QR codes saved in Supabase Storage under <code className="font-mono text-[#2E7D32]">qr-code/</code>. Admin can inspect, copy URLs, and select which QR code is active on checkout.
+                  All uploaded QR codes saved in Storage. 
                 </p>
               </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -26,14 +27,17 @@ import {
   AlertTriangle,
   MessageSquare,
   User,
+  X,
 } from 'lucide-react';
 import { BookingStatusTracker } from '@/components/user/BookingStatusTracker';
 import { InvoiceModal } from '@/components/user/InvoiceModal';
+import { FeedbackModal } from '@/components/ui/FeedbackModal';
 import { notifyBookingChange } from '@/lib/realtimeBookings';
 import { parseBookingNotes } from '@/lib/bookingNotes';
 
 interface BookingDetail {
   id: string;
+  bookingRef?: string | null;
   workspaceId?: string | null;
   workspaceTitle: string;
   categoryName?: string;
@@ -52,6 +56,9 @@ interface BookingDetail {
   totalAmount: number | null;
   status: string;
   paymentStatus: string;
+  cancellationRequested?: boolean;
+  cancellationReason?: string | null;
+  cancellationRequestedAt?: string | null;
   adminNotes?: string;
   statusUpdatedAt?: string;
   createdAt: string;
@@ -72,6 +79,19 @@ export default function BookingDetailsPage() {
   const [copiedId, setCopiedId] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReasonInput, setCancelReasonInput] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [feedback, setFeedback] = useState<{ isOpen: boolean; message: string; type: 'success' | 'error'; title: string }>({
+    isOpen: false,
+    message: '',
+    type: 'success',
+    title: '',
+  });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchBooking = async () => {
     if (!bookingId) return;
@@ -84,6 +104,9 @@ export default function BookingDetailsPage() {
         throw new Error(data.error || 'Failed to load booking details.');
       }
       setBooking(data.booking);
+      if (data.booking?.bookingRef && bookingId !== data.booking.bookingRef) {
+        router.replace(`/user/bookings/${data.booking.bookingRef}`);
+      }
     } catch (err: any) {
       setError(err.message || 'Error loading booking');
     } finally {
@@ -95,9 +118,11 @@ export default function BookingDetailsPage() {
     fetchBooking();
   }, [bookingId]);
 
+  const displayBookingRef = booking?.bookingRef || booking?.id;
+
   const handleCopyId = () => {
     if (!booking) return;
-    navigator.clipboard.writeText(booking.id);
+    navigator.clipboard.writeText(displayBookingRef || booking.id);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   };
@@ -106,25 +131,44 @@ export default function BookingDetailsPage() {
     window.print();
   };
 
-  const handleCancelBooking = async () => {
+  const handleSubmitCancelRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!booking) return;
-    if (!confirm('Are you sure you want to cancel this pending reservation?')) return;
 
     try {
       setCancelling(true);
       const res = await fetch(`/api/user/bookings/${booking.id}/cancel`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReasonInput.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         notifyBookingChange();
-        alert('Your reservation has been cancelled.');
+        setShowCancelModal(false);
+        setCancelReasonInput('');
+        setFeedback({
+          isOpen: true,
+          type: 'success',
+          title: 'Cancellation Request Submitted',
+          message: 'Your cancellation request has been submitted to the EnCourtyard admin team. Our concierge will review and update your booking.',
+        });
         fetchBooking();
       } else {
-        alert(data.error || 'Could not cancel booking.');
+        setFeedback({
+          isOpen: true,
+          type: 'error',
+          title: 'Request Failed',
+          message: data.error || 'Could not submit cancellation request.',
+        });
       }
     } catch {
-      alert('Network error while cancelling reservation.');
+      setFeedback({
+        isOpen: true,
+        type: 'error',
+        title: 'Network Error',
+        message: 'A network error occurred while submitting your cancellation request.',
+      });
     } finally {
       setCancelling(false);
     }
@@ -199,7 +243,7 @@ export default function BookingDetailsPage() {
 
   return (
     <div
-      className="max-w-6xl mx-auto space-y-5 pb-12 text-[#181F18] animate-fadeIn text-left"
+      className="max-w-6xl mx-auto space-y-5 pb-12 text-[#181F18] text-left"
       style={{ fontFamily: "Tahoma, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}
     >
       {/* Top Breadcrumb & Back Bar */}
@@ -242,6 +286,35 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
+      {/* If Cancellation Requested by User & Under Admin Review */}
+      {booking.cancellationRequested && !isCancelled && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 text-amber-950 space-y-2 shadow-2xs animate-fadeIn">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
+              <Clock className="w-5 h-5 text-amber-700 shrink-0" />
+              <span>Cancellation Request Submitted (Under Admin Review)</span>
+            </div>
+            <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-200 text-amber-900 font-mono text-[11px] font-bold">
+              STATUS: PENDING REVIEW
+            </span>
+          </div>
+          <p className="text-xs text-amber-900 leading-relaxed font-medium">
+            Your request to cancel reservation #{booking.bookingRef || booking.id.slice(0, 8)} has been submitted to the EnCourtyard concierge management team. You will be notified once the review is completed.
+          </p>
+          {booking.cancellationReason && (
+            <div className="mt-2.5 p-3 rounded-xl bg-white border border-amber-200 text-xs text-amber-950 space-y-1">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-amber-700" />
+                <span>Submitted Cancellation Reason:</span>
+              </span>
+              <p className="text-xs font-semibold text-amber-950 pl-5 italic">
+                &ldquo;{booking.cancellationReason}&rdquo;
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* If Booking is Cancelled: Show Prominent Danger Banner at Top */}
       {isCancelled && (
         <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-5 text-rose-950 space-y-2 shadow-2xs">
@@ -280,7 +353,7 @@ export default function BookingDetailsPage() {
               Reservation & Member Details
             </span>
             <span className="text-xs font-mono font-bold text-[#2E7D32]">
-              Ref #{booking.id.slice(0, 8).toUpperCase()}
+              Ref #{booking.bookingRef || booking.id.slice(0, 8).toUpperCase()}
             </span>
           </div>
 
@@ -325,7 +398,7 @@ export default function BookingDetailsPage() {
 
           <div>
             <a
-              href={`https://wa.me/919908209993?text=Hello%20EnCourtyard%20Concierge%2C%20inquiry%20regarding%20booking%20ID%20${booking.id.slice(0, 8)}`}
+              href={`https://wa.me/919908209993?text=Hello%20EnCourtyard%20Concierge%2C%20inquiry%20regarding%20booking%20Ref%20${booking.bookingRef || booking.id.slice(0, 8)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full py-2 px-3 rounded-xl bg-[#FAF9F5] hover:bg-[#F2EEE7] text-xs font-semibold text-[#181F18] flex items-center justify-between border border-[#E5E1D8] transition-colors"
@@ -368,14 +441,14 @@ export default function BookingDetailsPage() {
                 Time Slot: <strong className="text-emerald-800 font-bold">{booking.startTime || '09:00 AM'} – {booking.endTime || '06:00 PM'}</strong>
               </p>
               <p className="text-xs font-mono text-[#5C665C] pt-1">
-                Booking ID: <span className="font-bold text-[#181F18]">#{booking.id}</span>
+                Booking ID: <span className="font-bold text-[#181F18]">#{booking.bookingRef || booking.id}</span>
               </p>
             </div>
           </div>
 
           {/* Right: Price & Accurate Status Display */}
           <div className="md:w-56 shrink-0 md:text-right space-y-1 bg-[#FAF9F5] md:bg-transparent p-4 md:p-0 rounded-xl border md:border-0 border-[#E5E1D8]">
-            <span className="font-serif text-2xl font-bold text-[#181F18] font-mono block">
+            <span className="font-[Tahoma] text-2xl font-bold text-[#181F18] font-mono block">
               ₹{(booking.totalAmount || 0).toLocaleString('en-IN')}
             </span>
 
@@ -572,25 +645,41 @@ export default function BookingDetailsPage() {
         </div>
       </div>
 
-      {/* Cancellation Option (If Booking is Pending) */}
-      {isPending && (
-        <div className="bg-white rounded-2xl border border-rose-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h4 className="font-bold text-sm text-rose-800">Need to Cancel this Reservation?</h4>
-            <p className="text-xs text-[#5C665C]">
-              You can cancel this reservation while it is still under verification review.
-            </p>
+      {/* Cancellation Option (If Booking is Pending or Confirmed) */}
+      {!isCancelled && (
+        booking.cancellationRequested ? (
+          <div className="bg-[#FAF9F5] rounded-2xl border border-amber-300 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+            <div className="space-y-1">
+              <h4 className="font-bold text-sm text-amber-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>Cancellation Request In Progress</span>
+              </h4>
+              <p className="text-xs text-[#5C665C]">
+                Your cancellation request is currently awaiting admin concierge review.
+              </p>
+            </div>
+            <span className="px-3.5 py-1.5 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 font-mono text-xs font-bold shrink-0 self-start sm:self-center">
+              Under Review
+            </span>
           </div>
-          <button
-            type="button"
-            disabled={cancelling}
-            onClick={handleCancelBooking}
-            className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-          >
-            <Ban className="w-3.5 h-3.5" />
-            <span>{cancelling ? 'Cancelling...' : 'Cancel Reservation'}</span>
-          </button>
-        </div>
+        ) : (isPending || isConfirmed) ? (
+          <div className="bg-white rounded-2xl border border-rose-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h4 className="font-bold text-sm text-rose-800">Need to Cancel this Reservation?</h4>
+              <p className="text-xs text-[#5C665C]">
+                Click below to request cancellation. Our admin team will review and process your request.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              <span>Request Cancellation</span>
+            </button>
+          </div>
+        ) : null
       )}
 
       {/* Invoice Modal */}
@@ -598,6 +687,7 @@ export default function BookingDetailsPage() {
         <InvoiceModal
           booking={{
             id: booking.id,
+            bookingRef: booking.bookingRef || undefined,
             workspaceTitle: booking.workspaceTitle,
             workspaceType: booking.categoryName || 'Workspace',
             bookingType: booking.plan || 'Standard',
@@ -615,6 +705,90 @@ export default function BookingDetailsPage() {
           onClose={() => setShowInvoiceModal(false)}
         />
       )}
-    </div>
+
+      {/* Cancellation Request Popup Modal with Optional Reason Input */}
+      {showCancelModal && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn select-none">
+          <div className="relative z-10 w-full max-w-lg bg-white rounded-3xl border border-[#E0DCD3] shadow-2xl p-6 sm:p-7 text-left animate-scaleUp font-sans my-auto">
+            <div className="flex items-start justify-between pb-3.5 border-b border-[#E5E1D8]">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-mono text-rose-700 font-bold block">
+                  RESERVATION CANCELLATION
+                </span>
+                <h3 className="font-serif text-xl font-bold text-[#181F18]">
+                  Request Cancellation
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReasonInput('');
+                }}
+                className="p-1.5 rounded-full hover:bg-neutral-100 text-[#5C665C] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitCancelRequest} className="space-y-4 py-4 text-xs">
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1">
+                <span className="font-bold text-amber-900 block text-xs">
+                  How does cancellation work?
+                </span>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Submitting this request alerts the EnCourtyard admin team. Our concierge will review your reservation, verify details, and finalize the cancellation.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-[#181F18] block flex items-center justify-between">
+                  <span>Reason for Cancellation</span>
+                  <span className="text-[11px] font-normal text-[#5C665C] font-mono">(Optional)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={cancelReasonInput}
+                  onChange={(e) => setCancelReasonInput(e.target.value)}
+                  placeholder="Write your reason here (e.g., change of schedule, wrong date booked, rescheduling required...)"
+                  className="w-full p-3 rounded-xl bg-[#FAF9F5] border border-[#E5E1D8] text-xs text-[#181F18] placeholder-[#9EA89E] focus:outline-none focus:border-rose-500 focus:bg-white transition-all resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E5E1D8]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setCancelReasonInput('');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE5DC] text-[#181F18] border border-[#E5E1D8] font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Never Mind, Keep Booking
+                </button>
+                <button
+                  type="submit"
+                  disabled={cancelling}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all active:scale-98 cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>{cancelling ? 'Submitting...' : 'Submit Cancellation Request'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Feedback Dialog */}
+      <FeedbackModal
+        isOpen={feedback.isOpen}
+        type={feedback.type}
+        title={feedback.title}
+        message={feedback.message}
+        onClose={() => setFeedback((prev) => ({ ...prev, isOpen: false }))}
+      />
+     </div>
   );
 }

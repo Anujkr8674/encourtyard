@@ -40,8 +40,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { MaterialTimePicker } from '@/components/ui/MaterialTimePicker';
 import { MaterialDatePicker } from '@/components/ui/MaterialDatePicker';
-import { CountdownBadge } from '@/components/ui/CountdownBadge';
-import { hasValidPrice } from '@/lib/availability';
+import { hasValidPrice, calculateWorkspaceInventory } from '@/lib/availability';
 
 interface SpecItem {
   key: string;
@@ -71,6 +70,8 @@ interface Workspace {
   order: number;
   isActive: boolean;
   showInDayPass?: boolean;
+  totalUnits?: number;
+  alertThreshold?: number;
   bookings?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
   maintenanceBlocks?: { startDate: string, endDate: string, startTime: string, endTime: string }[];
 }
@@ -104,35 +105,8 @@ function checkWorkspaceAvailability(
   userStartTime: string,
   userEndDate: string,
   userEndTime: string
-): { isAvailable: boolean, nextAvailableTimestamp?: number } {
-  const combinedBlocks = [...(workspace.bookings || []), ...(workspace.maintenanceBlocks || [])];
-  
-  if (combinedBlocks.length === 0) return { isAvailable: true };
-  
-  const userStart = parseBookingDateTime(userStartDate, userStartTime);
-  const userEnd = parseBookingDateTime(userEndDate, userEndTime);
-  if (!userStart || !userEnd) return { isAvailable: true };
-
-  let isAvail = true;
-  let maxEndTime = 0;
-
-  for (const b of combinedBlocks) {
-    const bStart = parseBookingDateTime(b.startDate, b.startTime);
-    const bEnd = parseBookingDateTime(b.endDate, b.endTime);
-    if (!bStart || !bEnd) continue;
-
-    if (userStart < bEnd && userEnd > bStart) {
-      isAvail = false;
-      if (bEnd > maxEndTime) {
-        maxEndTime = bEnd;
-      }
-    }
-  }
-  
-  if (!isAvail) {
-     return { isAvailable: false, nextAvailableTimestamp: maxEndTime };
-  }
-  return { isAvailable: true };
+) {
+  return calculateWorkspaceInventory(workspace, userStartDate, userStartTime, userEndDate, userEndTime);
 }
 
 interface CategoryOption {
@@ -413,6 +387,21 @@ function BookSpaceContent() {
           const catData = await catRes.json();
           if (catData && catData.success && Array.isArray(catData.categories)) {
             setCategories(catData.categories);
+            const currentCatParam = searchParams.get('category');
+            if (currentCatParam) {
+              const paramLower = currentCatParam.toLowerCase().trim();
+              const catIndex = catData.categories.findIndex(
+                (c: any) =>
+                  c.id.toLowerCase() === paramLower ||
+                  c.slug.toLowerCase() === paramLower ||
+                  c.name.toLowerCase() === paramLower ||
+                  c.slug.toLowerCase().includes(paramLower) ||
+                  paramLower.includes(c.slug.toLowerCase())
+              );
+              if (catIndex >= 5) {
+                setShowAllCategories(true);
+              }
+            }
           }
         }
       } catch (err) {
@@ -456,10 +445,32 @@ function BookSpaceContent() {
 
       // 2. Sub-Category filter (when on Workspaces or All)
       if (selectedCategory !== 'all') {
+        const selLower = selectedCategory.toLowerCase().trim();
+        const matchedCat = categories.find(
+          (c) =>
+            c.id.toLowerCase() === selLower ||
+            c.slug.toLowerCase() === selLower ||
+            c.name.toLowerCase() === selLower ||
+            c.slug.toLowerCase().replace(/-\d+$/, '') === selLower.replace(/-\d+$/, '') ||
+            c.name.toLowerCase().replace(/[\s_]+/g, '-') === selLower.replace(/[\s_]+/g, '-') ||
+            (c.slug && c.slug.toLowerCase().startsWith(selLower)) ||
+            (c.slug && selLower.startsWith(c.slug.toLowerCase()))
+        );
+
+        const targetCatId = matchedCat ? matchedCat.id.toLowerCase() : selLower;
+        const targetCatName = matchedCat ? matchedCat.name.toLowerCase().trim() : selLower;
+
+        const wsCatId = (ws.categoryId || '').toLowerCase().trim();
+        const wsCatName = (ws.categoryName || '').toLowerCase().trim();
+
         const matchesCat =
-          ws.categoryId === selectedCategory ||
-          ws.categoryName?.toLowerCase().trim() === selectedCategory.toLowerCase().trim() ||
-          ws.slug?.includes(selectedCategory);
+          wsCatId === targetCatId ||
+          wsCatId === selLower ||
+          wsCatName === targetCatName ||
+          wsCatName === selLower ||
+          (matchedCat && wsCatName === matchedCat.name.toLowerCase().trim()) ||
+          Boolean(ws.slug && ws.slug.toLowerCase().includes(selLower));
+
         if (!matchesCat) return false;
       }
 
@@ -533,6 +544,13 @@ function BookSpaceContent() {
   // Reset all filters
   const handleResetFilters = () => {
     setSelectedCategory('all');
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('category');
+      params.delete('plan');
+      const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
     setShowAllCategories(false);
     setSearchQuery('');
     setMaxPrice(200000);
@@ -608,84 +626,79 @@ function BookSpaceContent() {
               </div>
             </div>
 
-            {/* Time Slots for Day Pass */}
-            <div className="space-y-1.5 text-left relative z-20">
-              <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
-                TIME SLOT
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+            {/* Time Slots for Day Pass - In a Row Matching Reference */}
+            <div className="space-y-1 text-left relative z-20">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <span className="text-[10px] text-[#738273] font-semibold block mb-1">Check-in</span>
-                  <MaterialTimePicker
-                    value={startTime}
-                    onChange={(newTime) => setStartTime(newTime)}
-                    align="left"
-                  />
+                  <label className="text-xs font-semibold text-[#5C665C] block mb-1.5">
+                    Check-in
+                  </label>
+                  <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#E5E1D8] shadow-2xs flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold font-mono text-[#7C3AED]">
+                      09:00 AM
+                    </span>
+                  </div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#738273] font-semibold block mb-1">Check-out</span>
-                  <MaterialTimePicker
-                    value={endTime}
-                    onChange={(newTime) => setEndTime(newTime)}
-                    align="right"
-                  />
+                  <label className="text-xs font-semibold text-[#5C665C] block mb-1.5">
+                    Check-out
+                  </label>
+                  <div className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#E5E1D8] shadow-2xs flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#7C3AED] shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold font-mono text-[#7C3AED]">
+                      06:00 PM
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          /* Multi-Day Mode: Start Date & Time and End Date & Time */
+          /* Standard Multi-Day Mode: Start Date & Time and End Date & Time */
           <div className="space-y-3 pt-1">
-            {/* Pickup / Start Date & Time */}
+            {/* Start Date & Time */}
             <div className="space-y-1.5 text-left relative z-30">
               <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
                 START DATE & TIME
               </label>
-              <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-                <div className="w-full">
-                  <MaterialDatePicker
-                    value={startDate}
-                    minDate={todayDate}
-                    onChange={(newStart) => {
-                      setStartDate(newStart);
-                      if (endDate && newStart > endDate) {
-                        setEndDate(newStart);
-                      }
-                    }}
-                    align="left"
-                  />
-                </div>
-                <div className="w-full">
-                  <MaterialTimePicker
-                    value={startTime}
-                    onChange={(newTime) => setStartTime(newTime)}
-                    align="right"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                <MaterialDatePicker
+                  value={startDate}
+                  minDate={todayDate}
+                  onChange={(newStart) => {
+                    setStartDate(newStart);
+                    if (endDate && newStart > endDate) {
+                      setEndDate(newStart);
+                    }
+                  }}
+                  align="left"
+                />
+                <MaterialTimePicker
+                  value={startTime}
+                  onChange={(newTime) => setStartTime(newTime)}
+                  align="right"
+                />
               </div>
             </div>
 
-            {/* Drop Off / End Date & Time */}
+            {/* End Date & Time */}
             <div className="space-y-1.5 text-left relative z-20">
               <label className="text-[11px] uppercase tracking-wider text-[#5C665C] font-bold block">
                 END DATE & TIME
               </label>
-              <div className="grid grid-cols-[1.15fr_0.85fr] gap-2">
-                <div className="w-full">
-                  <MaterialDatePicker
-                    value={endDate}
-                    minDate={startDate || todayDate}
-                    onChange={(newEnd) => setEndDate(newEnd)}
-                    align="left"
-                  />
-                </div>
-                <div className="w-full">
-                  <MaterialTimePicker
-                    value={endTime}
-                    onChange={(newTime) => setEndTime(newTime)}
-                    align="right"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-2">
+                <MaterialDatePicker
+                  value={endDate}
+                  minDate={startDate || todayDate}
+                  onChange={(newEnd) => setEndDate(newEnd)}
+                  align="left"
+                />
+                <MaterialTimePicker
+                  value={endTime}
+                  onChange={(newTime) => setEndTime(newTime)}
+                  align="right"
+                />
               </div>
             </div>
           </div>
@@ -717,6 +730,12 @@ function BookSpaceContent() {
               type="button"
               onClick={() => {
                 setSelectedCategory('all');
+                if (typeof window !== 'undefined') {
+                  const params = new URLSearchParams(window.location.search);
+                  params.delete('category');
+                  const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+                  window.history.replaceState({}, '', newUrl);
+                }
                 setCurrentPage(1);
               }}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
@@ -730,13 +749,28 @@ function BookSpaceContent() {
 
             {/* Standard Category Pills */}
             {(showAllCategories ? standardOfficeCategories : standardOfficeCategories.slice(0, 5)).map((cat) => {
-              const isSelected = selectedCategory === cat.id || selectedCategory === cat.slug || selectedCategory === cat.name;
+              const selLower = selectedCategory.toLowerCase().trim();
+              const isSelected =
+                selectedCategory === cat.id ||
+                selectedCategory === cat.slug ||
+                selLower === cat.name.toLowerCase().trim() ||
+                (selectedCategory !== 'all' && (
+                  cat.slug.toLowerCase().replace(/-\d+$/, '') === selLower.replace(/-\d+$/, '') ||
+                  cat.slug.toLowerCase().includes(selLower) ||
+                  selLower.includes(cat.slug.toLowerCase())
+                ));
+
               return (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => {
                     setSelectedCategory(cat.id);
+                    if (typeof window !== 'undefined') {
+                      const params = new URLSearchParams(window.location.search);
+                      params.set('category', cat.slug || cat.id);
+                      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+                    }
                     setCurrentPage(1);
                   }}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
@@ -792,6 +826,12 @@ function BookSpaceContent() {
               type="button"
               onClick={() => {
                 setSelectedCategory('all');
+                if (typeof window !== 'undefined') {
+                  const params = new URLSearchParams(window.location.search);
+                  params.delete('category');
+                  const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+                  window.history.replaceState({}, '', newUrl);
+                }
                 setCurrentPage(1);
               }}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
@@ -803,13 +843,28 @@ function BookSpaceContent() {
               All
             </button>
             {categories.map((cat) => {
-              const isSelected = selectedCategory === cat.id || selectedCategory === cat.slug || selectedCategory === cat.name;
+              const selLower = selectedCategory.toLowerCase().trim();
+              const isSelected =
+                selectedCategory === cat.id ||
+                selectedCategory === cat.slug ||
+                selLower === cat.name.toLowerCase().trim() ||
+                (selectedCategory !== 'all' && (
+                  cat.slug.toLowerCase().replace(/-\d+$/, '') === selLower.replace(/-\d+$/, '') ||
+                  cat.slug.toLowerCase().includes(selLower) ||
+                  selLower.includes(cat.slug.toLowerCase())
+                ));
+
               return (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => {
                     setSelectedCategory(cat.id);
+                    if (typeof window !== 'undefined') {
+                      const params = new URLSearchParams(window.location.search);
+                      params.set('category', cat.slug || cat.id);
+                      window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+                    }
                     setCurrentPage(1);
                   }}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
@@ -855,45 +910,47 @@ function BookSpaceContent() {
         </div>
       </div> */}
 
-      {/* SECTION 4: TEAM CAPACITY */}
-      <div className="space-y-2.5 text-left">
-        <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
-          TEAM CAPACITY
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCapacity('all');
-              setCurrentPage(1);
-            }}
-            className={`py-1.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all cursor-pointer ${
-              selectedCapacity === 'all'
-                ? 'bg-[#263626] text-white font-bold shadow-sm'
-                : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
-            }`}
-          >
-            Any
-          </button>
-          {capacities.map((cap) => (
+      {/* SECTION 4: TEAM CAPACITY (Hidden for Day Pass) */}
+      {!isDayPass && (
+        <div className="space-y-2.5 text-left">
+          <label className="text-[11px] font-mono uppercase tracking-widest text-[#181F18] font-bold block">
+            TEAM CAPACITY
+          </label>
+          <div className="grid grid-cols-3 gap-2">
             <button
-              key={cap}
               type="button"
               onClick={() => {
-                setSelectedCapacity(cap);
+                setSelectedCapacity('all');
                 setCurrentPage(1);
               }}
               className={`py-1.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all cursor-pointer ${
-                selectedCapacity === cap
+                selectedCapacity === 'all'
                   ? 'bg-[#263626] text-white font-bold shadow-sm'
                   : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
               }`}
             >
-              {cap}
+              Any
             </button>
-          ))}
+            {capacities.map((cap) => (
+              <button
+                key={cap}
+                type="button"
+                onClick={() => {
+                  setSelectedCapacity(cap);
+                  setCurrentPage(1);
+                }}
+                className={`py-1.5 px-2.5 rounded-xl text-xs font-medium text-center transition-all cursor-pointer ${
+                  selectedCapacity === cap
+                    ? 'bg-[#263626] text-white font-bold shadow-sm'
+                    : 'bg-[#FAF9F5] text-[#5C665C] hover:text-[#181F18] hover:bg-[#F0ECE1] border border-[#E5E1D8]'
+                }`}
+              >
+                {cap}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* SECTION 5: FEATURES & AMENITIES */}
       <div className="space-y-2.5 text-left hidden">
@@ -1321,7 +1378,8 @@ function BookSpaceContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {paginatedWorkspaces.map((ws) => {
                   const firstMedia = ws.mediaUrls?.[0];
-                  const { isAvailable, nextAvailableTimestamp } = checkWorkspaceAvailability(ws, startDate, startTime, endDate, endTime);
+                  const inv = checkWorkspaceAvailability(ws, startDate, startTime, endDate, endTime);
+                  const isAvailable = inv.isAvailable;
 
                   return (
                     <div
@@ -1362,10 +1420,18 @@ function BookSpaceContent() {
                             </span>
                           </div>
 
-                          {/* Badge / Status Tag */}
+                          {/* Badge / Status Tag (Never shows countdown numbers to users, only Few Left or Sold Out) */}
                           {!isAvailable ? (
                             <div className="absolute top-3 right-3">
-                              <CountdownBadge targetTimestamp={nextAvailableTimestamp} className="!text-[10px] !px-2.5 !py-0.5" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-mono font-bold shadow-sm select-none">
+                                Sold Out
+                              </span>
+                            </div>
+                          ) : inv.isLowStock ? (
+                            <div className="absolute top-3 right-3">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-sm select-none animate-pulse">
+                                ⚡ Few Left
+                              </span>
                             </div>
                           ) : ws.badge ? (
                             <div className="absolute top-3 right-3">
@@ -1379,7 +1445,9 @@ function BookSpaceContent() {
                           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white text-xs select-none">
                             {hasValidPrice(ws.price) ? (
                               <span className="font-bold text-sm text-white drop-shadow-md">
-                                {ws.price}
+                                {isDayPassSpace(ws)
+                                  ? `${String(ws.price).replace(/\/\s*(day|daily)/gi, '/ person').replace(/^(?!.*\/).*$/, '$& / person')}`
+                                  : ws.price}
                               </span>
                             ) : <div />}
                             {ws.capacity && (
@@ -1477,7 +1545,7 @@ function BookSpaceContent() {
                                   : 'bg-[#2E7D32] hover:bg-[#1E5C23] group-hover:bg-[#4ADE80] group-hover:hover:bg-[#3ec46f] text-white group-hover:text-[#0D160E] hover:shadow-md active:scale-95 cursor-pointer'
                               }`}
                             >
-                              <span>{isAvailable ? 'Book Now' : 'Not Available'}</span>
+                              <span>{isAvailable ? 'Book Now' : 'Sold Out'}</span>
                             </button>
                           </div>
                         );
