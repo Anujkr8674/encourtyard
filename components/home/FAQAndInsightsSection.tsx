@@ -108,7 +108,7 @@ export const FAQAndInsightsSection: React.FC = () => {
                       <HelpCircle className="w-4.5 h-4.5" />
                     </div>
                     <h3
-                      className={`font-serif font-bold text-base sm:text-lg transition-colors duration-300 leading-snug ${
+                      className={`font-bold text-base sm:text-lg transition-colors duration-300 leading-snug ${
                         isOpen ? 'text-[#263626]' : 'text-[#181F18] group-hover:text-[#263626]'
                       }`}
                     >

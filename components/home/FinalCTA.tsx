@@ -90,18 +90,18 @@ export const FinalCTA: React.FC = () => {
             <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
               {/* Button 1: Book a Tour */}
               <Link
-                href="/about#visit-form"
-                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white hover:bg-neutral-100 text-[#181F18] font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl transition-all duration-200 active:scale-95 group"
+                href="/contact"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white hover:bg-neutral-100 text-[#181F18] font-bold text-xs sm:text-sm shadow-xl hover:shadow-2xl transition-all duration-200 active:scale-95 group"
               >
                 <Sparkles className="w-4 h-4 text-[#2E7D32] group-hover:scale-110 transition-transform" />
                 <span>Book a Tour</span>
               </Link>
 
               {/* Button 2: Book a Day Pass */}
-              <DayPassDatePickerPopover align="center">
+              <DayPassDatePickerPopover align="center" className="w-full">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] border border-[#4ADE80]/30 transition-all duration-200 active:scale-95 group cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#2E7D32] hover:bg-[#1E5C23] text-white font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] border border-[#4ADE80]/30 transition-all duration-200 active:scale-95 group cursor-pointer"
                 >
                   <Calendar className="w-4 h-4 text-[#86EFAC] group-hover:scale-110 transition-transform" />
                   <span>Book a Day Pass</span>
@@ -111,7 +111,7 @@ export const FinalCTA: React.FC = () => {
               {/* Button 3: Book Conference Hall */}
               <Link
                 href="/conference-hall"
-                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-black/40 hover:bg-black/60 text-white font-semibold text-xs sm:text-sm border border-white/25 hover:border-[#F59E0B] backdrop-blur-md transition-all duration-200 active:scale-95 group"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-black/40 hover:bg-black/60 text-white font-semibold text-xs sm:text-sm border border-white/25 hover:border-[#F59E0B] backdrop-blur-md transition-all duration-200 active:scale-95 group"
               >
                 <Building2 className="w-4 h-4 text-[#FBBF24] group-hover:scale-110 transition-transform" />
                 <span>Book Conference Hall</span>
@@ -119,11 +119,11 @@ export const FinalCTA: React.FC = () => {
 
               {/* Button 4: Contact Us */}
               <Link
-                href="/contact"
-                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm border border-white/25 hover:border-white/50 backdrop-blur-md transition-all duration-200 active:scale-95 group"
+                href="/meeting-rooms"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm border border-white/25 hover:border-white/50 backdrop-blur-md transition-all duration-200 active:scale-95 group"
               >
                 <ArrowRight className="w-4 h-4 text-white group-hover:translate-x-1 transition-transform" />
-                <span>Contact Us</span>
+                <span>Book Meeting Rooms</span>
               </Link>
             </div>
           </div>

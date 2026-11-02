@@ -121,6 +121,7 @@ export function DayPassDatePickerPopover({
     <div ref={triggerRef} className={`relative inline-block ${className}`}>
       {/* Trigger: Wraps children and toggles popover */}
       <div
+        className="w-full h-full"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

@@ -63,7 +63,7 @@ export default function ContactPage() {
   return (
     <div className="bg-white min-h-screen flex flex-col">
       {/* 1. Hero Section (80vh) */}
-      <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden">
+      <section className="relative h-[80vh] min-h-[600px] max-h-[820px] pt-24 sm:pt-28 lg:pt-32 pb-8 w-full flex flex-col justify-center overflow-hidden hidden">
         {/* Background Image / Overlay */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-b from-[#0E170E]/40 via-[#0E170E]/20 to-[#0E170E]/50 z-10" />
@@ -114,7 +114,7 @@ export default function ContactPage() {
       </section>
 
       {/* Interactive Contact & Tour Section */}
-      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-20 lg:py-28 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-30 lg:pt-36">
         <ContactForm />
       </section>
 

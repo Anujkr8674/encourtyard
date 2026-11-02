@@ -33,6 +33,17 @@ export const metadata: Metadata = {
     'botanical workspace'
   ],
   authors: [{ name: 'EnCourtyard Workspaces Inc.' }],
+  icons: {
+    icon: [
+      { url: '/images/site-icon.png', type: 'image/png' },
+      { url: '/site-icon.png', type: 'image/png' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    shortcut: '/images/site-icon.png',
+    apple: [
+      { url: '/images/site-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
   openGraph: {
     title: 'EnCourtyard | Architectural Coworking & Executive Workspaces',
     description:
@@ -40,6 +51,14 @@ export const metadata: Metadata = {
     siteName: 'EnCourtyard',
     type: 'website',
     locale: 'en_US',
+    images: [
+      {
+        url: '/images/site-icon.png',
+        width: 512,
+        height: 512,
+        alt: 'EnCourtyard Site Icon',
+      },
+    ],
   },
 };
 
@@ -59,6 +78,11 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${jakarta.variable} h-full antialiased scroll-smooth overflow-x-clip`}
     >
+      <head>
+        <link rel="icon" href="/images/site-icon.png" type="image/png" />
+        <link rel="shortcut icon" href="/images/site-icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/images/site-icon.png" />
+      </head>
       <body className="min-h-full flex flex-col bg-white text-[#181F18] selection:bg-[#263626] selection:text-white overflow-x-clip w-full max-w-full">
         <AuthProvider>
           <FeedbackProvider>
