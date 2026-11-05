@@ -146,6 +146,7 @@ export async function PATCH(
         guests: updated.guests,
         totalAmount: updated.totalAmount ? `₹${updated.totalAmount}` : 'Custom Quote',
         status: updated.status,
+        paymentStatus: updated.paymentStatus,
         adminNotes: updated.adminNotes,
         statusUpdatedAt: updated.statusUpdatedAt,
         notesUpdatedAt: updated.notesUpdatedAt,
@@ -154,9 +155,11 @@ export async function PATCH(
 
       const userEmail = await prisma.user.findUnique({ where: { id: updated.userId } });
 
-      dispatchStatusUpdatedEmails(emailData, userEmail?.email).catch((err) => {
+      try {
+        await dispatchStatusUpdatedEmails(emailData, userEmail?.email);
+      } catch (err) {
         console.error('❌ [Status Update Email Error]:', err);
-      });
+      }
     }
 
     return NextResponse.json({

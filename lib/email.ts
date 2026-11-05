@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { prisma } from '@/lib/prisma';
+import { parseBookingNotes } from '@/lib/bookingNotes';
 
 interface SmtpConfig {
   host: string;
@@ -10,6 +11,19 @@ interface SmtpConfig {
   from: string;
   adminEmail: string;
   isConfigured: boolean;
+}
+
+export function getAppUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return 'https://encourtyard.vercel.app';
 }
 
 export function getSmtpConfig(): SmtpConfig {
@@ -50,6 +64,9 @@ function createTransporter() {
       user: cfg.user,
       pass: cfg.pass,
     },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
 }
 
@@ -173,6 +190,7 @@ export interface BookingEmailData {
   guests: number;
   totalAmount?: string | number;
   status: string;
+  paymentStatus?: string | null;
   adminNotes?: string | null;
   statusUpdatedAt?: Date | string | null;
   notesUpdatedAt?: Date | string | null;
@@ -360,6 +378,8 @@ export async function sendBookingConfirmationEmail(
   const cfg = getSmtpConfig();
   const details = formatBookingDetailsForEmail(booking);
   const displayRef = booking.bookingRef || booking.id;
+  const appUrl = getAppUrl();
+  const parsedNotes = parseBookingNotes(booking.adminNotes);
 
   console.log('\n======================================================');
   console.log(`🌿 [EnCourtyard Booking] CONFIRMATION DISPATCH TO: ${toEmail} (${recipientLabel || 'User'})`);
@@ -373,66 +393,39 @@ export async function sendBookingConfirmationEmail(
 
   try {
     const transporter = createTransporter();
-
     const normalizedStatus = (booking.status || 'PENDING').toUpperCase().trim();
 
-    // Status-specific template configuration for booking creation email
-    let emailSubject = `EnCourtyard Booking Created: ${booking.workspaceTitle} (Status: Pending) - ${displayRef}`;
-    let statusBadge = `BOOKING CREATED • PENDING`;
-    let badgeBg = '#FFF8E1';
-    let badgeTextColor = '#B78103';
+    let emailSubject = `EnCourtyard Reservation Received: ${booking.workspaceTitle} (${displayRef})`;
+    let statusBadge = `RESERVATION RECEIVED • PENDING`;
+    let badgeBg = '#FEF3C7';
+    let badgeTextColor = '#92400E';
     let badgeBorderColor = '#F59E0B';
     let headlineGreeting = `Hello, ${booking.fullName}!`;
-    let introMessage = `Thank you for choosing EnCourtyard. We have registered your reservation request for <strong>${booking.workspaceTitle}</strong>. Your booking status is currently <strong>Pending Confirmation</strong> while our concierge team verifies scheduling and seat allocation.`;
+    let introMessage = `Thank you for choosing EnCourtyard. We have received your reservation request for <strong>${booking.workspaceTitle}</strong>. Your booking status is currently <strong>Pending Confirmation</strong> while our concierge team verifies scheduling and seat allocation.`;
+
     let nextStepsHtml = `
-      <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
-        <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 6px;">🌿 What happens next:</strong>
-        • Your booking has been registered with status <strong>Pending</strong>.<br>
-        • Our concierge team is verifying availability and allocating your workspace.<br>
-        • You will receive an email confirmation as soon as your booking is verified.<br>
-        • For urgent queries or assistance, WhatsApp our concierge at +91 99082 09993.
+      <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 18px 20px; margin: 24px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
+        <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 8px;">🌿 What happens next:</strong>
+        • Your reservation has been placed in <strong>Pending</strong> status.<br>
+        • Our sanctuary concierge is reviewing seat availability and workspace preparation.<br>
+        • You will receive an official confirmation email as soon as your booking is verified.<br>
+        • For urgent queries or instant assistance, WhatsApp us at <a href="https://wa.me/919908209993" style="color: #2E7D32; font-weight: bold;">+91 99082 09993</a>.
       </div>
     `;
 
     if (normalizedStatus === 'CONFIRMED') {
       emailSubject = `✅ EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${displayRef})`;
-      statusBadge = `BOOKING CONFIRMED`;
-      badgeBg = '#E8F5E9';
-      badgeTextColor = '#1B5E20';
-      badgeBorderColor = '#2E7D32';
-      introMessage = `Thank you for reserving your workspace sanctuary at <strong>EnCourtyard</strong>. Your reservation for <strong>${booking.workspaceTitle}</strong> is officially <strong>Confirmed</strong> and your workspace has been reserved.`;
+      statusBadge = `RESERVATION CONFIRMED`;
+      badgeBg = '#DCFCE7';
+      badgeTextColor = '#166534';
+      badgeBorderColor = '#4ADE80';
+      introMessage = `Thank you for reserving your workspace at <strong>EnCourtyard</strong>. Your reservation for <strong>${booking.workspaceTitle}</strong> is officially <strong>Confirmed</strong> and your workspace has been reserved.`;
       nextStepsHtml = `
-        <div style="background: #F1F8E9; border: 1px solid #C5E1A5; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #2E7D32; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #1B5E20; margin-bottom: 6px;">🌿 Check-In & Arrival Guidelines:</strong>
-          • Present this confirmation email or booking ID at the EnCourtyard reception on arrival.<br>
+        <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 12px; padding: 18px 20px; margin: 24px 0; font-size: 13px; color: #166534; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #14532D; margin-bottom: 8px;">🌿 Check-In & Arrival Guidelines:</strong>
+          • Present your booking reference (<strong>${displayRef}</strong>) at the EnCourtyard front desk on arrival.<br>
           • Unlimited artisan tea, coffee, and high-speed Wi-Fi access will be ready.<br>
           • Reserved duration: <strong>${booking.startDate} (${booking.startTime})</strong> to <strong>${booking.endDate} (${booking.endTime})</strong>.
-        </div>
-      `;
-    } else if (normalizedStatus === 'COMPLETED' || normalizedStatus === 'COMPLETE') {
-      emailSubject = `✨ EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${displayRef})`;
-      statusBadge = `BOOKING COMPLETED`;
-      badgeBg = '#EFF6FF';
-      badgeTextColor = '#1E40AF';
-      badgeBorderColor = '#3B82F6';
-      introMessage = `Your reservation for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) is marked as <strong>Completed</strong>. Thank you for choosing EnCourtyard.`;
-      nextStepsHtml = `
-        <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #0369A1; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0C4A6E; margin-bottom: 6px;">✨ Thank You for Working at EnCourtyard:</strong>
-          • We hope you had a productive and inspiring session. Feel free to book again anytime!
-        </div>
-      `;
-    } else if (normalizedStatus === 'CANCELLED' || normalizedStatus === 'CANCELED') {
-      emailSubject = `⚠️ EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${displayRef})`;
-      statusBadge = `BOOKING CANCELLED`;
-      badgeBg = '#FEF2F2';
-      badgeTextColor = '#B91C1C';
-      badgeBorderColor = '#EF4444';
-      introMessage = `This is to inform you that your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) has been <strong>Cancelled</strong>.`;
-      nextStepsHtml = `
-        <div style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 6px;">⚠️ Important Notice:</strong>
-          • If you need assistance or wish to reschedule, reach out to us at <a href="mailto:support@encourtyard.com" style="color: #DC2626; font-weight: bold;">support@encourtyard.com</a> or WhatsApp +91 99082 09993.
         </div>
       `;
     }
@@ -446,21 +439,26 @@ export async function sendBookingConfirmationEmail(
         <title>${emailSubject}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F5; margin: 0; padding: 24px; color: #181F18; }
-          .container { max-width: 580px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E1D8; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
+          .container { max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E1D8; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
           .header { background: #1A261A; padding: 36px 32px; text-align: center; color: #FFFFFF; }
-          .logo-text { font-size: 24px; font-weight: 700; letter-spacing: 2px; color: #FFFFFF; margin: 0; }
+          .logo-text { font-size: 26px; font-weight: 700; letter-spacing: 2px; color: #FFFFFF; margin: 0; }
           .sub-logo { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #4ADE80; margin-top: 6px; }
           .content { padding: 36px 32px; }
-          .badge { display: inline-block; padding: 8px 18px; border-radius: 9999px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
-          .greeting { font-size: 22px; font-weight: 700; color: #181F18; margin-bottom: 8px; }
-          .message { font-size: 14px; line-height: 1.6; color: #5C665C; margin-bottom: 24px; }
-          .summary-card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 16px; padding: 20px; margin: 20px 0; }
-          .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EAE5DB; font-size: 13px; }
-          .row:last-child { border-bottom: none; }
-          .row-label { color: #5C665C; }
-          .row-val { color: #181F18; font-weight: 600; text-align: right; }
-          .total-row { padding-top: 12px; margin-top: 4px; font-size: 15px; font-weight: 700; color: #2E7D32; }
-          .ref-pill { display: inline-block; background: #181F18; color: #FFFFFF; font-family: monospace; font-size: 14px; font-weight: 700; padding: 6px 14px; border-radius: 8px; letter-spacing: 1px; }
+          .badge { display: inline-block; padding: 6px 16px; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; }
+          .greeting { font-size: 22px; font-weight: 700; color: #181F18; margin-bottom: 8px; line-height: 1.3; }
+          .message { font-size: 14px; line-height: 1.65; color: #4A564A; margin-bottom: 24px; }
+          .ref-box { background: #F4F6F4; border: 1px solid #DCE4DC; border-radius: 12px; padding: 14px 20px; text-align: center; margin-bottom: 24px; }
+          .ref-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #5C665C; font-weight: 700; display: block; margin-bottom: 4px; }
+          .ref-code { font-family: Consolas, 'SF Mono', monospace; font-size: 18px; font-weight: 800; color: #1A261A; letter-spacing: 1.5px; }
+          .summary-card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 16px; padding: 20px 24px; margin: 20px 0; }
+          .table-row { width: 100%; border-bottom: 1px solid #EDE9E1; }
+          .table-row td { padding: 10px 0; font-size: 13px; vertical-align: top; }
+          .table-row:last-child { border-bottom: none; }
+          .row-label { color: #5C665C; font-weight: 500; width: 40%; }
+          .row-val { color: #181F18; font-weight: 700; text-align: right; width: 60%; }
+          .notes-callout { background: #FAF9F5; border-left: 4px solid #2E7D32; border: 1px solid #E5E1D8; border-radius: 10px; padding: 14px 18px; margin: 20px 0; font-size: 13px; line-height: 1.6; color: #181F18; }
+          .btn-container { text-align: center; margin: 28px 0 16px 0; }
+          .btn { display: inline-block; padding: 14px 32px; background: #2E7D32; color: #FFFFFF !important; font-weight: 700; font-size: 14px; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25); }
           .footer { background: #F7F5F0; padding: 24px 32px; text-align: center; font-size: 12px; color: #6A806A; border-top: 1px solid #EAE5DB; line-height: 1.6; }
         </style>
       </head>
@@ -473,49 +471,71 @@ export async function sendBookingConfirmationEmail(
           <div class="content">
             <div class="badge" style="background: ${badgeBg}; color: ${badgeTextColor}; border: 1px solid ${badgeBorderColor};">${statusBadge}</div>
             <div class="greeting">${headlineGreeting}</div>
-            <p class="message">
-              ${introMessage}
-            </p>
+            <p class="message">${introMessage}</p>
 
-            <div style="text-align: center; margin: 20px 0;">
-              <span style="font-size: 11px; text-transform: uppercase; color: #738273; display: block; margin-bottom: 4px; font-weight: 600;">Booking Reference</span>
-              <span class="ref-pill">${displayRef}</span>
+            <div class="ref-box">
+              <span class="ref-label">Booking Reference Number</span>
+              <span class="ref-code">${displayRef}</span>
             </div>
 
             <div class="summary-card">
-              <div class="row">
-                <span class="row-label">Workspace:</span>
-                <span class="row-val">${booking.workspaceTitle} (${booking.categoryName || 'Sanctuary'})</span>
-              </div>
-              <div class="row">
-                <span class="row-label">Current Status:</span>
-                <span class="row-val" style="color: ${badgeTextColor}; font-weight: 700; text-transform: uppercase;">${booking.status || 'PENDING'}</span>
-              </div>
-              <div class="row">
-                <span class="row-label">Location:</span>
-                <span class="row-val">${booking.locationName || 'Maruthi Plaza, Khairtabad, Hyderabad'}</span>
-              </div>
-              ${details.userScheduleHtml}
-              <div class="row">
-                <span class="row-label">Seats / Pax:</span>
-                <span class="row-val">${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</span>
-              </div>
-              ${booking.companyName ? `
-              <div class="row">
-                <span class="row-label">Company:</span>
-                <span class="row-val">${booking.companyName}</span>
-              </div>` : ''}
-              <div class="row total-row">
-                <span class="row-label" style="color: #181F18;">Total Estimated:</span>
-                <span class="row-val">${booking.totalAmount || 'Flexible Plan'}</span>
-              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr class="table-row">
+                  <td class="row-label">Workspace:</td>
+                  <td class="row-val">${booking.workspaceTitle}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Category:</td>
+                  <td class="row-val">${booking.categoryName || 'Botanical Sanctuaries'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Location:</td>
+                  <td class="row-val">${booking.locationName || 'Maruthi Plaza, Khairtabad, Hyderabad'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Rental Plan:</td>
+                  <td class="row-val">${details.displayPlan}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Schedule / Duration:</td>
+                  <td class="row-val">${details.scheduleSummary}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Seating / Capacity:</td>
+                  <td class="row-val">${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Payment Status:</td>
+                  <td class="row-val" style="color: ${booking.paymentStatus === 'PAID' ? '#166534' : '#B45309'}; text-transform: uppercase;">${booking.paymentStatus || 'PENDING'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label" style="font-weight: 700; color: #181F18;">Total Amount:</td>
+                  <td class="row-val" style="font-size: 16px; color: #2E7D32;">${booking.totalAmount || 'Custom Quote'}</td>
+                </tr>
+              </table>
             </div>
 
+            ${parsedNotes.userNotes ? `
+            <div class="notes-callout">
+              <strong style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; margin-bottom: 6px;">
+                📝 Your Special Requests / Notes:
+              </strong>
+              <div>${parsedNotes.userNotes}</div>
+            </div>` : ''}
+
             ${nextStepsHtml}
+
+            <div class="btn-container">
+              <a href="${appUrl}/user/bookings" class="btn">View My Bookings in Portal →</a>
+            </div>
+
+            <p style="font-size: 13px; color: #5C665C; line-height: 1.6; text-align: center; margin-top: 24px;">
+              Need help or wish to reschedule? Reach out to our concierge on WhatsApp at <a href="https://wa.me/919908209993" style="color: #2E7D32; font-weight: 700;">+91 99082 09993</a> or email <a href="mailto:support@encourtyard.com" style="color: #2E7D32; font-weight: 700;">support@encourtyard.com</a>.
+            </p>
           </div>
           <div class="footer">
             © ${new Date().getFullYear()} EnCourtyard Workspaces Ltd. All rights reserved.<br>
-            Khairtabad Botanical Sanctuary • Need help? Reply directly or WhatsApp us at +91 99082 09993.
+            Maruthi Plaza, Khairtabad, Hyderabad • WhatsApp: +91 99082 09993
           </div>
         </div>
       </body>
@@ -526,7 +546,7 @@ export async function sendBookingConfirmationEmail(
       from: cfg.from,
       to: toEmail,
       subject: emailSubject,
-      text: `Your EnCourtyard booking (${displayRef}) for "${booking.workspaceTitle}" has been received. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}. Total: ${booking.totalAmount || 'Flexible'}.`,
+      text: `Your EnCourtyard booking (${displayRef}) for "${booking.workspaceTitle}" has been received. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}. Total: ${booking.totalAmount || 'Flexible'}. View in portal: ${appUrl}/user/bookings`,
       html: htmlContent,
     });
 
@@ -547,6 +567,8 @@ export async function sendAdminNewBookingNotification(
   const cfg = getSmtpConfig();
   const details = formatBookingDetailsForEmail(booking);
   const displayRef = booking.bookingRef || booking.id;
+  const appUrl = getAppUrl();
+  const parsedNotes = parseBookingNotes(booking.adminNotes);
 
   console.log('\n======================================================');
   console.log(`🚨 [EnCourtyard Admin Alert] NEW BOOKING CREATED`);
@@ -564,57 +586,148 @@ export async function sendAdminNewBookingNotification(
 
   try {
     const transporter = createTransporter();
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Booking Alert - EnCourtyard Admin</title>
+        <title>New Reservation Alert: ${booking.workspaceTitle} (${displayRef})</title>
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #F4F6F4; margin: 0; padding: 24px; color: #181F18; }
-          .container { max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 18px; overflow: hidden; border: 1px solid #D5DDD5; }
-          .header { background: #263626; padding: 24px 28px; color: #FFFFFF; }
-          .header h2 { margin: 0; font-size: 20px; font-weight: 700; color: #4ADE80; }
-          .header p { margin: 4px 0 0 0; font-size: 12px; color: #C5D5C5; }
-          .content { padding: 28px; }
-          .card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 12px; padding: 16px; margin: 16px 0; }
-          .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #EDE9E1; }
-          .row:last-child { border-bottom: none; }
-          .btn { display: inline-block; padding: 12px 24px; background: #2E7D32; color: #FFFFFF !important; font-weight: 700; font-size: 13px; text-decoration: none; border-radius: 10px; margin-top: 16px; }
-          .footer { background: #EFECE6; padding: 16px 28px; font-size: 11px; color: #738273; text-align: center; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F3F4F3; margin: 0; padding: 24px; color: #181F18; }
+          .container { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #D5DDD5; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
+          .header { background: #142214; padding: 32px 30px; color: #FFFFFF; }
+          .badge { display: inline-block; padding: 5px 14px; border-radius: 9999px; background: #FEF3C7; color: #92400E; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+          .header h2 { margin: 0; font-size: 22px; font-weight: 700; color: #FFFFFF; line-height: 1.3; }
+          .header p { margin: 6px 0 0 0; font-size: 13px; color: #86EFAC; }
+          .content { padding: 32px 30px; }
+          .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #5C665C; font-weight: 700; margin: 24px 0 10px 0; }
+          .card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; }
+          .table-row { width: 100%; border-bottom: 1px solid #EDE9E1; }
+          .table-row td { padding: 9px 0; font-size: 13px; vertical-align: top; }
+          .table-row:last-child { border-bottom: none; }
+          .col-label { color: #5C665C; width: 38%; font-weight: 500; }
+          .col-val { color: #181F18; font-weight: 700; text-align: right; width: 62%; }
+          .btn-container { text-align: center; margin: 30px 0 10px 0; }
+          .btn { display: inline-block; padding: 14px 34px; background: #2E7D32; color: #FFFFFF !important; font-weight: 700; font-size: 14px; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25); }
+          .proof-btn { display: inline-block; padding: 6px 14px; background: #1E40AF; color: #FFFFFF !important; font-size: 11px; font-weight: 700; text-decoration: none; border-radius: 8px; margin-top: 4px; }
+          .footer { background: #EBE8E1; padding: 20px 30px; font-size: 11px; color: #667266; text-align: center; line-height: 1.6; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h2>⚡ New Reservation Received</h2>
-            <p>A user has placed a new workspace booking request</p>
+            <div class="badge">⚡ ACTION REQUIRED • NEW RESERVATION</div>
+            <h2>New Workspace Booking Received</h2>
+            <p>A member has submitted a reservation request through the EnCourtyard portal.</p>
           </div>
           <div class="content">
-            <p style="font-size: 14px; margin-top: 0;">
-              <strong>Booking Reference:</strong> <span style="font-family: monospace; background: #E3EBE3; padding: 2px 8px; border-radius: 6px; font-weight: bold;">${displayRef}</span>
-            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #F4F6F4; border: 1px solid #DCE4DC; border-radius: 12px; padding: 14px 18px; margin-bottom: 24px;">
+              <tr>
+                <td style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; font-weight: bold;">Booking Reference</td>
+                <td style="text-align: right; font-family: Consolas, monospace; font-size: 16px; font-weight: 800; color: #142214;">${displayRef}</td>
+              </tr>
+            </table>
 
+            <div class="section-title">👤 Member / Host Profile</div>
             <div class="card">
-              <div class="row"><span><strong>Client Name:</strong></span><span>${booking.fullName}</span></div>
-              <div class="row"><span><strong>Company:</strong></span><span>${booking.companyName || 'Not specified'}</span></div>
-              <div class="row"><span><strong>Email:</strong></span><span>${booking.email}</span></div>
-              <div class="row"><span><strong>Phone:</strong></span><span>${booking.phone}</span></div>
-              <div class="row"><span><strong>Workspace:</strong></span><span>${booking.workspaceTitle}</span></div>
-              ${details.adminScheduleHtml}
-              <div class="row"><span><strong>Status:</strong></span><span style="color: #E65100; font-weight: bold;">${booking.status}</span></div>
-              <div class="row"><span><strong>Estimated Amount:</strong></span><span style="color: #2E7D32; font-weight: bold;">${booking.totalAmount || 'Custom'}</span></div>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr class="table-row">
+                  <td class="col-label">Full Name:</td>
+                  <td class="col-val">${booking.fullName}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Company:</td>
+                  <td class="col-val">${booking.companyName || 'Not specified'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Email:</td>
+                  <td class="col-val"><a href="mailto:${booking.email}" style="color: #2E7D32; text-decoration: underline;">${booking.email}</a></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Phone:</td>
+                  <td class="col-val">
+                    <a href="tel:${booking.phone}" style="color: #181F18; text-decoration: none;">${booking.phone}</a> • 
+                    <a href="https://wa.me/${booking.phone.replace(/[^0-9]/g, '')}" target="_blank" style="color: #2E7D32; font-weight: 700; text-decoration: underline;">WhatsApp ↗</a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
-            <div style="text-align: center;">
-              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/bookings" class="btn">
-                Open Admin Bookings Dashboard →
-              </a>
+            <div class="section-title">🏢 Workspace & Schedule Details</div>
+            <div class="card">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr class="table-row">
+                  <td class="col-label">Workspace:</td>
+                  <td class="col-val">${booking.workspaceTitle}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Category:</td>
+                  <td class="col-val">${booking.categoryName || 'General Workspace'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Location:</td>
+                  <td class="col-val">${booking.locationName || 'Maruthi Plaza, Khairtabad, Hyderabad'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Rental Plan:</td>
+                  <td class="col-val">${details.displayPlan}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Schedule:</td>
+                  <td class="col-val">${details.scheduleSummary}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Capacity / Guests:</td>
+                  <td class="col-val">${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Current Status:</td>
+                  <td class="col-val" style="color: #B45309; text-transform: uppercase;">${booking.status || 'PENDING'}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div class="section-title">💳 Billing & Payment Verification</div>
+            <div class="card">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr class="table-row">
+                  <td class="col-label">Total Amount:</td>
+                  <td class="col-val" style="font-size: 15px; color: #2E7D32;">${booking.totalAmount || 'Custom'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Payment Status:</td>
+                  <td class="col-val" style="color: ${booking.paymentStatus === 'PAID' ? '#166534' : '#B45309'}; text-transform: uppercase;">${booking.paymentStatus || (parsedNotes.utr ? 'PAID' : 'PENDING')}</td>
+                </tr>
+                ${parsedNotes.utr ? `
+                <tr class="table-row">
+                  <td class="col-label">UPI / UTR Ref:</td>
+                  <td class="col-val" style="font-family: Consolas, monospace; color: #1E40AF;">${parsedNotes.utr}</td>
+                </tr>` : ''}
+                ${parsedNotes.proofUrl ? `
+                <tr class="table-row">
+                  <td class="col-label">Payment Proof:</td>
+                  <td class="col-val">
+                    <a href="${parsedNotes.proofUrl}" target="_blank" class="proof-btn">View Uploaded Screenshot ↗</a>
+                  </td>
+                </tr>` : ''}
+              </table>
+            </div>
+
+            ${parsedNotes.userNotes ? `
+            <div class="section-title">📝 Special Requests from Member</div>
+            <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 14px 18px; font-size: 13px; color: #92400E; line-height: 1.6; margin-bottom: 20px;">
+              "${parsedNotes.userNotes}"
+            </div>` : ''}
+
+            <div class="btn-container">
+              <a href="${appUrl}/admin/bookings" class="btn">Open in Admin Bookings Dashboard →</a>
             </div>
           </div>
           <div class="footer">
-            EnCourtyard Automated Admin Dispatcher • Sent to ${cfg.adminEmail}
+            EnCourtyard Automated Admin Dispatcher • Sent to ${cfg.adminEmail}<br>
+            Khairtabad Botanical Sanctuary, Hyderabad • Environment: ${process.env.NODE_ENV || 'production'}
           </div>
         </div>
       </body>
@@ -625,7 +738,7 @@ export async function sendAdminNewBookingNotification(
       from: cfg.from,
       to: cfg.adminEmail,
       subject: `🚨 [New Booking - ${booking.status || 'PENDING'}] ${booking.workspaceTitle} - ${booking.fullName} (${displayRef})`,
-      text: `New reservation placed: ${displayRef} by ${booking.fullName} (${booking.email}, ${booking.phone}) for ${booking.workspaceTitle}. Plan: ${details.displayPlan}. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}.`,
+      text: `New reservation placed: ${displayRef} by ${booking.fullName} (${booking.email}, ${booking.phone}) for ${booking.workspaceTitle}. Plan: ${details.displayPlan}. Status: ${booking.status || 'PENDING'}. ${details.plainTextSchedule}. Total: ${booking.totalAmount || 'Custom'}. Manage in dashboard: ${appUrl}/admin/bookings`,
       html: htmlContent,
     });
 
@@ -648,11 +761,13 @@ export async function sendStatusUpdateEmail(
   const cfg = getSmtpConfig();
   const details = formatBookingDetailsForEmail(booking);
   const displayRef = booking.bookingRef || booking.id;
+  const appUrl = getAppUrl();
+  const parsedNotes = parseBookingNotes(booking.adminNotes);
 
   console.log('\n======================================================');
   console.log(`🌿 [EnCourtyard Status Update] DISPATCH TO: ${toEmail} (${recipientLabel || 'User'})`);
   console.log(`📋 BOOKING REF: ${displayRef} | NEW STATUS: >>> ${booking.status} <<<`);
-  console.log(`📝 ADMIN NOTES: ${booking.adminNotes || 'None'}`);
+  console.log(`📝 ADMIN NOTES: ${parsedNotes.adminNotes || 'None'}`);
   console.log('======================================================\n');
 
   if (!cfg.isConfigured) {
@@ -661,13 +776,11 @@ export async function sendStatusUpdateEmail(
 
   try {
     const transporter = createTransporter();
-
     const normalizedStatus = (booking.status || '').toUpperCase().trim();
 
-    // Status-specific template configuration
     let statusBadge = `STATUS UPDATED: ${booking.status}`;
     let statusBg = '#E8F5E9';
-    let statusTextColor = '#2E7D32';
+    let statusTextColor = '#1B5E20';
     let statusBorderColor = '#4ADE80';
     let emailSubject = `EnCourtyard Booking Status Updated: ${displayRef} is now ${booking.status}`;
     let headline = `Hello, ${booking.fullName}!`;
@@ -676,62 +789,63 @@ export async function sendStatusUpdateEmail(
 
     if (normalizedStatus === 'CONFIRMED') {
       statusBadge = 'RESERVATION CONFIRMED';
-      statusBg = '#E8F5E9';
-      statusTextColor = '#1B5E20';
-      statusBorderColor = '#2E7D32';
-      emailSubject = `EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${displayRef})`;
-      headline = 'Your Workspace Reservation is Officially Confirmed!';
+      statusBg = '#DCFCE7';
+      statusTextColor = '#166534';
+      statusBorderColor = '#86EFAC';
+      emailSubject = `✅ EnCourtyard Reservation Confirmed: ${booking.workspaceTitle} (${displayRef})`;
+      headline = 'Your Workspace Reservation is Officially Confirmed! 🌿';
       statusMessage = `Great news! Your booking for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) has been approved and confirmed by the EnCourtyard team. Your workspace will be fully prepared for your arrival.`;
       nextStepsBox = `
-        <div style="background: #F1F8E9; border: 1px solid #C5E1A5; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #2E7D32; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #1B5E20; margin-bottom: 6px;">Check-In & Arrival Guidelines:</strong>
-          • Present this confirmation email or booking ID at the EnCourtyard reception on arrival.<br>
-          • Unlimited artisan tea, coffee, and high-speed Wi-Fi access will be ready.<br>
-          • Reserved duration: <strong>${booking.startDate} (${booking.startTime})</strong> to <strong>${booking.endDate} (${booking.endTime})</strong>.
+        <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 12px; padding: 18px 20px; margin: 24px 0; font-size: 13px; color: #166534; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #14532D; margin-bottom: 8px;">🌿 Check-In & Arrival Guidelines:</strong>
+          • Present your booking reference (<strong>${displayRef}</strong>) at the EnCourtyard front desk upon arrival.<br>
+          • Unlimited artisan tea, coffee, and high-speed botanical Wi-Fi access will be ready.<br>
+          • Reserved duration: <strong>${booking.startDate} (${booking.startTime})</strong> to <strong>${booking.endDate} (${booking.endTime})</strong>.<br>
+          • Address: <strong>${booking.locationName || 'Maruthi Plaza, Khairtabad, Hyderabad'}</strong>.
         </div>
       `;
     } else if (normalizedStatus === 'PENDING') {
-      statusBadge = 'BOOKING STATUS: PENDING';
-      statusBg = '#FFF8E1';
-      statusTextColor = '#B78103';
-      statusBorderColor = '#F59E0B';
-      emailSubject = `EnCourtyard Booking Pending: ${booking.workspaceTitle} (${displayRef})`;
+      statusBadge = 'RESERVATION PENDING REVIEW';
+      statusBg = '#FEF3C7';
+      statusTextColor = '#92400E';
+      statusBorderColor = '#FCD34D';
+      emailSubject = `⏳ EnCourtyard Booking Pending: ${booking.workspaceTitle} (${displayRef})`;
       headline = 'Your Reservation Request is Under Review';
       statusMessage = `Thank you for choosing EnCourtyard. Your booking request for <strong>${booking.workspaceTitle}</strong> (Ref: <strong>${displayRef}</strong>) is currently in <strong>Pending</strong> status while our concierge team verifies scheduling and seat allocation.`;
       nextStepsBox = `
-        <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 6px;">What to Expect Next:</strong>
-          • No immediate action is required from you. Our team is reviewing your schedule.<br>
+        <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 12px; padding: 18px 20px; margin: 24px 0; font-size: 13px; color: #92400E; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #78350F; margin-bottom: 8px;">What to Expect Next:</strong>
+          • No immediate action is required from you. Our sanctuary team is verifying seat availability.<br>
           • You will receive an email update as soon as the reservation status is confirmed.<br>
-          • For urgent queries or instant booking verification, chat with us on WhatsApp at +91 99082 09993.
+          • For urgent queries or instant booking verification, chat with us on WhatsApp at <a href="https://wa.me/919908209993" style="color: #2E7D32; font-weight: bold;">+91 99082 09993</a>.
         </div>
       `;
     } else if (normalizedStatus === 'COMPLETED' || normalizedStatus === 'COMPLETE') {
-      statusBadge = 'BOOKING COMPLETED';
-      statusBg = '#EFF6FF';
+      statusBadge = 'RESERVATION COMPLETED';
+      statusBg = '#DBEAFE';
       statusTextColor = '#1E40AF';
-      statusBorderColor = '#3B82F6';
-      emailSubject = `EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${displayRef})`;
-      headline = 'Thank You for Working at EnCourtyard!';
+      statusBorderColor = '#93C5FD';
+      emailSubject = `✨ EnCourtyard Reservation Completed: ${booking.workspaceTitle} (${displayRef})`;
+      headline = 'Thank You for Working at EnCourtyard! ✨';
       statusMessage = `Your workspace session for booking <strong>${displayRef}</strong> (<strong>${booking.workspaceTitle}</strong>) has been marked as <strong>Completed</strong>. We truly hope you had a productive, inspiring, and comfortable work session.`;
       nextStepsBox = `
-        <div style="background: #F0F9FF; border: 1px solid #BAE6FD; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #0369A1; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #0C4A6E; margin-bottom: 6px;">We Look Forward to Seeing You Again:</strong>
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 18px 20px; margin: 24px 0; font-size: 13px; color: #1E40AF; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #1E3A8A; margin-bottom: 8px;">We Look Forward to Welcoming You Again:</strong>
           • Need to reserve your next day pass, private cabin, or conference room? Book anytime on our portal.<br>
-          • Have feedback or custom team requirements? Simply reply to this email to connect with our team.
+          • Have feedback or custom team requirements? Simply reply to this email to connect directly with our management team.
         </div>
       `;
     } else if (normalizedStatus === 'CANCELLED' || normalizedStatus === 'CANCELED') {
-      statusBadge = 'BOOKING CANCELLED';
-      statusBg = '#FEF2F2';
-      statusTextColor = '#B91C1C';
-      statusBorderColor = '#EF4444';
-      emailSubject = `EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${displayRef})`;
+      statusBadge = 'RESERVATION CANCELLED';
+      statusBg = '#FEE2E2';
+      statusTextColor = '#991B1B';
+      statusBorderColor = '#FCA5A5';
+      emailSubject = `⚠️ EnCourtyard Reservation Cancelled: ${booking.workspaceTitle} (${displayRef})`;
       headline = 'Your Workspace Reservation Has Been Cancelled';
       statusMessage = `This is to notify you that your booking <strong>${displayRef}</strong> for <strong>${booking.workspaceTitle}</strong> scheduled for <strong>${booking.startDate}</strong> has been <strong>Cancelled</strong>.`;
       nextStepsBox = `
-        <div style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 12px; padding: 16px 20px; margin: 20px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
-          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 6px;">Important Information:</strong>
+        <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 18px 20px; margin: 24px 0; font-size: 13px; color: #991B1B; line-height: 1.6;">
+          <strong style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #7F1D1D; margin-bottom: 8px;">Important Information:</strong>
           • If you requested this cancellation or if a refund applies, our support desk will process it per policy.<br>
           • If this was cancelled by mistake or you need to reschedule, reach out to us at <a href="mailto:support@encourtyard.com" style="color: #DC2626; font-weight: bold; text-decoration: underline;">support@encourtyard.com</a> or call +91 99082 09993.
         </div>
@@ -747,18 +861,26 @@ export async function sendStatusUpdateEmail(
         <title>${emailSubject}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF9F5; margin: 0; padding: 24px; color: #181F18; }
-          .container { max-width: 580px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E1D8; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
-          .header { background: #1A261A; padding: 32px 28px; text-align: center; color: #FFFFFF; }
-          .logo-text { font-size: 24px; font-weight: 700; letter-spacing: 2px; color: #FFFFFF; margin: 0; }
+          .container { max-width: 600px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E5E1D8; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
+          .header { background: #1A261A; padding: 36px 32px; text-align: center; color: #FFFFFF; }
+          .logo-text { font-size: 26px; font-weight: 700; letter-spacing: 2px; color: #FFFFFF; margin: 0; }
           .sub-logo { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #4ADE80; margin-top: 6px; }
           .content { padding: 36px 32px; }
-          .status-badge { display: inline-block; padding: 8px 18px; border-radius: 9999px; background: ${statusBg}; color: ${statusTextColor}; border: 1px solid ${statusBorderColor}; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
-          .greeting { font-size: 21px; font-weight: 700; color: #181F18; margin-bottom: 10px; line-height: 1.3; }
-          .message { font-size: 14px; line-height: 1.6; color: #425042; margin-bottom: 16px; }
-          .notes-box { background: #FAF9F5; border-left: 4px solid ${statusBorderColor}; border: 1px solid #E5E1D8; border-radius: 10px; padding: 14px 18px; margin: 20px 0; font-size: 13px; color: #181F18; }
-          .summary-card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 16px; padding: 18px; margin: 20px 0; font-size: 13px; }
-          .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EAE5DB; }
-          .row:last-child { border-bottom: none; }
+          .status-badge { display: inline-block; padding: 6px 16px; border-radius: 9999px; background: ${statusBg}; color: ${statusTextColor}; border: 1px solid ${statusBorderColor}; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; }
+          .greeting { font-size: 22px; font-weight: 700; color: #181F18; margin-bottom: 8px; line-height: 1.3; }
+          .message { font-size: 14px; line-height: 1.65; color: #4A564A; margin-bottom: 24px; }
+          .ref-box { background: #F4F6F4; border: 1px solid #DCE4DC; border-radius: 12px; padding: 14px 20px; text-align: center; margin-bottom: 24px; }
+          .ref-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #5C665C; font-weight: 700; display: block; margin-bottom: 4px; }
+          .ref-code { font-family: Consolas, 'SF Mono', monospace; font-size: 18px; font-weight: 800; color: #1A261A; letter-spacing: 1.5px; }
+          .notes-box { background: #FAF9F5; border-left: 4px solid #2E7D32; border: 1px solid #E5E1D8; border-radius: 12px; padding: 16px 20px; margin: 24px 0; font-size: 13px; line-height: 1.6; }
+          .summary-card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 16px; padding: 20px 24px; margin: 20px 0; }
+          .table-row { width: 100%; border-bottom: 1px solid #EDE9E1; }
+          .table-row td { padding: 10px 0; font-size: 13px; vertical-align: top; }
+          .table-row:last-child { border-bottom: none; }
+          .row-label { color: #5C665C; font-weight: 500; width: 40%; }
+          .row-val { color: #181F18; font-weight: 700; text-align: right; width: 60%; }
+          .btn-container { text-align: center; margin: 28px 0 16px 0; }
+          .btn { display: inline-block; padding: 14px 32px; background: #2E7D32; color: #FFFFFF !important; font-weight: 700; font-size: 14px; text-decoration: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25); }
           .footer { background: #F7F5F0; padding: 24px 32px; text-align: center; font-size: 12px; color: #6A806A; border-top: 1px solid #EAE5DB; line-height: 1.6; }
         </style>
       </head>
@@ -771,31 +893,66 @@ export async function sendStatusUpdateEmail(
           <div class="content">
             <div class="status-badge">${statusBadge}</div>
             <div class="greeting">${headline}</div>
-            <p class="message">
-              ${statusMessage}
-            </p>
+            <p class="message">${statusMessage}</p>
 
-            ${booking.adminNotes ? `
+            <div class="ref-box">
+              <span class="ref-label">Booking Reference Number</span>
+              <span class="ref-code">${displayRef}</span>
+            </div>
+
+            ${parsedNotes.adminNotes ? `
             <div class="notes-box">
-              <strong style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; margin-bottom: 6px;">
-                📝 Concierge & Admin Notes:
+              <strong style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #2E7D32; margin-bottom: 6px;">
+                📝 Message from EnCourtyard Concierge:
               </strong>
-              <div style="line-height: 1.6; white-space: pre-wrap; color: #181F18;">${booking.adminNotes}</div>
+              <div style="color: #181F18; line-height: 1.6;">${parsedNotes.adminNotes}</div>
             </div>` : ''}
 
             ${nextStepsBox}
 
             <div class="summary-card">
-              <div class="row"><span><strong>Booking Reference:</strong></span><span>${displayRef}</span></div>
-              <div class="row"><span><strong>Workspace:</strong></span><span>${booking.workspaceTitle}</span></div>
-              <div class="row"><span><strong>Rental Plan:</strong></span><span style="font-weight: 600;">${details.displayPlan}</span></div>
-              <div class="row"><span><strong>Schedule:</strong></span><span>${details.scheduleSummary}</span></div>
-              <div class="row"><span><strong>Capacity / Guests:</strong></span><span>${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</span></div>
-              <div class="row"><span><strong>Current Status:</strong></span><span style="color: ${statusTextColor}; font-weight: bold; text-transform: uppercase;">${booking.status}</span></div>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr class="table-row">
+                  <td class="row-label">Workspace:</td>
+                  <td class="row-val">${booking.workspaceTitle}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Location:</td>
+                  <td class="row-val">${booking.locationName || 'Maruthi Plaza, Khairtabad, Hyderabad'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Rental Plan:</td>
+                  <td class="row-val">${details.displayPlan}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Schedule / Duration:</td>
+                  <td class="row-val">${details.scheduleSummary}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Capacity / Guests:</td>
+                  <td class="row-val">${booking.guests} Seat${booking.guests > 1 ? 's' : ''}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Current Status:</td>
+                  <td class="row-val" style="color: ${statusTextColor}; font-weight: 800; text-transform: uppercase;">${booking.status}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label">Payment Status:</td>
+                  <td class="row-val" style="color: ${booking.paymentStatus === 'PAID' ? '#166534' : '#B45309'}; text-transform: uppercase;">${booking.paymentStatus || 'PENDING'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="row-label" style="font-weight: 700; color: #181F18;">Total Amount:</td>
+                  <td class="row-val" style="font-size: 16px; color: #2E7D32;">${booking.totalAmount || 'Custom Quote'}</td>
+                </tr>
+              </table>
             </div>
 
-            <p style="font-size: 13px; color: #5C665C; line-height: 1.6; margin-top: 24px;">
-              For any questions regarding your booking, please reach out to our concierge team at <a href="mailto:support@encourtyard.com" style="color: #2E7D32; font-weight: 600;">support@encourtyard.com</a> or WhatsApp <a href="https://wa.me/919908209993" style="color: #2E7D32; font-weight: 600;">+91 99082 09993</a>.
+            <div class="btn-container">
+              <a href="${appUrl}/user/bookings" class="btn">View Reservation in Portal →</a>
+            </div>
+
+            <p style="font-size: 13px; color: #5C665C; line-height: 1.6; text-align: center; margin-top: 24px;">
+              For questions regarding your reservation, reach out to our concierge team at <a href="mailto:support@encourtyard.com" style="color: #2E7D32; font-weight: 700;">support@encourtyard.com</a> or WhatsApp <a href="https://wa.me/919908209993" style="color: #2E7D32; font-weight: 700;">+91 99082 09993</a>.
             </p>
           </div>
           <div class="footer">
@@ -807,7 +964,7 @@ export async function sendStatusUpdateEmail(
       </html>
     `;
 
-    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking Reference: ${displayRef}\nWorkspace: ${booking.workspaceTitle}\nRental Plan: ${details.displayPlan}\nSchedule: ${details.scheduleSummary}\nSeats: ${booking.guests}\n\n${booking.adminNotes ? `Admin Notes: ${booking.adminNotes}\n\n` : ''}Contact Concierge: support@encourtyard.com | +91 99082 09993`;
+    const plainText = `EnCourtyard Booking Status Update\n\n${headline}\n\n${statusMessage.replace(/<[^>]+>/g, '')}\n\nStatus: ${booking.status}\nBooking Reference: ${displayRef}\nWorkspace: ${booking.workspaceTitle}\nRental Plan: ${details.displayPlan}\nSchedule: ${details.scheduleSummary}\nSeats: ${booking.guests}\n\n${parsedNotes.adminNotes ? `Concierge Notes: ${parsedNotes.adminNotes}\n\n` : ''}View in portal: ${appUrl}/user/bookings\nContact Concierge: support@encourtyard.com | +91 99082 09993`;
 
     const info = await transporter.sendMail({
       from: cfg.from,
@@ -832,21 +989,134 @@ export async function sendAdminStatusUpdateNotification(
   booking: BookingEmailData
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const cfg = getSmtpConfig();
+  const details = formatBookingDetailsForEmail(booking);
   const displayRef = booking.bookingRef || booking.id;
+  const appUrl = getAppUrl();
+  const parsedNotes = parseBookingNotes(booking.adminNotes);
 
   if (!cfg.isConfigured) return { success: true };
 
   try {
     const transporter = createTransporter();
+    const normalizedStatus = (booking.status || '').toUpperCase().trim();
+
+    let statusColor = '#2E7D32';
+    let statusBg = '#DCFCE7';
+    if (normalizedStatus === 'CANCELLED' || normalizedStatus === 'CANCELED') {
+      statusColor = '#991B1B';
+      statusBg = '#FEE2E2';
+    } else if (normalizedStatus === 'COMPLETED') {
+      statusColor = '#1E40AF';
+      statusBg = '#DBEAFE';
+    } else if (normalizedStatus === 'PENDING') {
+      statusColor = '#92400E';
+      statusBg = '#FEF3C7';
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Status Changed: ${displayRef} is now ${booking.status}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F3F4F3; margin: 0; padding: 24px; color: #181F18; }
+          .container { max-width: 620px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #D5DDD5; box-shadow: 0 12px 32px rgba(26, 38, 26, 0.08); }
+          .header { background: #142214; padding: 28px 30px; color: #FFFFFF; }
+          .badge { display: inline-block; padding: 5px 14px; border-radius: 9999px; background: ${statusBg}; color: ${statusColor}; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; }
+          .header h2 { margin: 0; font-size: 20px; font-weight: 700; color: #FFFFFF; }
+          .header p { margin: 4px 0 0 0; font-size: 13px; color: #86EFAC; }
+          .content { padding: 30px; }
+          .card { background: #FAF9F5; border: 1px solid #E5E1D8; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; }
+          .table-row { width: 100%; border-bottom: 1px solid #EDE9E1; }
+          .table-row td { padding: 9px 0; font-size: 13px; vertical-align: top; }
+          .table-row:last-child { border-bottom: none; }
+          .col-label { color: #5C665C; width: 38%; font-weight: 500; }
+          .col-val { color: #181F18; font-weight: 700; text-align: right; width: 62%; }
+          .btn-container { text-align: center; margin: 28px 0 10px 0; }
+          .btn { display: inline-block; padding: 12px 30px; background: #2E7D32; color: #FFFFFF !important; font-weight: 700; font-size: 13px; text-decoration: none; border-radius: 10px; }
+          .footer { background: #EBE8E1; padding: 18px 30px; font-size: 11px; color: #667266; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="badge">STATUS UPDATED: ${booking.status}</div>
+            <h2>Booking Status Changed</h2>
+            <p>A reservation record has been updated in the management dashboard.</p>
+          </div>
+          <div class="content">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #F4F6F4; border: 1px solid #DCE4DC; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+              <tr>
+                <td style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; font-weight: bold;">Booking Reference</td>
+                <td style="text-align: right; font-family: Consolas, monospace; font-size: 16px; font-weight: 800; color: #142214;">${displayRef}</td>
+              </tr>
+            </table>
+
+            <div class="card">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr class="table-row">
+                  <td class="col-label">Client Name:</td>
+                  <td class="col-val">${booking.fullName}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Company:</td>
+                  <td class="col-val">${booking.companyName || 'Not specified'}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Client Contact:</td>
+                  <td class="col-val"><a href="mailto:${booking.email}" style="color: #2E7D32;">${booking.email}</a> • <a href="tel:${booking.phone}" style="color: #181F18;">${booking.phone}</a></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Workspace:</td>
+                  <td class="col-val">${booking.workspaceTitle}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Schedule:</td>
+                  <td class="col-val">${details.scheduleSummary}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">New Status:</td>
+                  <td class="col-val" style="color: ${statusColor}; text-transform: uppercase;">${booking.status}</td>
+                </tr>
+                <tr class="table-row">
+                  <td class="col-label">Total Amount:</td>
+                  <td class="col-val" style="color: #2E7D32;">${booking.totalAmount || 'Custom'}</td>
+                </tr>
+              </table>
+            </div>
+
+            ${parsedNotes.adminNotes ? `
+            <div style="background: #FAF9F5; border-left: 4px solid #2E7D32; border: 1px solid #E5E1D8; border-radius: 10px; padding: 14px 18px; margin: 18px 0; font-size: 13px;">
+              <strong style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #5C665C; margin-bottom: 4px;">Updated Admin Notes:</strong>
+              <div style="color: #181F18; line-height: 1.5;">${parsedNotes.adminNotes}</div>
+            </div>` : ''}
+
+            <div class="btn-container">
+              <a href="${appUrl}/admin/bookings" class="btn">View in Admin Dashboard →</a>
+            </div>
+          </div>
+          <div class="footer">
+            EnCourtyard Automated Admin Dispatcher • Sent to ${cfg.adminEmail}
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
     const info = await transporter.sendMail({
       from: cfg.from,
       to: cfg.adminEmail,
-      subject: `ℹ️ [Status Changed] Booking ${displayRef} updated to ${booking.status}`,
-      text: `Booking ${displayRef} (${booking.fullName} - ${booking.workspaceTitle}) status updated to ${booking.status}. Notes: ${booking.adminNotes || 'None'}.`,
+      subject: `ℹ️ [Status: ${booking.status}] Booking ${displayRef} - ${booking.fullName} (${booking.workspaceTitle})`,
+      text: `Booking ${displayRef} (${booking.fullName} - ${booking.workspaceTitle}) status updated to ${booking.status}. Notes: ${parsedNotes.adminNotes || 'None'}. Dashboard: ${appUrl}/admin/bookings`,
+      html: htmlContent,
     });
     return { success: true, messageId: info.messageId };
   } catch (error: unknown) {
-    return { success: true, error: String(error) };
+    const err = String(error);
+    console.error('❌ [Nodemailer SMTP Error - Admin Status Update]:', err);
+    return { success: true, error: err };
   }
 }
 
@@ -871,26 +1141,36 @@ export async function dispatchBookingCreatedEmails(
     emailsToDispatch.push({ email: accountEmail, label: 'User Account Email' });
   }
 
-  // Send to user recipient(s)
-  await Promise.all(
-    emailsToDispatch.map((item) =>
-      sendBookingConfirmationEmail(item.email, booking, item.label)
-    )
+  // Dispatch both user emails and admin email concurrently
+  const userEmailPromises = emailsToDispatch.map((item) =>
+    sendBookingConfirmationEmail(item.email, booking, item.label)
   );
 
-  // Check Admin Notification Toggle from settings
-  try {
-    const adminToggle = await prisma.systemSetting.findUnique({
-      where: { key: 'admin_email_notify_new_booking' }
-    });
-    const shouldNotifyAdmin = adminToggle?.value !== 'false';
-    if (shouldNotifyAdmin) {
+  const adminNotificationPromise = (async () => {
+    try {
+      const checkTogglePromise = prisma.systemSetting.findUnique({
+        where: { key: 'admin_email_notify_new_booking' }
+      });
+      const timeoutPromise = new Promise<{ value: string } | null>((resolve) =>
+        setTimeout(() => resolve(null), 2500)
+      );
+      const adminToggle = await Promise.race([checkTogglePromise, timeoutPromise]);
+      const shouldNotifyAdmin = adminToggle?.value !== 'false';
+      if (shouldNotifyAdmin) {
+        await sendAdminNewBookingNotification(booking);
+      }
+    } catch (err) {
+      console.warn('Could not check admin notification toggle, sending by default:', err);
       await sendAdminNewBookingNotification(booking);
     }
-  } catch (err) {
-    console.warn('Could not check admin notification toggle:', err);
-    await sendAdminNewBookingNotification(booking);
-  }
+  })();
+
+  const results = await Promise.allSettled([...userEmailPromises, adminNotificationPromise]);
+  results.forEach((res, index) => {
+    if (res.status === 'rejected') {
+      console.error(`❌ [Booking Email Dispatcher Task ${index} Rejected]:`, res.reason);
+    }
+  });
 }
 
 export async function dispatchStatusUpdatedEmails(
@@ -911,23 +1191,34 @@ export async function dispatchStatusUpdatedEmails(
     emailsToDispatch.push({ email: accountEmail, label: 'User Account Email' });
   }
 
-  // Send status update to user recipient(s)
-  await Promise.all(
-    emailsToDispatch.map((item) =>
-      sendStatusUpdateEmail(item.email, booking, item.label)
-    )
+  // Send status update to user recipient(s) and admin concurrently
+  const userEmailPromises = emailsToDispatch.map((item) =>
+    sendStatusUpdateEmail(item.email, booking, item.label)
   );
 
-  // Check Admin Status Update Toggle from settings
-  try {
-    const adminToggle = await prisma.systemSetting.findUnique({
-      where: { key: 'admin_email_notify_status_update' }
-    });
-    const shouldNotifyAdmin = adminToggle?.value !== 'false';
-    if (shouldNotifyAdmin) {
+  const adminNotificationPromise = (async () => {
+    try {
+      const checkTogglePromise = prisma.systemSetting.findUnique({
+        where: { key: 'admin_email_notify_status_update' }
+      });
+      const timeoutPromise = new Promise<{ value: string } | null>((resolve) =>
+        setTimeout(() => resolve(null), 2500)
+      );
+      const adminToggle = await Promise.race([checkTogglePromise, timeoutPromise]);
+      const shouldNotifyAdmin = adminToggle?.value !== 'false';
+      if (shouldNotifyAdmin) {
+        await sendAdminStatusUpdateNotification(booking);
+      }
+    } catch (err) {
+      console.warn('Could not check admin status toggle, sending by default:', err);
       await sendAdminStatusUpdateNotification(booking);
     }
-  } catch (err) {
-    console.warn('Could not check admin status toggle:', err);
-  }
+  })();
+
+  const results = await Promise.allSettled([...userEmailPromises, adminNotificationPromise]);
+  results.forEach((res, index) => {
+    if (res.status === 'rejected') {
+      console.error(`❌ [Status Email Dispatcher Task ${index} Rejected]:`, res.reason);
+    }
+  });
 }

@@ -96,13 +96,16 @@ export async function POST(req: Request) {
       guests: newBooking.guests,
       totalAmount: newBooking.totalAmount ? `₹${newBooking.totalAmount}` : 'Custom Quote',
       status: newBooking.status,
+      paymentStatus: newBooking.paymentStatus,
       adminNotes: newBooking.adminNotes,
       createdAt: newBooking.createdAt,
     };
 
-    dispatchBookingCreatedEmails(emailData, body.accountEmail || newBooking.email).catch((mailErr) => {
+    try {
+      await dispatchBookingCreatedEmails(emailData, body.accountEmail || newBooking.email);
+    } catch (mailErr) {
       console.error('❌ [Admin Manual Booking Email Error]:', mailErr);
-    });
+    }
 
     return NextResponse.json({
       success: true,
